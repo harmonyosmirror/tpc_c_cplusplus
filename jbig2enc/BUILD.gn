@@ -14,85 +14,76 @@
 import("//build/ohos.gni")
 import("//build/ohos/ndk/ndk.gni")
 
-
 declare_args() {
-   enable_test = false
+  enable_test = false
 }
 
 config("jbig2enc_config") {
   cflags = [
     "-Wall",
     "-Wno-error=unused-const-variable",
-    "-DVERSION=\"0.29\""
+    "-DVERSION=\"0.29\"",
   ]
 
-  ldflags = [
-    "-lm",
-  ]
+  ldflags = [ "-lm" ]
 }
 
 ohos_shared_library("jbig2enc_shared") {
   sources = [
-    "jbig2enc/src/jbig2enc.cc",
     "jbig2enc/src/jbig2arith.cc",
-    "jbig2enc/src/jbig2sym.cc",
     "jbig2enc/src/jbig2comparator.cc",
+    "jbig2enc/src/jbig2enc.cc",
+    "jbig2enc/src/jbig2sym.cc",
   ]
 
   include_dirs = [
     "jbig2enc/src",
     "//third_party/leptonica/leptonica/src",
-    "//third_party/leptonica/adapted"
+    "//third_party/leptonica/adapted",
   ]
 
   configs = [ ":jbig2enc_config" ]
 
   deps = [
     "//third_party/leptonica:leptonica",
-    "//third_party/libpng:libpng"
+    "//third_party/libpng:libpng",
   ]
 
   part_name = "jbig2enc"
 }
 
 ohos_executable("jbig2") {
-  sources = [
-      "jbig2enc/src/jbig2.cc",
-  ]
+  sources = [ "jbig2enc/src/jbig2.cc" ]
   configs = [ ":jbig2enc_config" ]
 
   include_dirs = [
-      "jbig2enc/src",
-      "//third_party/leptonica/leptonica/src",
-      "//third_party/leptonica/adapted"
+    "jbig2enc/src",
+    "//third_party/leptonica/leptonica/src",
+    "//third_party/leptonica/adapted",
   ]
 
   deps = [
-      ":jbig2enc_shared",
-      "//third_party/leptonica:leptonica",
-      "//third_party/libpng:libpng"
-  ]   
+    ":jbig2enc_shared",
+    "//third_party/leptonica:leptonica",
+    "//third_party/libpng:libpng",
+  ]
   part_name = "jbig2enc"
 }
 
 action("init_includes") {
-    script = "adapted/init_includes.sh"
-    sources = [ "//third_party/jbig2enc/adapted" ]
-    outputs = [ "${target_out_dir}" ]
-    args = [
-        rebase_path("//third_party/jbig2enc",root_build_dir)
-    ]
+  script = "adapted/init_includes.sh"
+  sources = [ "//third_party/jbig2enc/adapted" ]
+  outputs = [ "${target_out_dir}" ]
+  args = [ rebase_path("//third_party/jbig2enc", root_build_dir) ]
 }
 
 group("jbig2enc") {
-    deps = [
-        ":jbig2enc_shared",
-        ":init_includes"
-    ]
-    
-    if (enable_test) {
-        deps += [
-            ":jbig2"
-        ]
-    }
+  deps = [
+    ":init_includes",
+    ":jbig2enc_shared",
+  ]
+
+  if (enable_test) {
+    deps += [ ":jbig2" ]
+  }
 }
