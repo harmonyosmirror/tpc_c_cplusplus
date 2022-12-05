@@ -77,7 +77,7 @@ libmp3lame原生库提供了测试用例，如需要引入测试程序，在Open
 	 {
 		"component": "libmp3lame",
 		"features": [ "enable_mp3lame_binary=true" ]
-     }
+	 }
     ]
 }
 ```

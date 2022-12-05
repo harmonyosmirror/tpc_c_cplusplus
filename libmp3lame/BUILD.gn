@@ -14,34 +14,32 @@
 import("//build/ohos.gni")
 
 declare_args() {
-    enable_mp3lame_binary = false
+  enable_mp3lame_test = false
 }
 
 config("lame_config") {
-  defines = [
-   "HAVE_CONFIG_H=1"
-  ]
+  defines = [ "HAVE_CONFIG_H=1" ]
   cflags = [
-   "-O3",
-   "-Wall",
-   "-Wno-unused-variable",
-   "-Wno-absolute-value",
-   "-Wno-unused-function",
-   "-Wno-unused-const-variable",
-   "-Wno-shift-negative-value",
-   "-Wno-tautological-pointer-compare",
-   "-MT",
-   "-MP",
-   "-pipe",
-   "-ffast-math"
+    "-O3",
+    "-Wall",
+    "-Wno-unused-variable",
+    "-Wno-absolute-value",
+    "-Wno-unused-function",
+    "-Wno-unused-const-variable",
+    "-Wno-shift-negative-value",
+    "-Wno-tautological-pointer-compare",
+    "-MT",
+    "-MP",
+    "-pipe",
+    "-ffast-math",
   ]
   include_dirs = [
-   "//third_party/libmp3lame/libmp3lame",
-   "//third_party/libmp3lame/libmp3lame/libmp3lame/vector",
-   "//third_party/libmp3lame/libmp3lame/mpglib/",
-   "//third_party/libmp3lame/libmp3lame/libmp3lame",
-   "//third_party/libmp3lame/libmp3lame/include",
-   "adapted"
+    "//third_party/libmp3lame/libmp3lame",
+    "//third_party/libmp3lame/libmp3lame/libmp3lame/vector",
+    "//third_party/libmp3lame/libmp3lame/mpglib/",
+    "//third_party/libmp3lame/libmp3lame/libmp3lame",
+    "//third_party/libmp3lame/libmp3lame/include",
+    "adapted",
   ]
 }
 
@@ -74,38 +72,36 @@ LIBMP3LAME_SOURCES = [
   "//third_party/libmp3lame/libmp3lame/mpglib/layer2.c",
   "//third_party/libmp3lame/libmp3lame/mpglib/layer3.c",
   "//third_party/libmp3lame/libmp3lame/mpglib/tabinit.c",
-  "//third_party/libmp3lame/libmp3lame/mpglib/interface.c"
+  "//third_party/libmp3lame/libmp3lame/mpglib/interface.c",
 ]
 
 ohos_static_library("libmp3lame") {
   sources = LIBMP3LAME_SOURCES
-  configs = [":lame_config"]
+  configs = [ ":lame_config" ]
   subsystem_name = "thirdparty"
   part_name = "libmp3lame"
 }
 
-ohos_executable("lame"){
+ohos_executable("lame") {
   sources = [
-  "//third_party/libmp3lame/libmp3lame/frontend/lame_main.c",
-  "//third_party/libmp3lame/libmp3lame/frontend/main.c",
-  "//third_party/libmp3lame/libmp3lame/frontend/brhist.c",
-  "//third_party/libmp3lame/libmp3lame/frontend/get_audio.c",
-  "//third_party/libmp3lame/libmp3lame/frontend/lametime.c",
-  "//third_party/libmp3lame/libmp3lame/frontend/parse.c",
-  "//third_party/libmp3lame/libmp3lame/frontend/timestatus.c",
-  "//third_party/libmp3lame/libmp3lame/frontend/console.c"
+    "//third_party/libmp3lame/libmp3lame/frontend/brhist.c",
+    "//third_party/libmp3lame/libmp3lame/frontend/console.c",
+    "//third_party/libmp3lame/libmp3lame/frontend/get_audio.c",
+    "//third_party/libmp3lame/libmp3lame/frontend/lame_main.c",
+    "//third_party/libmp3lame/libmp3lame/frontend/lametime.c",
+    "//third_party/libmp3lame/libmp3lame/frontend/main.c",
+    "//third_party/libmp3lame/libmp3lame/frontend/parse.c",
+    "//third_party/libmp3lame/libmp3lame/frontend/timestatus.c",
   ]
-  configs = [":lame_config"]
-  deps = [":libmp3lame"]
+  configs = [ ":lame_config" ]
+  deps = [ ":libmp3lame" ]
   subsystem_name = "thirdparty"
   part_name = "libmp3lame"
 }
 
-group("mp3lame_targets"){
-  deps = [
-    ":libmp3lame"
-  ]
+group("mp3lame_targets") {
+  deps = [ ":libmp3lame" ]
   if (enable_mp3lame_binary) {
     deps += [ ":lame" ]
-}
+  }
 }
