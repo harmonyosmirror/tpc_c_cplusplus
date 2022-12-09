@@ -101,7 +101,7 @@ ohos_executable("lame") {
 
 group("mp3lame_targets") {
   deps = [ ":libmp3lame" ]
-  if (enable_mp3lame_binary) {
+  if (enable_mp3lame_test) {
     deps += [ ":lame" ]
   }
 }
