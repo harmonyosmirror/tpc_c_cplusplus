@@ -14,22 +14,23 @@
   ├── README.OpenSource     #说明三方库源码的下载地址，版本，license等信息
   ├── README_zh.md   
   ```
-- 将unrar拷贝至工程xxxx/entry/src/main/cpp/libunrar目录下
+- 将unrar拷贝至工程xxxx/entry/src/main/cpp/thirdparty目录下
 ### 准备三方库源码
 - 三方库下载地址：[unrar](https://github.com/maoabc/unrar-android/tree/master/src/main/cpp/libunrar), 版本：v5.6.4
-  解压后修改库文件名为unrar，拷贝至工程xxxx/entry/src/main/cpp/libunrar目录下
+  解压后把目录下的src/main/cpp/libunrar 的文件，拷贝至工程xxxx/entry/src/main/cpp/thirdparty/unrar目录下
 ## 应用中使用三方库
 - 将三方库加入工程中，目录结构如下
   ```
   demo/entry/src/main/cpp
-  ├── libunrar         #三方库存放目录
+  ├── thirdparty         #三方库存放目录
   │   ├──  unrar      #三方库unrar
   ├── CMakeLists.txt     #工程目录的构建脚本
   ├── .....              #工程目录的其他文件
   ```
 - 在工程顶级CMakeLists.txt中引入三方库，增加如下代码
   ```
-  add_subdirectory(libunrar)      #引入子目录下的CMakeLists.txt
+  add_subdirectory(thirdparty/unrar)      #引入子目录下的CMakeLists.txt
+  include_directories(thirdparty/unrar/libunrar)
   add_library(unrar SHARED unrar.cpp)  #工程编译三方库unrar
   target_link_libraries(unrar PUBLIC libace_napi.z.so libhilog_ndk.z.so static_unrar)    
   ```
