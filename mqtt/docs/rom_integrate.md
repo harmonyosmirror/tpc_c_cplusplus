@@ -6,7 +6,7 @@
 
 ### 准备系统Rom源码
 
-系统源码获取方法请参照：[OpenHarmony3.2beta4源码下载](https://gitee.com/openharmony/docs/blob/OpenHarmony-v3.2-Beta4/zh-cn/release-notes/OpenHarmony-v3.2-beta4.md#源码获取)
+系统源码获取方法请参照：[OpenHarmony3.2beta4源码下载](https://gitee.com/openharmony/docs/blob/OpenHarmony-v3.2-Beta5/zh-cn/release-notes/OpenHarmony-v3.2-beta4.md#源码获取)
 
 ### 增加构建脚本及配置文件
 
