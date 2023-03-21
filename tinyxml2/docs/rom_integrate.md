@@ -25,7 +25,7 @@
   ```
 ### 准备三方库源码
 ```
-cd ~/openharmony/third_party/rapidjson    #进入三方库目录
+cd ~/openharmony/third_party/tinyxml2    #进入三方库目录
 git clone https://github.com/leethomason/tinyxml2.git     #下载三方库源码
 ```
 ## 系统Rom中引入三方库
