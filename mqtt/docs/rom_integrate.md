@@ -146,7 +146,7 @@
 ## 参考资料
 
 - [润和RK3568开发板标准系统快速上手](https://gitee.com/openharmony-sig/knowledge_demo_temp/tree/master/docs/rk3568_helloworld)。
-- [OpenHarmony3.2beta4](https://gitee.com/openharmony/docs/blob/OpenHarmony-v3.2-Beta4/zh-cn/release-notes/OpenHarmony-v3.2-beta4.md)。
+- [OpenHarmony3.2beta4](https://gitee.com/openharmony/docs/blob/OpenHarmony-v3.2-Beta5/zh-cn/release-notes/OpenHarmony-v3.2-beta4.md)。
 - [OpenHarmony三方库组织地址](https://gitee.com/openharmony-tpc)。
 - [如何为三方库组件中添加一个三方库](https://gitee.com/openharmony-sig/knowledge/blob/master/docs/openharmony_getstarted/port_thirdparty/README.md)。
 - [知识体系](https://gitee.com/openharmony-sig/knowledge)。
