@@ -141,7 +141,7 @@ bsdiff原生库提供了测试用例，如需要引入测试程序，在OpenHarm
 ## 参考资料
 
 - [润和RK3568开发板标准系统快速上手](https://gitee.com/openharmony-sig/knowledge_demo_temp/blob/master/docs/rk3568_helloworld/README.md)。
-- [如何添加一个三方库到OpenHarmony的thirdparty子系统中](../../common/add_thirdparty_component.md)。
+- [如何为三方库组件中添加一个三方库](https://gitee.com/openharmony-sig/knowledge/blob/master/docs/openharmony_getstarted/port_thirdparty/README.md)。
 - [OpenHarmony3.2beta3介绍](https://gitee.com/openharmony/docs/blob/OpenHarmony-3.2-Beta5/zh-cn/release-notes/OpenHarmony-v3.2-beta3.md)。
 - [OpenHarmony三方库组织地址](https://gitee.com/openharmony-tpc)。
 - [知识体系](https://gitee.com/openharmony-sig/knowledge)。
