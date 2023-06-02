@@ -45,6 +45,7 @@
 ## 应用中使用三方库
 
 - 在IDE的cpp目录下新增thirdparty目录，将编译生成的库拷贝到该目录下，如下图所示
+
 ![thirdparty_install_dir](pic/openssl_install_dir.png)
 - 在最外层（cpp目录下）CMakeLists.txt中添加如下语句
   ```
