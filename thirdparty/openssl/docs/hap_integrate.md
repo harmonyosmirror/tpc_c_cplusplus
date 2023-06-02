@@ -66,7 +66,7 @@
 
 32个用例是错误判定为误判，不同系统错误描述不同，实际为正常
 
-8个dlopen用例错误，进程退出是signal11
+8个dlopen用例错误，进程退出是signal11，请避免使用dlopen
 
 ## 参考资料
 - [润和RK3568开发板标准系统快速上手](https://gitee.com/openharmony-sig/knowledge_demo_temp/tree/master/docs/rk3568_helloworld)
