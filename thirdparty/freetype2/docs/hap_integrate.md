@@ -14,7 +14,7 @@
   ```
 - 三方库目录结构
   ```
-  tpc_c_cplusplus/thirdparty/freetype2    #三方库nghttp3的目录结构如下
+  tpc_c_cplusplus/thirdparty/freetype2  #三方库freetype2的目录结构如下
   ├── docs                              #三方库相关文档的文件夹
   ├── HPKBUILD                          #构建脚本
   ├── SHA512SUM                         #三方库校验文件
@@ -22,7 +22,7 @@
   ├── README_zh.md   
   ```
   
-- 将nghttp3及其依赖库CUnit拷贝至tools/main目录下
+- 将freetype2及其依赖库zlib、bzip2、brotli、libpng、harfbuzz拷贝至tools/main目录下
   ```
   cd tpc_c_cplusplus
   cp thirdparty/zlib tools/main -rf
@@ -30,6 +30,7 @@
   cp thirdparty/brotli tools/main -rf
   cp thirdparty/libpng tools/main -rf
   cp thirdparty/harfbuzz tools/main -rf
+  cp thirdparty/freetype2 tools/main -rf
   ```
 - 在tools目录下编译三方库
   编译环境的搭建参考[准备三方库构建环境](../../../tools/README.md#编译环境准备)
