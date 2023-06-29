@@ -5,11 +5,11 @@
 
 ### 北向应用中使用
 
-- :tw-1f195: [通过Deveco Studio创建一个Napi工程](https://gitee.com/openharmony-sig/knowledge_demo_temp/blob/master/docs/napi_study/docs/hello_napi.md)
-- :tw-1f195: [Napi 数据类型与同步调用](https://gitee.com/openharmony-sig/knowledge_demo_temp/blob/master/docs/napi_study/docs/napi_data_type.md)
-- :tw-1f195: [Napi 异步调用](https://gitee.com/openharmony-sig/knowledge_demo_temp/blob/master/docs/napi_study/docs/napi_asynchronous_call.md)
-- :tw-1f195: [Napi 生命周期](https://gitee.com/openharmony-sig/knowledge_demo_temp/blob/master/docs/napi_study/docs/napi_life_cycle.md)
-- :tw-1f195: [Napi 对象导出](https://gitee.com/openharmony-sig/knowledge_demo_temp/blob/master/docs/napi_study/docs/napi_export_object.md)
+- :tw-1f195: [通过Deveco Studio创建一个Napi工程](hello_napi.md)
+- :tw-1f195: [Napi 数据类型与同步调用](napi_data_type.md)
+- :tw-1f195: [Napi 异步调用](napi_asynchronous_call.md)
+- :tw-1f195: [Napi 生命周期](napi_life_cycle.md)
+- :tw-1f195: [Napi 对象导出](napi_export_object.md)
 - :tw-1f195: [OpenHarmony北向应用如何引用C/C++三方库](./app_call_thirdlib_hap.md)
 
 ## C/C++ 三方库适配方法
@@ -31,3 +31,7 @@
 ### 固件集成的动态库无法在IDE上使用
 
 - :tw-1f195: [应用集成和固件集成中C库差异化分析](rom_hap_c_cpluplus_diff.md)
+
+### 开源三方库的cmake在IDE上直接引用的问题
+
+- :tw-1f195: [开源三方库的cmake在IDE上直接引用的问题分析](ide_findpackage_problem.md)
