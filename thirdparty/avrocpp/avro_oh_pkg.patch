@@ -52,12 +52,11 @@
                  throw Exception("Cannot skip stream");
 --- avro-release-1.11.1_old/lang/c++/CMakeLists.txt    2022-07-27 03:26:24.000000000 +0800
 +++ avro-release-1.11.1/lang/c++/CMakeLists.txt 2023-06-21 15:39:01.351747359 +0800
-@@ -140,7 +140,7 @@
- 
+@@ -141,6 +141,6 @@
  macro (gen file ns)
      add_custom_command (OUTPUT ${file}.hh
 -        COMMAND avrogencpp
-+        COMMAND ${HOST_BUILD_DIR}/avrogencpp
++        COMMAND ${AVROGENCPPCMD}
              -p -
              -i ${CMAKE_CURRENT_SOURCE_DIR}/jsonschemas/${file}
              -o ${file}.hh -n ${ns} -U

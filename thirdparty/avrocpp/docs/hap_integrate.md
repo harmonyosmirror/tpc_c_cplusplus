@@ -47,7 +47,7 @@
 
   ```shell
   cd tools
-  ./build.sh avrocpp boost
+  ./build.sh avrocpp boost snappy
   ```
 
 - 三方库头文件及生成的库
@@ -68,9 +68,6 @@
 
   ```shell
   #将三方库加入工程中
-  #使用c语言库
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/avro/${OHOS_ARCH}/lib/libavro.so)
-
   #使用c++库
   target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/avrocpp/${OHOS_ARCH}/lib/libavrocpp.so)
 
