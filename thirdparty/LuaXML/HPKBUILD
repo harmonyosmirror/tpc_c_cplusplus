@@ -52,7 +52,6 @@ prepare() {
     cd $OLDPWD
 }
 build() {
-    cp -rf luaunit.lua $builddir-$ARCH-build/
     cd $builddir-$ARCH-build
     cp -f $LYCIUM_ROOT/usr/LuaJIT/$ARCH/lib/libluajit-5.1.so $LYCIUM_ROOT/usr/LuaJIT/$ARCH/lib/liblua.so
     make INCDIR=-I$LYCIUM_ROOT/usr/LuaJIT/$ARCH/include/luajit-2.1 \
@@ -83,17 +82,21 @@ package() {
 
 check() {
     echo "The test must be on an OpenHarmony device!"
+    # 下载测试需要lua脚本
+    sure download "https://github.com/bluebird75/luaunit/archive/refs/tags/LUAUNIT_V3_4.tar.gz"  "luaunit-LUAUNIT_V3_4.tar.gz"
+    sure unpack "luaunit-LUAUNIT_V3_4.tar.gz"
+    cp luaunit-LUAUNIT_V3_4/luaunit.lua $builddir-$ARCH-build/
     # 使用动态库链接，由于lua的原因LD_LIBRARY_PATH无效，需要将libluajit-5.1.so.2.1.0拷贝到系统默认so查找路径
     # mount -o remount,rw /
     # mkdir -p /usr/local/lib
     # export ROOT_PATH=/data/local/tmp/lycium
-    # cp $ROOT_PATH/usr/LuaJIT/arm64-v8a/lib/libluajit-5.1.so.2.1.0 /usr/local/lib/libluajit-5.1.so.2
+    # cp ${ROOT_PATH}/usr/LuaJIT/arm64-v8a/lib/libluajit-5.1.so.2.1.0 /usr/local/lib/libluajit-5.1.so.2
     # cd ${ROOT_PATH}/main/LuaXML/LuaXML-7cd4a7ab5db85222edb4c955d53e5674afd170b6-arm64-v8a-build
-    # export O_PATH=$PATH
-    # export PATH=$ROOT_PATH/usr/LuaJIT/arm64-v8a/bin/:$PATH
-    # make test LUA=luajit-2.1.0-beta3
+    # export LUAJIT_PATH=$ROOT_PATH/usr/LuaJIT/arm64-v8a/bin/luajit-2.1.0-beta3
+    # make test LUA=${LUAJIT_PATH} VERBOSE=1
     # mount -o remount,ro /
-    # export PATH=$O_PATH
+    # export LUAJIT_PATH=
+    # export ROOT_PATH=
 }
 
 # 清理环境
