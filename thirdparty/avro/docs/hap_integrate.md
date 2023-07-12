@@ -71,10 +71,11 @@
   target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/avro/${OHOS_ARCH}/include)
 
   #将动态库打包到libs
+  file(GLOB allLibs "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/avrocpp/${OHOS_ARCH}/lib/*.so*")
   add_custom_command(TARGET entry POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
-    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/avro/${OHOS_ARCH}/lib/libavro.so
-    ${CMAKE_CURRENT_BINARY_DIR}/../../../../libs/${OHOS_ARCH})
+    ${allLibs}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/)
   ```
 
 ## 测试三方库
