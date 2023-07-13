@@ -62,6 +62,7 @@
 ## 应用中使用三方库
 
 - 在IDE的cpp目录下新增thirdparty目录，将编译生成的库拷贝到该目录下，如下图所示:
+
   ![thirdparty_install_dir](pic/avrocpp_install_dir.png)
  
 - 在最外层（cpp目录下）CMakeLists.txt中添加如下语句
@@ -81,6 +82,10 @@
     ${allLibs}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/)
   ```
+
+  修改IDE的entry/build-profile.json5 文件，增加编译架构过滤："abiFilters": ["armeabi-v7a", "arm64-v8a"], 如下图所示：
+
+ ![avro_build](pic/avro_build.png)
 
 ## 测试三方库
 
