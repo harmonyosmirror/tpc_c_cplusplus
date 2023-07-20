@@ -2,8 +2,7 @@
 # Maintainer: chengkan <kanchengc@isoftstone.com>
 
 source HPKBUILD > /dev/null 2>&1
-logfile=${LYCIUM_ROOT}/../thirdparty/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
-
+logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
 
 # 判断ping是否成功函数
 function ping_success() {
@@ -35,7 +34,7 @@ checkprepare(){
                 echo "Success: localhost is pingable."  >> ${logfile} 2>&1
             else
                 echo "Error: localhost is not pingable." >> ${logfile} 2>&1
-                res = -1
+                res = -2
             fi
         fi 
 
@@ -49,8 +48,7 @@ openharmonycheck() {
     cd $builddir/$ARCH-build
     make test >> ${logfile} 2>&1
     res=$?
-        
     cd $OLDPWD
-
+    
     return $res
 }
