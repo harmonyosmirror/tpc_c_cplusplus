@@ -32,16 +32,14 @@ prepare() {
         cd $OLDPWD
     fi
     mkdir -p $builddir/$ARCH-build
-    if [ $ARCH == ${archs[0]} ]
-    then
+    if [ $ARCH == ${archs[0]} ]; then
         setarm32ENV
         host=arm-linux
-    fi
-    if [ $ARCH == ${archs[1]} ]
-    then
+    elif [ $ARCH == ${archs[1]} ]; then
         setarm64ENV
         host=aarch64-linux
-    fi
+    else
+        echo "cant not support this ARCH($ARCH) type!!!"
 }
 
 build() {
@@ -57,21 +55,19 @@ package() {
     cd $builddir/$ARCH-build
     make install >> `pwd`/build.log 2>&1
     cd $OLDPWD
-    if [ $ARCH == ${archs[0]} ]
-    then
+
+    if [ $ARCH == ${archs[0]} ]; then
         unsetarm32ENV
-    fi
-    if [ $ARCH == ${archs[1]} ]
-    then
+    elif [ $ARCH == ${archs[1]} ]; then
         unsetarm64ENV
-    fi
+    else
+        echo "cant not support this ARCH($ARCH) type!!!"
 
     unset host
 }
 
 check() {
     echo "The test must be on an OpenHarmony device!"
-
     ## real test CMD
     ## 进入到编译目录执行
     ## make test
