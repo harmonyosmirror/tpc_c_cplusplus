@@ -35,7 +35,6 @@ prepare() {
     cd $builddir-$ARCH-build
     autoreconf -ifv > `pwd`/build.log 2>&1
     cd $OLDPWD
-
 }
 
 build() {
@@ -58,7 +57,6 @@ package() {
     else
         echo "$ARCH not support!"      
     fi
-
     unset host
 }
 
