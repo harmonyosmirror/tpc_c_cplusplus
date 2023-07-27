@@ -51,7 +51,7 @@ openharmonycheck() {
     uint_test 21 "one-class support vector machine (dual)"                            
                             
     echo "Unit Test End: Success $uint_count, Total: $total_count" >> ${logfile} 2>&1       
-    if [ $uint_count -ne 12 ];then
+    if [ $uint_count -ne $total_count ];then
         return -1
     else
         return 0
