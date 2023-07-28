@@ -51,9 +51,10 @@
 
 ## 应用中使用三方库
 
-- 在IDE的cpp目录下新增thirdparty目录，将编译生成的库拷贝到该目录下，动态库文件会自动拷贝到libs目录下打包，如下图所示:
+- 在IDE的cpp目录下新增thirdparty目录，将编译生成的库拷贝到该目录下，该库只有静态库，如下图所示:
   
   ![thirdparty_install_dir](pic/liblinear_js.png)
+
  
 - 在最外层（cpp目录下）CMakeLists.txt中添加如下语句
 
