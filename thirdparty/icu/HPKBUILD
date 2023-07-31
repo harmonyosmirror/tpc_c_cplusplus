@@ -1,0 +1,75 @@
+# Contributor: wlxuz <wlxuz@isoftstone.com>
+# Maintainer: wlxuz <wlxuz@isoftstone.com>
+
+pkgname=icu
+pkgver=release-73-2
+pkgrel=0
+pkgdesc="icu is short for International Components for Unicode."
+url="https://github.com/unicode-org/icu"
+archs=("armeabi-v7a" "arm64-v8a")
+license=("BSD License")
+depends=()
+makedepends=()
+source="https://github.com/unicode-org/$pkgname/archive/refs/tags/$pkgver.tar.gz"
+buildtools="configure"
+
+autounpack=true
+downloadpackage=true
+buildhost=true
+
+builddir=$pkgname-${pkgver}
+packagename=$pkgname-$pkgver.tar.gz
+
+source envset.sh
+host=
+
+prepare() {
+    # 需要先编译host版本
+    if [ $buildhost == true ];then
+        mkdir -p $builddir/host-build
+        cd $builddir/host-build
+        ../icu4c/source/configure > `pwd`/build.log 2>&1
+        make -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
+        cd $OLDPWD
+        buildhost=false
+    fi
+    mkdir -p $builddir/$ARCH-build
+    
+    if [ $ARCH == "armeabi-v7a" ];then
+        setarm32ENV
+        host=arm-linux
+    elif [ $ARCH == "arm64-v8a" ];then
+        setarm64ENV
+        host=aarch64-linux
+    else
+        echo "$ARCH not support"
+        return -1
+    fi
+}
+
+build() {
+    cd $builddir/$ARCH-build
+    echo "$@"
+    CXXFLAGS="$CXXFLAGS -std=c++11" ../icu4c/source/configure "$@" --host=$host --with-cross-build=`pwd`/../host-build > `pwd`/build.log 2>&1
+    make -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
+
+    ret=$?
+    cd $OLDPWD
+    return $ret
+}
+
+package() {
+    cd $builddir/$ARCH-build
+    make install VERBOSE=1 >> `pwd`/build.log 2>&1
+    cd $OLDPWD
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+    # real test
+}
+
+# 清理环境
+cleanbuild(){
+    rm -rf ${PWD}/$builddir #${PWD}/$packagename
+}
