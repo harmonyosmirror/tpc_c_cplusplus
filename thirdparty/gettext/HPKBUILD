@@ -39,9 +39,7 @@ prepare() {
 
 build() {
     cd $builddir/$ARCH-build
-    # 必须链接libc,否则找不到符号
-    LDFLAGS="$LDFLAGS -Wl,$OHOS_SDK/native/sysroot/usr/lib/$host-ohos/libc.a" \
-        CFLAGS="$CFLAGS -Wno-error=int-conversion" \
+    LDFLAGS="-static $LDFLAGS" CFLAGS="-Wno-error=int-conversion $CFLAGS" \
         ../configure "$@" --host=$host --srcdir=`pwd`/../ > `pwd`/build.log 2>&1
     make -j4  VERBOSE=1 >> `pwd`/build.log 2>&1
     ret=$?
