@@ -26,18 +26,19 @@
   ├── srs_oh_pkg.patch                  #构建patch文件
   ├── docs                              #三方库相关文档的文件夹
   ├── HPKBUILD                          #构建脚本
+  ├── HPKCHECK                          #自动化测试脚本
   ├── SHA512SUM                         #三方库校验文件
   ├── README.OpenSource                 #说明三方库源码的下载地址，版本，license等信息
   ├── README_zh.md                      #三方库说明文档
   ├── OAT.xml                           #开源扫描相关文件
   ```
 
-- 在lycium目录下编译三方库
+- 在tpc_c_cplusplus/lycium目录下编译三方库
 
   编译环境的搭建参考[准备三方库构建环境](../../../lycium/README.md#1编译环境准备)
 
   ```shell
-  cd lycium
+  cd tpc_c_cplusplus/lycium
   ./build.sh srs
   ```
 
