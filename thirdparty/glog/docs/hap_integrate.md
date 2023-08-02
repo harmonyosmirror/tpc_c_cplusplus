@@ -17,6 +17,8 @@
   tpc_c_cplusplus/thirdparty/glog       #三方库glog的目录结构如下
   ├── docs                              #三方库相关文档的文件夹
   ├── HPKBUILD                          #构建脚本
+  ├── HPKCHECK                          #自动化测试脚本
+  ├── glog_oh_pkg.patch                 #交叉编译需要patch文件
   ├── SHA512SUM                         #三方库校验文件
   ├── OAT.xml              			  #OAT文件
   ├── README.OpenSource                 #说明三方库源码的下载地址，版本，license等信息
