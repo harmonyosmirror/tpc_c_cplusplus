@@ -12,7 +12,6 @@ makedepends=()
 
 source="https://github.com/Linphone-sync/polarssl/archive/refs/heads/$pkgname-$pkgver.zip"
 
-
 autounpack=true
 patchflag=true
 downloadpackage=true
