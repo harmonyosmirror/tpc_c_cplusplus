@@ -25,6 +25,7 @@
   tpc_c_cplusplus/thirdparty/bctoolbox     #三方库的目录结构如下
   ├── docs                              #三方库相关文档的文件夹
   ├── HPKBUILD                          #构建脚本
+  ├── HPKCHECK                          #测试脚本
   ├── SHA512SUM                         #三方库校验文件
   ├── README.OpenSource                 #说明三方库源码的下载地址，版本，license等信息
   ├── README_zh.md   
@@ -35,7 +36,6 @@
 
 - 进入lycium 目录编译
 
-  本仓库没有依赖库，可直接编译。
   ```shell
   cd lycium
   ./build.sh bctoolbox
