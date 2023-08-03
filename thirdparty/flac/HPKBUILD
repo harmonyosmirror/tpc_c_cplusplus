@@ -41,7 +41,7 @@ package() {
 
 check() {
     echo "The test must be on an OpenHarmony device!"
-    # real test
+    # TODO
 }
 
 cleanbuild() {
