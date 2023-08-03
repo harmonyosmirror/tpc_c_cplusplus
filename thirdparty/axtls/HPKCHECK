@@ -14,7 +14,8 @@ openharmonycheck() {
     then
         ret=0;
     else
-        cp openharmony_result.html LYCIUM_FAULT_PATH
+        mkdir ${LYCIUM_FAULT_PATH}/${pkgname}
+        cp openharmony_result.html ${LYCIUM_FAULT_PATH}/${pkgname}/
         ret=-1;
     fi
     cd $OLDPWD
