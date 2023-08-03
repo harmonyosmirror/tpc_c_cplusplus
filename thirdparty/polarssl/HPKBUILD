@@ -3,7 +3,7 @@
 pkgname=polarssl
 pkgver=1.4
 pkgrel=0
-pkgdesc="The PolarSSL SSL library is an implementation of the SSL and TLS protocols and the respective cryptographic algorithms."
+pkgdesc="The PolarSSL library is an implementation of the SSL and TLS protocols and the respective cryptographic algorithms."
 url="https://github.com/Linphone-sync/polarssl"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("GPL-2.0 license")
