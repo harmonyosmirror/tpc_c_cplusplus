@@ -34,7 +34,7 @@ prepare() {
         host=aarch64-linux
     else
         echo "${ARCH} not support"
-	return -1
+	    return -1
     fi
 }
 
@@ -50,8 +50,8 @@ build() {
 package() {
     cd $builddir/$ARCH-build
     make install > `pwd`/build.log 2>&1
-    unset host
     cd $OLDPWD
+    unset host
     if [ $ARCH == "armeabi-v7a" ]
     then
         unsetarm32ENV
@@ -60,7 +60,7 @@ package() {
         unsetarm64ENV
     else
         echo "${ARCH} not support"
-	return -1
+	    return -1
     fi
 }
 
