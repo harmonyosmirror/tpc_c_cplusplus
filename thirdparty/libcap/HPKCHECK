@@ -6,8 +6,8 @@ logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_
 
 openharmonycheck() {
     res=0
-    cd $builddir-$ARCH-build/progs
-    ./capsh --print > ${logfile} 2>&1
+    cd $builddir-$ARCH-build/tests
+    make test > ${logfile} 2>&1
     res=$?
     cd $OLDPWD
     return $res

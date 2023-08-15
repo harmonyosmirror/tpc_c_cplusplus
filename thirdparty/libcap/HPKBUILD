@@ -1,7 +1,7 @@
 # Contributor: Chen Xu <chenxu.unix@gmail.com>
 # Maintainer: Chen Xu <chenxu.unix@gmail.com>
 pkgname=libcap
-pkgver=libcap-2.24
+pkgver=2.59
 pkgrel=0
 pkgdesc="This is a library for getting and setting POSIX.1e (formerly POSIX 6)draft 15 capabilities."
 url="https://github.com/Distrotech/libcap"
@@ -10,7 +10,7 @@ license=("GPL-2.0")
 depends=("attr")
 makedepends=("")
 
-source="https://github.com/Distrotech/$pkgname/archive/refs/tags/$pkgver.tar.gz"
+source="https://mirrors.edge.kernel.org/pub/linux/libs/security/linux-privs/libcap2/$pkgname-$pkgver.tar.gz"
 
 autounpack=true
 downloadpackage=true
@@ -22,15 +22,6 @@ buildhost=true
 cc=
 ar=
 ldflags=
-
-fixfunc() {
-    # _caps_output.gperf为编译时生成，没有模板文件；需要使用sed修改
-    # size_t未定义，需要包含定义头文件
-    sed -i "4 i#include <stddef.h>" `pwd`/libcap/_caps_output.gperf
-    # 函数的声明与定义不一致，需要修改
-    sed -i 's/const struct __cap_token_s \*__cap_lookup_name(const char \*, unsigned int)/const struct __cap_token_s \*__cap_lookup_name(register const char \*, register size_t)/' \
-        `pwd`/libcap/_caps_output.gperf
-}
 
 prepare() {
     cp -rf $builddir $builddir-$ARCH-build
@@ -59,14 +50,11 @@ prepare() {
 }
 build() {
     cd $builddir-$ARCH-build
-    make CC=${cc} AR=${ar} -j4 VERBOSE=1 > `pwd`/build.log 2>&1
-
-    # 编译过程中会生成中间文件（_caps_output.gperf）参与编译，由于生成该文件有问题，所以编译会报错
-    # 需要手动修复错误后继续编译
-    fixfunc
+    objcopy=${OHOS_SDK}/native/llvm/bin/llvm-objcopy
+    make CC=${cc} AR=${ar} OBJCOPY=${objcopy} GOLANG=no LDFLAGS=${ldflags} all -j4 VERBOSE=1 > `pwd`/build.log 2>&1
     
     # 继续编译
-    make CC=${cc} AR=${ar} LDFLAGS=${ldflags} -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
+    make CC=${cc} AR=${ar} OBJCOPY=${objcopy} GOLANG=no LDFLAGS=${ldflags} all -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
 
     # 在编译过程中需要利用_makenames工具生成cap_names.h
     # 由于是交叉编译，编译出来的_makenames为arm版本的，无法在host机器上运行，故而会报错，无法生成cap_names.h文件
@@ -74,8 +62,11 @@ build() {
     cp -rf `pwd`/../$builddir-host-build/libcap/_makenames `pwd`/libcap/
 
     # 继续编译
-    make CC=${cc} AR=${ar} LDFLAGS=${ldflags} -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
+    make CC=${cc} AR=${ar} OBJCOPY=${objcopy} GOLANG=no LDFLAGS=${ldflags} all -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
     ret=$?
+
+    # 编译测试程序
+    make CC=${cc} AR=${ar} OBJCOPY=${objcopy} GOLANG=no LDFLAGS=${ldflags} test -C tests -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
 
     cd $OLDPWD
     return $ret
@@ -91,11 +82,8 @@ package() {
 
 check() {
     echo "The test must be on an OpenHarmony device!"
-    # mount -o remount,rw /
-    # ln -s /bin/sh /bin/bash
-    # cd ${LYCIUM_THIRDPARTY_ROOT}/libcap/libcap-libcap-2.24-arm64-v8a-build/progs
-    # export LD_LIBRARY_PATH=${LYCIUM_ROOT}/usr/libcap/arm64-v8a/lib:$LD_LIBRARY_PATH
-    # ./capsh --print
+    # cd ${LYCIUM_THIRDPARTY_ROOT}/libcap/libcap-libcap-2.24-arm64-v8a-build/tests
+    # make test
 }
 
 # 清理环境
