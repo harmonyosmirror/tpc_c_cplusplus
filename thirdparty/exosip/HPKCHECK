@@ -1,0 +1,44 @@
+# Contributor: chengkan <kanchengc@isoftstone.com>
+# Maintainer: chengkan <kanchengc@isoftstone.com>
+
+source HPKBUILD > /dev/null 2>&1
+logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
+
+openharmonycheck() {
+    res=0
+    cd $LYCIUM_ROOT/usr/exosip/${ARCH}/bin
+
+    echo "1)The exosip library testing environment requires a PC and a board to form a local area network, where the PC acts as a server and runs server programs miniSIPServer on the PC"
+    echo "2)Server program download address:https://www.myvoipapp.com/download/index.html"
+    echo "3)To test, it is necessary to establish two extension numbers in the miniSIPServer program (the software defaults to two extension numbers of 100.101)"
+    echo "4)At the beginning of the testing phase, prompt to enter the server IP address, board IP address, extension 1 number, password, extension 2 number and password"
+
+    read -p "server IP address: "  serverip
+    read -p "board IP address: "   deviceip
+    read -p "extension 1 number: " dial1
+    read -p "password: "           dial1pwd
+    read -p "extension 2 number: " dial2
+    read -p "password: "           dial2pwd
+
+    # 测试第一路分机
+    ./sip_monitor  -r sip:$serverip -u sip:$dial1@$deviceip -U $dial1 -P $dial1pwd -t TCP -s -e 180 -m --outbound "<sip:$serverip;lr>" > ${logfile} 2>&1
+    if grep -q "SUCCESS" ${logfile}; then
+        res=0
+    else
+        return -1
+    fi    
+
+    # 测试第二路分机
+    ./sip_monitor  -r sip:$serverip -u sip:$dial2@$deviceip -U $dial2 -P $dial2pwd -t TCP -s -e 180 -m --outbound "<sip:$serverip;lr>" > ${logfile} 2>&1
+    if grep -q "SUCCESS" ${logfile}; then
+        res=0
+    else
+        return -2
+    fi  
+
+    cd $OLDPWD
+    
+    return $res
+}
+
+
