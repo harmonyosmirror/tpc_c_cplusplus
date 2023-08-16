@@ -41,7 +41,7 @@ package() {
 check() {
     echo "The test must be on an OpenHarmony device!"
     save_path="$LYCIUM_ROOT/../thirdparty/$pkgname/exiv2.jpg"
-    curl -o $save_path http://clanmills.com/Stonehenge.jpg
+    curl -o $save_path -L http://clanmills.com/Stonehenge.jpg
     cp $LYCIUM_ROOT/../thirdparty/$pkgname/$builddir/test/data/large.icc  $LYCIUM_ROOT/../thirdparty/$pkgname/exiv2.icc
 
     # 在OpenHarmony开发板中执行用例
