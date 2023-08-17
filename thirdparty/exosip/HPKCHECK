@@ -1,44 +1,52 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 # Contributor: chengkan <kanchengc@isoftstone.com>
 # Maintainer: chengkan <kanchengc@isoftstone.com>
 
 source HPKBUILD > /dev/null 2>&1
 logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
 
+checkprepare(){
+    echo "1)The exosip library testing environment requires a PC and a board to form a local area network, where the PC acts as a server and runs server programs miniSIPServer on the PC" > ${logfile} 2>&1
+    echo "2)Server program download address:https://www.myvoipapp.com/download/index.html" >> ${logfile} 2>&1
+    echo "3)To test, it is necessary to establish extension numbers in the miniSIPServer program (the software defaults to two extension numbers of 100.101)" >> ${logfile} 2>&1
+    echo "4)At the beginning of the testing phase, need the server IP address, board IP address, extension number, password" >> ${logfile} 2>&1
+    echo " " >> ${logfile} 2>&1
+    echo "this is a example" >> ${logfile} 2>&1
+    echo "./sip_monitor  -r sip:192.168.3.100 -u sip:102@192.168.3.11 -U 102 -P 102 -t TCP -s -e 180 -m --outbound \"<sip:192.168.3.100;lr>\" " >> ${logfile} 2>&1
+    echo " -r sip:192.168.3.100     # server IP address" >> ${logfile} 2>&1
+    echo " -u sip:101@192.168.3.11  # 101 extension number,192.168.3.11 board IP address" >> ${logfile} 2>&1
+    echo " -U 101                   # extension number" >> ${logfile} 2>&1
+    echo " -P 101                   # password " >> ${logfile} 2>&1
+    echo " " >> ${logfile} 2>&1
+
+    return 0;
+}
+
 openharmonycheck() {
     res=0
     cd $LYCIUM_ROOT/usr/exosip/${ARCH}/bin
-
-    echo "1)The exosip library testing environment requires a PC and a board to form a local area network, where the PC acts as a server and runs server programs miniSIPServer on the PC"
-    echo "2)Server program download address:https://www.myvoipapp.com/download/index.html"
-    echo "3)To test, it is necessary to establish two extension numbers in the miniSIPServer program (the software defaults to two extension numbers of 100.101)"
-    echo "4)At the beginning of the testing phase, prompt to enter the server IP address, board IP address, extension 1 number, password, extension 2 number and password"
-
-    read -p "server IP address: "  serverip
-    read -p "board IP address: "   deviceip
-    read -p "extension 1 number: " dial1
-    read -p "password: "           dial1pwd
-    read -p "extension 2 number: " dial2
-    read -p "password: "           dial2pwd
-
-    # 测试第一路分机
-    ./sip_monitor  -r sip:$serverip -u sip:$dial1@$deviceip -U $dial1 -P $dial1pwd -t TCP -s -e 180 -m --outbound "<sip:$serverip;lr>" > ${logfile} 2>&1
-    if grep -q "SUCCESS" ${logfile}; then
+    # 该测试只是检测测试程序能否运行，不做功能判断。
+    echo "Automation only verifies whether the program can run without judging the test results. Functional testing requires manual verification " >> ${logfile} 2>&1
+    echo " " >> ${logfile} 2>&1
+    ./sip_monitor  -r sip:192.168.3.211 -u sip:123@192.168.3.201-U 123 -P 123 -t TCP -s -e 180 -m --outbound "<sip:192.168.3.211;lr>" >> ${logfile} 2>&1
+    if grep -q "REGISTRATION REPORT" ${logfile}; then
         res=0
     else
         return -1
     fi    
 
-    # 测试第二路分机
-    ./sip_monitor  -r sip:$serverip -u sip:$dial2@$deviceip -U $dial2 -P $dial2pwd -t TCP -s -e 180 -m --outbound "<sip:$serverip;lr>" > ${logfile} 2>&1
-    if grep -q "SUCCESS" ${logfile}; then
-        res=0
-    else
-        return -2
-    fi  
-
     cd $OLDPWD
     
     return $res
 }
-
-
