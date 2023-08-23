@@ -53,7 +53,9 @@
 
 ## 应用中使用三方库
 
-- 在IDE的cpp目录下新增thirdparty目录，将编译生成的库和依赖的库拷贝到该目录下
+- 在IDE的cpp目录下新增thirdparty目录，将编译生成的库拷贝到该目录下，
+  在IDE的libs目录下新增arm64-v8a目录和armeabi-v7a目录，
+  将库编译生成的64位和32位的so文件和依赖的libc++_shared.so库放到该目录下，如下图所示
   &nbsp;
 
   ![thirdparty_install_dir](pic/chrono_install_dir.png)
