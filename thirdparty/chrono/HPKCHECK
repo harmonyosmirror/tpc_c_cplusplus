@@ -29,8 +29,8 @@ openharmonycheck() {
         cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/
     fi
 
-    echo "end test times: `date`" >> ${logfile} 2>&1
     cd $OLDPWD
+    echo "end test times: `date`" >> ${logfile} 2>&1
 
     return $res
 }
