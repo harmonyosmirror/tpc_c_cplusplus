@@ -24,8 +24,8 @@ openharmonycheck() {
     ./test_libvpx >> ${logfile} 2>&1
     res=$?
 
-    echo "end test times: `date`" >> ${logfile} 2>&1
     cd $OLDPWD
+    echo "end test times: `date`" >> ${logfile} 2>&1
 
     return $res
 }

@@ -22,23 +22,25 @@ archs=("armeabi-v7a" "arm64-v8a")
 license=("BSD-3-Clause license")
 depends=()
 makedepends=()
- 
 source="https://github.com/webmproject/$pkgname/archive/refs/tags/v$pkgver.tar.gz"
-builddir=$pkgname-$pkgver
-packagename=$builddir.tar.gz
-buildtools="configure"
 
 autounpack=true
 downloadpackage=true
+buildtools="configure"
+
+builddir=$pkgname-$pkgver
+packagename=$builddir.tar.gz
+
+source envset.sh
+
 downloadresourceflag=true
 libvpxtestresourcepkgver=main
 libvpxtestresourcepkgname=libvpx_test_resource
 libvpxtestresource="https://github.com/N22E114/$libvpxtestresourcepkgname/archive/refs/heads/$libvpxtestresourcepkgver.zip"
 libvpxtestresourcebuilddir=$libvpxtestresourcepkgname-$libvpxtestresourcepkgver
 libvpxtestresourcepackagename=$libvpxtestresourcebuilddir.zip
-
-source envset.sh
 host=
+
 prepare() {
     if $patchflag
     then
@@ -50,32 +52,7 @@ prepare() {
         cd $OLDPWD
     fi
 
-    # 测试资源包比较大，很容易下载失败，如果多次下载失败可以使用pc机下载copy到单板
-    if [ ! -f "$libvpxtestresourcepackagename" ];then
-        curl -L -f $libvpxtestresource > $libvpxtestresourcepackagename
-        if [ "$?" != "0" ];then
-            echo "download $libvpxtestresourcepackagename fail"
-            downloadresourceflag=false
-            return -1 
-        fi
-    fi
-
-    if $downloadresourceflag
-    then
-        unzip $libvpxtestresourcepackagename
-        cd $libvpxtestresourcebuilddir
-        cat *.yuv.tar.xz0* > desktop_office1.1280_720-020.yuv.tar.xz
-        rm -rf *.yuv.tar.xz0*
-        xz -d **.tar.xz
-        for name in *.tar;  do tar -xvf $name; done
-        rm -rf *.tar
-
-        downloadresourceflag=false
-        cd $OLDPWD
-    fi
-
     mkdir -p $builddir/$ARCH-build
-    cp $libvpxtestresourcebuilddir/* $builddir/$ARCH-build 
     if [ $ARCH == "armeabi-v7a" ]
     then
         setarm32ENV
@@ -86,7 +63,7 @@ prepare() {
         host=aarch64-linux
     else
         echo "${ARCH} not support"
-        return -2;
+        return -1
     fi
 }
 
@@ -103,10 +80,7 @@ package() {
     cd $builddir/$ARCH-build
     make install VERBOSE=1 >> `pwd`/build.log 2>&1
     cd $OLDPWD
-    unset host
-}
 
-check() {
     if [ $ARCH == "armeabi-v7a" ]
     then
         unsetarm32ENV
@@ -115,8 +89,36 @@ check() {
         unsetarm64ENV
     else
         echo "${ARCH} not support"
-        return -1;
+        return -1
     fi
+    unset host
+}
+
+check() {
+    # 测试资源包比较大，很容易下载失败，如果多次下载失败可以使用pc机下载copy到单板
+    if [ ! -f "$libvpxtestresourcepackagename" ];then
+        curl -L -f $libvpxtestresource > $libvpxtestresourcepackagename
+        if [ "$?" != "0" ];then
+            echo "download $libvpxtestresourcepackagename fail"
+            downloadresourceflag=false
+            return -1
+        fi
+    fi
+
+    if $downloadresourceflag
+    then
+        unzip $libvpxtestresourcepackagename
+        cd $libvpxtestresourcebuilddir
+        cat *.yuv.tar.xz0* > desktop_office1.1280_720-020.yuv.tar.xz
+        rm -rf *.yuv.tar.xz0*
+        xz -d **.tar.xz
+        for name in *.tar;  do tar -xvf $name; done
+        rm -rf *.tar
+
+        downloadresourceflag=false
+        cd $OLDPWD
+    fi
+    cp $libvpxtestresourcebuilddir/* $builddir/$ARCH-build
 
     echo "The test must be on an OpenHarmony device!"
     # cd $builddir/$ARCH-build
