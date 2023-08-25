@@ -7,7 +7,7 @@ pkgdesc=""
 url="https://sourceforge.net/projects/freetype"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("GPL FTL")
-depends=("zlib" "bzip2" "brotli" "libpng" "harfbuzz")
+depends=("zlib" "bzip2" "brotli" "libpng")
 makedepends=()
 source="https://sourceforge.net/projects/freetype/files/$pkgname/$pkgver/freetype-$pkgver.tar.xz"
 
@@ -53,7 +53,6 @@ check() {
     add_executable(freetype-cmake-test main.c)\n
 	
     target_link_libraries(freetype-cmake-test PUBLIC $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/libfreetype.a)\n
-    target_link_libraries(freetype-cmake-test PUBLIC $LYCIUM_ROOT/usr/harfbuzz/$ARCH/lib/libharfbuzz.so)\n
     target_link_libraries(freetype-cmake-test PUBLIC $LYCIUM_ROOT/usr/brotli/$ARCH/lib/libbrotlidec.so)\n
     target_link_libraries(freetype-cmake-test PUBLIC $LYCIUM_ROOT/usr/bzip2/$ARCH/lib/libbz2.a)\n
     target_link_libraries(freetype-cmake-test PUBLIC $LYCIUM_ROOT/usr/libpng/$ARCH/lib/libpng.a)\n
