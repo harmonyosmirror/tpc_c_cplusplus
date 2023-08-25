@@ -22,7 +22,7 @@ url="https://github.com/libffi/libffi"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("GPL-2.0 license")
 depends=()
-makedepends=()
+makedepends=("automake")
 # 官方下载地址https://github.com/libffi/$pkgname/archive/refs/tags/$pkgver.tar.gz受网络影响可能存在下载失败的情况，现使用gitee镜像可以与官方仓库保持同步
 source="https://gitee.com/lycium_pkg_mirror/$pkgname/repository/archive/$pkgver.zip"
 buildtools="configure"
@@ -31,44 +31,65 @@ autounpack=true
 downloadpackage=true
 genconfigure=true
 autoconfbuild=true
+libtoolbuild=true
+oldpath=$PATH
+prefixpath=
 
 builddir=$pkgname-$pkgver
 packagename=$pkgname-$pkgver.zip
-autoconfver="2.71"
-autoconfdir=autoconf-$autoconfver
-oldpath=$PATH
 
 source envset.sh
 host=
 
  # 编译autoconf
-buildautoconf() {
-    if [ $autoconfbuild == true ];then
-        down=0
-        rm -rf $autoconfdir
-        if [ ! -f  $autoconfdir.tar.xz ];then
-            wget -O $autoconfdir.tar.gz -c http://ftp.gnu.org/gnu/autoconf/$autoconfdir.tar.xz
-            down=$?
-        fi
-        if [ $down -ne 0 ];then
-            return -1
-        fi
-        tar -xf $autoconfdir.tar.gz
-        cd $autoconfdir
-        ./configure >> `pwd`/build.log 2>&1
-        make -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
-        if [ $? -ne 0 ];then
-            return -2
-        fi
-        export PATH=$PATH:`pwd`/bin
-        autoconfbuild=false
-        cd $OLDPWD
+buildgnutool() {
+    toolname=$1
+    toolver=$2
+    toolpath=$toolname-$toolver
+    prefixpath=`pwd`/$toolpath/install
+    down=0
+    rm -rf $toolpath
+    if [ ! -f  $toolname-$toolver.tar.xz ];then
+        wget -O $toolname-$toolver.tar.gz -c http://ftp.gnu.org/gnu/$toolname/$toolname-$toolver.tar.xz
+        down=$?
     fi
+    if [ $down -ne 0 ];then
+        return -1
+    fi
+    tar -xf $toolname-$toolver.tar.gz
+    cd $toolpath
+    ./configure --prefix=$prefixpath >> `pwd`/build.log 2>&1
+    make -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
+    make -j4 install VERBOSE=1 >> `pwd`/build.log 2>&1
+    if [ $? -ne 0 ];then
+        return -2
+    fi
+    cd $OLDPWD
 }
 
 prepare() {
     # 需要linux 安装automake, autoconf(2.71以上),libtool, libltdl7-dev
-    buildautoconf
+    if [ $libtoolbuild == true ];then
+        buildgnutool libtool 2.4.6
+        if [ $? -ne 0 ];then
+            return -1
+        fi 
+        export PATH=$PATH:$prefixpath/bin:$prefixpath/lib:$prefixpath/share
+        export LIBTOOL=$prefixpath/bin/libtool
+        export ACLOCAL_PATH=$prefixpath/share/aclocal
+        libtoolbuild=false
+        unset prefixpath
+    fi
+    if [ $autoconfbuild == true ];then
+        buildgnutool autoconf 2.71
+        if [ $? -ne 0 ];then
+            return -2
+        fi
+        export PATH=$PATH:$prefixpath/bin:$prefixpath/share
+        export AUTOCONF=$prefixpath/bin/autoconf
+        autoconfbuild=false
+        unset prefixpath
+    fi
 
     mkdir $builddir/$ARCH-build
     if [ $genconfigure == true ];then
