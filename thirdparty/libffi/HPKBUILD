@@ -75,6 +75,7 @@ prepare() {
             return -1
         fi 
         export PATH=$PATH:$prefixpath/bin:$prefixpath/lib:$prefixpath/share
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$prefixpath/lib
         export LIBTOOL=$prefixpath/bin/libtool
         export ACLOCAL_PATH=$prefixpath/share/aclocal
         libtoolbuild=false
