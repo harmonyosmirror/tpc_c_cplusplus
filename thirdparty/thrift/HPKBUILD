@@ -26,10 +26,10 @@ prepare() {
     if $patchflag
     then
         # 修改包名同步官方库名
-        mv $unpackagename-${pkgver} $pkgname-${pkgver:1}
+        mv $unpackagename-${pkgver} $builddir
         cd ${builddir}
         # 修复locale函数处理本地化(locale)相关的操作时遇到平台不支持导致测试失败的情况
-        patch  -p1 < ../thrift_oh_pkg.patch
+        patch -p1 < ../thrift_oh_pkg.patch
         cd $OLDPWD
         # patch只需要打一次,关闭打patch
         patchflag=false
