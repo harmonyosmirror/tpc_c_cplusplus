@@ -22,7 +22,7 @@ url="https://github.com/libffi/libffi"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("GPL-2.0 license")
 depends=()
-makedepends=("autoconf" "libtool")
+makedepends=()
 source="git@gitee.com:lycium_pkg_mirror/libffi.git"
 buildtools="configure"
 
