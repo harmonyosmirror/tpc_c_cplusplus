@@ -47,7 +47,7 @@ prepare() {
         mkdir -p $builddir/host-build
         cd $builddir/host-build
         ../icu4c/source/configure > `pwd`/build.log 2>&1
-        CXXFLAGS="-DU_USING_ICU_NAMESPACE=0" make -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
+        CXXFLAGS="-DU_USING_ICU_NAMESPACE=1" make -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
         if [ $? -ne 0 ];then
             return -2
         fi
@@ -70,7 +70,7 @@ prepare() {
 
 build() {
     cd $builddir/$ARCH-build
-    CXXFLAGS="$CXXFLAGS -std=c++11 -DU_USING_ICU_NAMESPACE=0" ../icu4c/source/configure "$@" --host=$host --with-cross-build=`pwd`/../host-build > `pwd`/build.log 2>&1
+    CXXFLAGS="$CXXFLAGS -std=c++11 -DU_USING_ICU_NAMESPACE=1" ../icu4c/source/configure "$@" --host=$host --with-cross-build=`pwd`/../host-build > `pwd`/build.log 2>&1
     make -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
     ret=$?
     cd $OLDPWD
