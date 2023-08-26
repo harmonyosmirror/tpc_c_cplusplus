@@ -30,10 +30,6 @@ buildtools="configure"
 autounpack=true
 downloadpackage=true
 buildhost=true
-libiconvbuild=true
-prefixpath=""
-oldlibpath=$LD_LIBRARY_PATH
-oldpath=$PATH
 
 builddir=$pkgname-$pkgver
 packagename=$pkgname-$pkgver.zip
@@ -47,7 +43,7 @@ prepare() {
         mkdir -p $builddir/host-build
         cd $builddir/host-build
         ../icu4c/source/configure > `pwd`/build.log 2>&1
-        CXXFLAGS="-DU_USING_ICU_NAMESPACE=1" make -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
+        CPPFLAGS="-DU_USING_ICU_NAMESPACE=1" make -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
         if [ $? -ne 0 ];then
             return -2
         fi
@@ -70,7 +66,7 @@ prepare() {
 
 build() {
     cd $builddir/$ARCH-build
-    CXXFLAGS="$CXXFLAGS -std=c++11 -DU_USING_ICU_NAMESPACE=1" ../icu4c/source/configure "$@" --host=$host --with-cross-build=`pwd`/../host-build > `pwd`/build.log 2>&1
+    CXXFLAGS="$CXXFLAGS -std=c++11" ../icu4c/source/configure "$@" --host=$host --with-cross-build=`pwd`/../host-build > `pwd`/build.log 2>&1
     make -j4 VERBOSE=1 >> `pwd`/build.log 2>&1
     ret=$?
     cd $OLDPWD
@@ -81,8 +77,6 @@ package() {
     cd $builddir/$ARCH-build
     make install VERBOSE=1 >> `pwd`/build.log 2>&1
     unset host
-    export LD_LIBRARY_PATH=$oldlibpath
-    export PATH=$oldpath
     cd $OLDPWD
     if [ $ARCH == "armeabi-v7a" ];then
         unsetarm32ENV
