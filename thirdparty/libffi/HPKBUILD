@@ -32,7 +32,6 @@ downloadpackage=true
 genconfigure=true
 autoconfbuild=true
 libtoolbuild=true
-oldpath=$PATH
 prefixpath=
 
 builddir=$pkgname-$pkgver
@@ -130,7 +129,6 @@ package() {
     make -C $ARCH-build install VERBOSE=1 >> `pwd`/$ARCH-build/build.log 2>&1
     cd $OLDPWD
     unset host
-    export PATH=$oldpath
     if [ $ARCH == "armeabi-v7a" ];then
         unsetarm32ENV
     elif [ $ARCH == "arm64-v8a" ];then
