@@ -21,20 +21,24 @@ pkgdesc="PaddlePaddle High Performance Deep Learning Inference Engine for Mobile
 url="www.paddlepaddle.org.cn/lite"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("Apache-2.0 license")
-depends=("protobuf_v3.6.1" "glog" "gflags")
+depends=("glog" "gflags")
 makedepends=()
-source="https://github.com/PaddlePaddle/$pkgname/archive/refs/tags/$pkgver.tar.gz"
+
+# 原仓地址 https://github.com/PaddlePaddle/$pkgname/archive/refs/tags/$pkgver.tar.gz, 因网络原因使用下列地址
+# source="https://gitee.com/lycium_pkg_mirror/$pkgname/repository/archive/release/$pkgver.zip"
+source="https://gitee.com/lycium_pkg_mirror/Paddle-Lite.git"
 buildtools="cmake"
 
-autounpack=true
-downloadpackage=true
+autounpack=false
+downloadpackage=false
 patchflag=true
+clonesrcflag=false
 
 builddir=$pkgname-${pkgver:1}
-packagename=$pkgname-$pkgver.tar.gz
+packagename=$pkgname-$pkgver.zip
 
-thirdparty_url=https://paddlelite-data.bj.bcebos.com/third_party_libs/
-thirdparty_tar=third-party-91a9ab3.tar.gz
+thirdparty_url=https://paddlelite-data.bj.bcebos.com/third_party_libs
+thirdparty_tar=third-party-91a9ab3.zip
 buildhostprotoc=true
 protobuf_host_dir=""
 extracflags=
@@ -55,13 +59,22 @@ prepare_thirdpary() {
 }
 
 prepare() {
+    # 下载
+    if [ $clonesrcflag == true ];then
+        git clone -b $pkgver $source $builddir
+        if [ $? -ne 0 ];then
+            return -1
+        fi
+        clonesrcflag=false
+    fi
+
     # 1、大多数仿照Android移植修改。但Android的测试用例是单独写的，只使用了部分测试用例，
     # 而OH是所有测试用例都跑，因此，发现了不少bug。
     # Android单元测试脚本： tools/ci_tools/ci_android_unit_test.sh
     # 2、有部分修改是测试用例存在明显错误，没有指定模型文件，或模型文件指向不对，
     #    参考issue: https://github.com/PaddlePaddle/Paddle-Lite/issues/10351
     # 3、还有部分修改是因为OH系统性能不够，延长了超时时间
-    # 4、测试用例在执行汇编指令时出现段错误，但引起问题的是另一段汇编代码。
+    # 4、测试用例在执行汇编指令时出现段错误。
     #   参考issue: https://github.com/PaddlePaddle/Paddle-Lite/issues/10355
     #   参考PR:  https://github.com/PaddlePaddle/Paddle-Lite/pull/10365
     if [ $patchflag == true ];then
@@ -95,6 +108,7 @@ prepare() {
         extracflags="-march=armv8.2-a+dotprod+nolse"
     else
         echo "$ARCH not support!"
+        return -2
     fi
 }
 
