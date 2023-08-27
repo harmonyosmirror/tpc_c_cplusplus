@@ -77,12 +77,13 @@ build() {
 package() {
     cd $builddir/$ARCH-build
     make install VERBOSE=1 >> `pwd`/build.log 2>&1
-    unset host
     cd $OLDPWD
     if [ $ARCH == "armeabi-v7a" ];then
         unsetarm32ENV
+        unset host
     elif [ $ARCH == "arm64-v8a" ];then
         unsetarm64ENV
+        unset host
     else
         echo "$ARCH not support"
         return -1
