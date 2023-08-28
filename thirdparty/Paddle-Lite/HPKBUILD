@@ -21,18 +21,17 @@ pkgdesc="PaddlePaddle High Performance Deep Learning Inference Engine for Mobile
 url="www.paddlepaddle.org.cn/lite"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("Apache-2.0 license")
-depends=("protobuf_v3.6.1" "glog" "gflags")
+depends=("protobuf_v3.6.1" "glog")
 makedepends=()
 
 # 原仓地址 https://github.com/PaddlePaddle/$pkgname/archive/refs/tags/$pkgver.tar.gz, 因网络原因使用下列地址
-# source="https://gitee.com/lycium_pkg_mirror/$pkgname/repository/archive/release/$pkgver.zip"
-source="https://gitee.com/lycium_pkg_mirror/Paddle-Lite.git"
-buildtools="cmake"
+source="https://gitee.com/lycium_pkg_mirror/$pkgname/repository/archive/$pkgver.zip"
 
-autounpack=false
-downloadpackage=false
+buildtools="cmake"
+autounpack=true
 patchflag=true
-clonesrcflag=true
+downloadpackage=true
+downloadcheck=
 
 builddir=$pkgname-${pkgver:1}
 packagename=$pkgname-$pkgver.zip
@@ -44,35 +43,33 @@ protobuf_host_dir=""
 extracflags=
 
 # 准备三方代码
-prepare_thirdpary() {
-    dst_dir=$1
-    cd $dst_dir
-    if [ ! -d third-party -o ! -f $thirdparty_tar ]; then
-        rm -rf third-party
-        if [ ! -f $thirdparty_tar ]; then
-            wget $thirdparty_url/$thirdparty_tar
-        fi
-        tar xzf $thirdparty_tar
+clonesubmodule() {
+    url=$1
+    dir=$2
+    commid=$3
+    rm -rf $dir
+    git clone $url $dir
+    if [ $? -ne 0 ];then
+        downloadcheck=false
+        return -1
     fi
-    echo "返回上级目录$OLDPWD"
+    cd $dir
+    git checkout $commid
     cd $OLDPWD
 }
 
 prepare() {
-    # 下载
-    if [ $clonesrcflag == true ];then
-        git clone -b $pkgver $source $builddir
-        if [ $? -ne 0 ];then
+    # 下载子模块
+    if [ $downloadpackage == true ];then
+        cd $builddir
+        downloadcheck=true
+        clonesubmodule https://gitee.com/mirrors/gflags.git third-party/gflags "7759264"
+        clonesubmodule https://github.com/google/googletest.git third-party/googletest "ec44c6c"
+        if [ $downloadcheck == false ];then
             return -1
         fi
-        cd $builddir
-        git submodule update --init --recursive
-        if [ $? != 0 ]
-        then 
-            return -2
-        fi
         cd $OLDPWD
-        clonesrcflag=false
+        downloadpackage=false
     fi
 
     # 1、大多数仿照Android移植修改。但Android的测试用例是单独写的，只使用了部分测试用例，
