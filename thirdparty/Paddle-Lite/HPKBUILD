@@ -100,7 +100,7 @@ prepare() {
     mkdir -p $builddir/$ARCH-build
     
     # 1. protobuf host进程目录
-    protobufhostdir=$PKGBUILD_ROOT/../protobuf_v3.6.1/protobuf-3.6.1-host-build
+    protobufhostdir=$PKGBUILD_ROOT/../protobuf_v3.6.1/protobufsource-v3.6.1-host-build
 
     # 2. 准备分析工具
     cd $builddir
