@@ -21,7 +21,7 @@ pkgdesc="Pango is a library for laying out and rendering of text, with an emphas
 url="https://pango.gnome.org/"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("GPL-2")
-depends=("glib_with_host" "fribidi" "harfbuzz" "fontconfig" "freetype2" "zlib" "libpng" "brotli" "libxml2" "cairo" "pixman" "libexpat") # TODO pkg deps auto gen
+depends=("glib" "fribidi" "harfbuzz" "fontconfig" "freetype2" "zlib" "libpng" "brotli" "libxml2" "cairo" "pixman" "libexpat") # TODO pkg deps auto gen
 makedepends=("meson" "ninja")
 
 source="https://download.gnome.org/sources/$pkgname/1.90/$pkgname-$pkgver.tar.xz"
