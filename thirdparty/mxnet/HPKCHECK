@@ -21,8 +21,8 @@ openharmonycheck() {
     res=0
     cd ${builddir}/${ARCH}-build/tests
     ctest > ${logfile} 2>&1
-
     res=$?
+
     if [ $res -ne 0 ]
     then
         mkdir -p ${LYCIUM_FAULT_PATH}/${pkgname}
