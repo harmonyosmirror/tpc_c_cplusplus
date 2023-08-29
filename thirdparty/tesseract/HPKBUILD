@@ -157,14 +157,15 @@ check() {
 
     # 下载测试资源
     if [ $downloadtest == true ];then
-        wget -O tessdata-4.1.0.tar.gz -q -c -T 300 -t 3 https://codeload.github.com/tesseract-ocr/tessdata/tar.gz/refs/tags/4.1.0
-        if [ $? -ne 0 ];then
-            return -1
-        fi
-        tar -xvf tessdata-4.1.0.tar.gz
-        rm -rf tessdata 
-        mv tessdata-4.1.0 tessdata
-        rm tessdata-4.1.0.tar.gz
+        # 在测试环境解压
+        wget -O tessdata-4.1.0.tar.gz -q -c -T 300 -t 3 https://codeload.github.com/tesseract-ocr/tessdata/tar.gz/refs/tags/4.1.0 &
+        # if [ $? -ne 0 ];then
+        #     return -1
+        # fi
+        # tar -xvf tessdata-4.1.0.tar.gz
+        # rm -rf tessdata 
+        # mv tessdata-4.1.0 tessdata
+        # rm tessdata-4.1.0.tar.gz
 
         # 原仓地址: https://codeload.github.com/tesseract-ocr/tessdata_best/tar.gz/refs/tags/4.1.0, 因网络原因使用镜像
         wget -O tessdata_best-4.1.0.zip -q -c https://gitee.com/mirrors_tesseract-ocr/tessdata_best/repository/archive/4.1.0.zip
@@ -186,14 +187,15 @@ check() {
         mv tessdata_fast-4.1.0 tessdata_fast
         rm tessdata_fast-4.1.0.zip
 
-        wget -O langdata_lstm-main.zip -q -c -T 300 -t 3 https://codeload.github.com/tesseract-ocr/langdata_lstm/zip/refs/heads/main
-        if [ $? -ne 0 ];then
-            return -1
-        fi
-        unzip langdata_lstm-main.zip
-        rm -rf langdata_lstm
-        mv langdata_lstm-main langdata_lstm
-        rm langdata_lstm-main.zip
+        # 在测试环境解压
+        wget -O langdata_lstm-main.zip -q -c -T 300 -t 3 https://codeload.github.com/tesseract-ocr/langdata_lstm/zip/refs/heads/main &
+        # if [ $? -ne 0 ];then
+        #     return -1
+        # fi
+        # unzip langdata_lstm-main.zip
+        # rm -rf langdata_lstm
+        # mv langdata_lstm-main langdata_lstm
+        # rm langdata_lstm-main.zip
 
         downloadtest=false
     fi
