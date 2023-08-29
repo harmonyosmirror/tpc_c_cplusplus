@@ -14,8 +14,8 @@
 # Contributor: Jeff Han <hanjinfei@foxmail.com>
 # Maintainer: Jeff Han <hanjinfei@foxmail.com>
 
-# pkgname=zstd gitee mirrors网址的镜像包名字有变化
-pkgname=facebook-zstd
+# pkgname=zstd 网址的镜像包名字有变化
+giteepkgname=facebook-zstd
 pkgver=v1.5.4
 pkgrel=0
 pkgdesc=""
@@ -26,12 +26,12 @@ depends=()
 makedepends=()
 
 # 官方下载地址: https://github.com/facebook/$pkgname/releases/download/$pkgver/$pkgname-1.5.4.tar.gz，因网络原因采用gitee mirrors
-source="https://gitee.com/mirrors/$pkgname/repository/archive/$pkgver.zip"
+source="https://gitee.com/mirrors/$giteepkgname/repository/archive/$pkgver.zip"
 
 autounpack=true
 downloadpackage=true
 
-builddir=$pkgname-${pkgver}
+builddir=$giteepkgname-${pkgver}
 packagename=$builddir.zip
 
 prepare() {
