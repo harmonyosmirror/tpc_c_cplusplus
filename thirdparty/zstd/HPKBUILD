@@ -14,8 +14,8 @@
 # Contributor: Jeff Han <hanjinfei@foxmail.com>
 # Maintainer: Jeff Han <hanjinfei@foxmail.com>
 
-# pkgname=zstd 网址的镜像包名字有变化
-giteepkgname=facebook-zstd
+pkgname=zstd
+giteepkgname=facebook-$pkgname
 pkgver=v1.5.4
 pkgrel=0
 pkgdesc=""
