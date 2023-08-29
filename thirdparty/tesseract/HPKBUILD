@@ -182,7 +182,7 @@ check() {
         if [ $? -ne 0 ];then
             return -1
         fi
-        tar -xvf tessdata_fast-4.1.0.zip
+        unzip tessdata_fast-4.1.0.zip
         rm -rf tessdata_fast 
         mv tessdata_fast-4.1.0 tessdata_fast
         rm tessdata_fast-4.1.0.zip
