@@ -23,7 +23,8 @@ archs=("armeabi-v7a" "arm64-v8a")
 license=("Apache-2.0 license")
 depends=("glib" "curl" "tiff" "leptonica" "libarchive" "icu" "pango" "cairo" "fontconfig" "harfbuzz" "libpng" "freetype2" "fribidi" "libwebp" "openjpeg" "libjpeg-turbo")
 makedepends=("libtool" "automake" "cabextract")
-source="https://github.com/tesseract-ocr/$pkgname/archive/refs/tags/$pkgver.tar.gz"
+# 原仓地址: https://github.com/tesseract-ocr/$pkgname/archive/refs/tags/$pkgver.tar.gz, 因网络原因使用镜像
+source="https://gitee.com/mirrors_tesseract-ocr/$pkgname/repository/archive/$pkgver.zip"
 buildtools="configure"
 
 autounpack=true
@@ -31,7 +32,7 @@ downloadpackage=true
 genconfigure=true
 
 builddir=$pkgname-$pkgver
-packagename=$pkgname-$pkgver.tar.gz
+packagename=$pkgname-$pkgver.zip
 
 source envset.sh
 host=
@@ -40,8 +41,8 @@ downloadtest=true
 
 # 准备三方代码
 repos=(
-    "https://gitee.com/lycium_pkg_mirror/test.git"         # 源链接: https://github.com/tesseract-ocr/test.git
-    "https://gitee.com/mirrors/googletest.git"          # 源链接: https://github.com/google/googletest.git
+    "https://gitee.com/mirrors_tesseract-ocr/test.git"         # 源链接: https://github.com/tesseract-ocr/test.git
+    "https://gitee.com/mirrors/googletest.git"                 # 源链接: https://github.com/google/googletest.git
 )
 # 对应文件夹
 folders=(
@@ -164,7 +165,8 @@ check() {
         mv tessdata-4.1.0 tessdata
         rm tessdata-4.1.0.tar.gz
 
-        wget -O tessdata_best-4.1.0.tar.gz -q -c https://codeload.github.com/tesseract-ocr/tessdata_best/tar.gz/refs/tags/4.1.0
+        # 原仓地址: https://codeload.github.com/tesseract-ocr/tessdata_best/tar.gz/refs/tags/4.1.0, 因网络原因使用镜像
+        wget -O tessdata_best-4.1.0.tar.gz -q -c https://gitee.com/mirrors_tesseract-ocr/tessdata_best/repository/archive/4.1.0.zip
         if [ $? -ne 0 ];then
             return -1
         fi
@@ -173,7 +175,8 @@ check() {
         mv tessdata_best-4.1.0 tessdata_best
         rm tessdata_best-4.1.0.tar.gz
 
-        wget -O tessdata_fast-4.1.0.tar.gz -q -c https://codeload.github.com/tesseract-ocr/tessdata_fast/tar.gz/refs/tags/4.1.0
+        # 原仓地址: https://codeload.github.com/tesseract-ocr/tessdata_fast/tar.gz/refs/tags/4.1.0, 因网络原因使用镜像
+        wget -O tessdata_fast-4.1.0.tar.gz -q -c https://gitee.com/mirrors_tesseract-ocr/tessdata_fast/repository/archive/4.1.0.zip
         if [ $? -ne 0 ];then
             return -1
         fi
