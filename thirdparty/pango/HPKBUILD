@@ -11,32 +11,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Contributor: Jeff Han <hanjinfei@foxmail.com>
+# Contributor: Jeff Han <hanjinfei@foxmail.com>, 城meto <myxuan475@126.com>
 # Maintainer: Jeff Han <hanjinfei@foxmail.com>
 
 pkgname=pango
-pkgver=1.90.0
+pkgver=1.50.14
 pkgrel=0
 pkgdesc="Pango is a library for laying out and rendering of text, with an emphasis on internationalization. Pango can be used anywhere that text layout is needed, though most of the work on Pango so far has been done in the context of the GTK widget toolkit. Pango forms the core of text and font handling for GTK."
 url="https://pango.gnome.org/"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("GPL-2")
-depends=("glib" "fribidi" "harfbuzz" "fontconfig" "freetype2" "zlib" "libpng" "brotli" "libxml2" "cairo" "pixman" "libexpat") # TODO pkg deps auto gen
+depends=("glib" "harfbuzz" "fribidi" "freetype2" "fontconfig" "libpng" "zlib" "pixman" "libxml2" "pcre2" "libffi" "cairo")
 makedepends=("meson" "ninja")
 
-source="https://download.gnome.org/sources/$pkgname/1.90/$pkgname-$pkgver.tar.xz"
+# 原仓地址: https://download.gnome.org/sources/$pkgname/1.90/$pkgname-$pkgver.tar.xz, 因网络原因使用镜像地址
+source="https://gitee.com/lycium_pkg_mirror/$pkgname/repository/archive/$pkgver.zip"
 
 downloadpackage=true
 autounpack=true
 buildtools="meson"
-patchflag=true
 
 builddir=$pkgname-$pkgver
-packagename=$builddir.tar.xz
-pkgconfigpath=
+packagename=$pkgname-$pkgver.zip
+
+pkgconfigpath=""
 
 prepare() {
-    # 依赖库加入 pkg_config_path 路径
+    echo "depends: ${#depends[@]}"
     for depend in ${depends[@]}
     do
         dependpath=$LYCIUM_ROOT/usr/$depend/$ARCH/lib/pkgconfig
@@ -48,29 +49,20 @@ prepare() {
     done
     pkgconfigpath=${pkgconfigpath%:*}
 
-    if $patchflag
-    then
-        cd $builddir
-        # openharmony 在编译 backtrace 相关功能时报错. backtrace 不影响 pango 主要能力. 采用patch屏蔽 backtrace 功能
-        patch -p1 < `pwd`/../pango_oh_pkg.patch
-        # patch只需要打一次,关闭打patch
-        patchflag=false
-        cd $OLDPWD
-    fi
-    cp $ARCH-cross-file.txt $builddir
     mkdir -p $builddir/$ARCH-build
+    cp $ARCH-cross-file.txt $builddir
 }
 
 build() {
     cd $builddir
     ohos_sdk_path=${OHOS_SDK//\//\\\/}
     sed -i 's/ohos_sdk/'"$ohos_sdk_path"'/g' $ARCH-cross-file.txt
-    lycium_root_path=${LYCIUM_ROOT//\//\\\/}
-    sed -i 's/lycium_root/'"$lycium_root_path"'/g' $ARCH-cross-file.txt
-    # meson 过程会下载代码, 可能时间较久, 请保持网络通常
-    meson $ARCH-build --cross-file $ARCH-cross-file.txt \
-        --pkg-config-libdir=$pkgconfigpath --prefix=$LYCIUM_ROOT/usr/$pkgname/$ARCH > $PKGBUILD_ROOT/$builddir/$ARCH-build/build.log 2>&1
-    ninja -v -C $ARCH-build >> $PKGBUILD_ROOT/$builddir/$ARCH-build/build.log 2>&1
+
+    meson setup $ARCH-build --cross-file $ARCH-cross-file.txt \
+        --wrap-mode nofallback \
+        --pkg-config-path $pkgconfigpath \
+        --prefix=$LYCIUM_ROOT/usr/$pkgname/$ARCH > $ARCH-build/build.log 2>&1
+    ninja -v -C $ARCH-build >> $ARCH-build/build.log 2>&1
     ret=$?
     cd $OLDPWD
     return $ret
@@ -78,15 +70,17 @@ build() {
 
 package() {
     cd $builddir
-    ninja -v -C $ARCH-build install >> $PKGBUILD_ROOT/$builddir/$ARCH-build/build.log 2>&1
+    ninja -v -C $ARCH-build install >> $ARCH-build/build.log 2>&1
+    pkgconfigpath=""
     cd $OLDPWD
 }
 
 check() {
     echo "The test must be on an OpenHarmony device!"
+    # TODO
 }
 
 # 清理环境
 cleanbuild() {
-    rm -rf ${PWD}/$builddir #${PWD}/$packagename
+    rm -rf ${PWD}/$builddir
 }
