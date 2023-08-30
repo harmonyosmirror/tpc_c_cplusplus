@@ -22,7 +22,7 @@ url="https://github.com/libffi/libffi"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("GPL-2.0 license")
 depends=()
-makedepends=("automake" "texinfo")
+makedepends=("automake" "makeinfo")
 # 官方下载地址https://github.com/libffi/$pkgname/archive/refs/tags/$pkgver.tar.gz受网络影响可能存在下载失败的情况，现使用gitee镜像可以与官方仓库保持同步
 source="https://gitee.com/lycium_pkg_mirror/$pkgname/repository/archive/$pkgver.zip"
 buildtools="configure"
