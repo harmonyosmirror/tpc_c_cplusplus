@@ -2,8 +2,8 @@
 # This project is dual licensed under the Eclipse Public License 2.0 and the
 # Eclipse Distribution License 1.0 as described in the epl-v20 and edl-v10 files.
 
-# Contributor: Jeff Han <hanjinfei@foxmail.com>
-# Maintainer: Jeff Han <hanjinfei@foxmail.com>
+# Contributor: WangQing <wangqing@kaihong.com>
+# Maintainer: WangQing <wangqing@kaihong.com>
 
 pkgname=paho.mqtt.c
 pkgver=v1.3.12
@@ -28,10 +28,12 @@ prepare() {
     mkdir -p $builddir/$ARCH-build
 }
 
-#参数1
+#因为openssl是通过configure编译的，其依赖路径必须通过PKG_CONFIG_PATH设置
 build() {
-  cd $builddir
-    PKG_CONFIG_PATH="${pkgconfigpath}" cmake "$@" -DMZ_BUILD_TESTS=ON -DMZ_BUILD_UNIT_TESTS=ON -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
+    cd $builddir
+    PKG_CONFIG_PATH="${pkgconfigpath}" 
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DMZ_BUILD_TESTS=ON -DMZ_BUILD_UNIT_TESTS=ON
+    -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
     make -j4 -C $ARCH-build >> `pwd`/$ARCH-build/build.log 2>&1
     ret=$?
     cd $OLDPWD

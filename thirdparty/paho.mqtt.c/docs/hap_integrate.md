@@ -22,15 +22,14 @@
 - 三方库目录结构
 
   ```
-  tpc_c_cplusplus/thirdparty/paho.mqtt.c  #三方库libass的目录结构如下
+  tpc_c_cplusplus/thirdparty/paho.mqtt.c  #三方库libmqtt的目录结构如下
   ├── docs                                #三方库相关文档的文件夹
   ├── HPKBUILD                            #构建脚本
-  ├── LICENSE                             #LICENSE文件
   ├── SHA512SUM                           #三方库校验文件
   ├── README.OpenSource                   #说明三方库源码的下载地址，版本，license等信息
   ├── README_zh.md   
   ```
-
+  
 - 在lycium目录下编译三方库
 
   编译环境的搭建参考[准备三方库构建环境](../../../lycium/README.md#1编译环境准备)
@@ -52,24 +51,21 @@
 
 ## 应用中使用三方库
 
-- 在IDE的cpp目录下新增thirdparty目录，将编译生成的文件和依赖的库都拷贝到该目录下，如下图所示：
+- 在IDE的cpp目录下新增thirdparty目录，将编译生成的文件都拷贝到该目录下，如下图所示：
 
-  &nbsp;![thirdparty_install_dir](pic/libass_install_dir.png)
+  &nbsp;![thirdparty_install_dir](pic/libmqtt_install_dir.png)
 
   将编译生成的三方动态库（动态库名字带版本号和不带版本号的都需要）拷贝到工程的libs目录下:
 
-  &nbsp;![thirdparty_install_dir1](pic/libass_install_dir1.png)
+  &nbsp;![thirdparty_install_dir1](pic/libmqtt_install_dir1.png)
 
 - 在最外层（cpp目录下）CMakeLists.txt中添加如下语句：
 
   ```makefile
-  #将三方库及其依赖库加入工程中
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/openssl/${OHOS_ARCH}/lib/libssl.a)
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/openssl/${OHOS_ARCH}/lib/libcrypto.a)
+  #将三方库加入工程中
   target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/paho.mqtt.c/${OHOS_ARCH}/lib/libpaho-mqtt3a.so)
   target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/paho.mqtt.c/${OHOS_ARCH}/lib/libpaho-mqtt3c.so)
   #将三方库及其依赖库的头文件加入工程中
-  target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/openssl/${OHOS_ARCH}/include)
   target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/paho.mqtt.c/${OHOS_ARCH}/include)
   ```
 
@@ -77,18 +73,17 @@
 
 ## 测试三方库
 
-三方库的测试使用原库自带的测试用例来做测试，[准备三方库测试环境](https://gitee.com/wangqingkaihong/tpc_c_cplusplus/blob/master/lycium/README.md#3ci环境准备)
+三方库的测试使用原库自带的测试用例来做测试，[准备三方库测试环境](../../../lycium/README.md#3ci环境准备)
 
-- 将编译生成的可执行文件及生成的动态库准备好
-- 将准备好的文件推送到开发板，连接到mqtt server后进入到构建的目录执行ctest
+进入到构建目录执行`ctest`运行测试用例（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
 
 需要注意的是：
 
-- 本三方库为mqtt client端，需要搭建mqtt server端并与之连接才可以进行测试
+- 本三方库为mqtt client端，需要搭建mqtt server端并与之连接（python ../test/mqttsas.py &）才可以进行测试
 - 搭建server端需要注意端口号以及用户名密码等与test文件下的测试文件里面写的保持一致
 - 如在windows下使用hdc forward rport进行端口映射的方式连接测试板子，需要注意每跑完一个test用例就会断开，不建议使用这种方式测试。
 
-&nbsp;![libass_test](pic/libass_test.png)
+&nbsp;![libass_test](pic/libmqtt_test.png)
 
 ## 参考资料
 
