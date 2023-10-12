@@ -22,7 +22,7 @@
 - 三方库目录结构
 
   ```
-  tpc_c_cplusplus/thirdparty/paho.mqtt.c  #三方库libmqtt的目录结构如下
+  tpc_c_cplusplus/thirdparty/mqtt		    #三方库libmqtt的目录结构如下
   ├── docs                                #三方库相关文档的文件夹
   ├── HPKBUILD                            #构建脚本
   ├── SHA512SUM                           #三方库校验文件
@@ -36,7 +36,7 @@
 
   ```
   cd lycium
-  ./build.sh paho.mqtt.c
+  ./build.sh mqtt
   ```
 
 - 三方库头文件及生成的库
@@ -44,7 +44,7 @@
   在lycium目录下会生成usr目录，该目录下存在已编译完成的32位和64位三方库
 
   ```
-  paho.mqtt.c/arm64-v8a   paho.mqtt.c/armeabi-v7a
+  mqtt/arm64-v8a   mqtt/armeabi-v7a
   ```
 
 - [测试三方库](#测试三方库)
@@ -79,9 +79,11 @@
 
 需要注意的是：
 
-- 本三方库为mqtt client端，需要搭建mqtt server端并与之连接（python ../test/mqttsas.py &）才可以进行测试
-- 搭建server端需要注意端口号以及用户名密码等与test文件下的测试文件里面写的保持一致
-- 如在windows下使用hdc forward rport进行端口映射的方式连接测试板子，需要注意每跑完一个test用例就会断开，不建议使用这种方式测试。
+- 本三方库为mqtt client端，需要搭建mqtt broker端并与之连接才可以进行测试，[搭建mqtt服务器参考](https://blog.csdn.net/qq_40183977/article/details/127531651)
+- 搭建broker端需要注意端口号以及用户名密码等与test文件下的测试文件里面写的保持一致（本库测试用例里的opts.username = "testuser";
+  	opts.password = "testpassword";）
+- 运行python ../test/mqttsas.py后面可以带参数设置broker的地址和端口号，如：python mqttsas.py 192.168.63.102 1886
+- 如在windows下使用hdc forward rport进行端口映射的方式连接测试板子，需要注意每跑完一个test用例就会断开，不建议使用这种方式测试
 
 &nbsp;![libass_test](pic/libmqtt_test.png)
 
