@@ -48,18 +48,20 @@
 
 ## 应用中使用三方库
 
-- 在IDE的cpp目录下新增thirdparty目录，将编译生成的文件拷贝到该目录下。
-  
-  &nbsp;![thirdparty_install_dir](pic/install_dir.png)
+- 需要将libbehaviortree_cpp.so相关目录拷贝到entry/libs目录下
+![thirdparty_install_dir](pic/libs.png)
+
+- 在IDE的cpp目录下新增thirdparty目录，将编译生成的头文件拷贝到该目录下，本库是一个头文件库，如下图所示：
+![Alt text](pic/install_dir.png)
   
 - 在最外层（cpp目录下）CMakeLists.txt中添加如下语句
 
   ```cmake
   #将三方库加入工程中
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/BehaviorTree.CPP/${OHOS_ARCH}/lib/libbehaviortree_cpp.so)
+  target_link_libraries(entry PUBLIC ${CMAKE_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/libbehaviortree_cpp.so)
 
   #将三方库的头文件加入工程中
-  target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/BehaviorTree.CPP/${OHOS_ARCH}/include)
+  target_include_directories(entry PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/BehaviorTree.CPP/${OHOS_ARCH}/include/behaviortree_cpp)
   ```
   
 

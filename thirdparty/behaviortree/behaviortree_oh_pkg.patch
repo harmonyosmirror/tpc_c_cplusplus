@@ -11,3 +11,25 @@ index ffe6204..ad905b4 100644
  
  CompileExample("ex01_wrap_legacy")
  CompileExample("ex02_runtime_ports")
+diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
+index 7d5f1a4..bf3dac8 100644
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -52,14 +52,15 @@ elseif(catkin_FOUND AND CATKIN_ENABLE_TESTING)
+ 
+ else()
+ 
+-    find_package(GTest)
++    # find_package(GTest)
+     enable_testing()
+ 
+     add_executable(${BTCPP_LIBRARY}_test ${BT_TESTS})
+     target_link_libraries(${PROJECT_NAME}_test
+         ${TEST_DEPENDECIES}
+         Threads::Threads
+-        GTest::gtest)
++        # GTest::gtest
++        )
+ 
+ endif()
+ 
