@@ -90,7 +90,7 @@ recoverpkgbuildenv() {
 # 清理环境
 cleanbuild() {
     rm -rf ${PWD}/$builddir 
-    rm -rf ${PWD}/$builddir-${archs[0]}-build 
-    rm -rf ${PWD}/$builddir-${archs[1]}-build #${PWD}/$packagename
+    rm -rf ${PWD}/$builddir-arm64-v8a-build 
+    rm -rf ${PWD}/$builddir-armeabi-v7a-build #${PWD}/$packagename
 }
 
