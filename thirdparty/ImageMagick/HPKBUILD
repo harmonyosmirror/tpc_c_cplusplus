@@ -22,7 +22,7 @@ pkgdesc="ImageMagick is a free and open-source software suite for displaying, co
 url="https://imagemagick.org/"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("ImageMagick license")
-depends=("libzip" "zstd" "zlib" "zstd" "djvulibre" "fontconfig" "freetype2" "libheif" "lcms2" "openjpeg" "libpng" "tiff" "libwebp" "libxml2" "icu")
+depends=("libzip" "zlib" "zstd" "djvulibre" "fontconfig" "freetype2" "libheif" "lcms2" "openjpeg" "libpng" "tiff" "libwebp" "libxml2" "icu")
 makedepends=()
 
 source="https://archive.nuaa.cf/ImageMagick/$pkgname/archive/refs/tags/$pkgver.tar.gz"
