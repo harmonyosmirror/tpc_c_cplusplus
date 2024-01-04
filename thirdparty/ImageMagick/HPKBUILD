@@ -73,6 +73,7 @@ check() {
     $MAKE check >> $buildlog 2>&1
     ret=$?
     echo "The test must be on an OpenHarmony device!"
+    # real test CMD
     # $MAKE check-TESTS >> $buildlog 2>&1
     cd $OLDPWD
     return $ret
