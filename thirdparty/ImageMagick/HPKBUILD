@@ -70,6 +70,7 @@ package() {
 check() {
     cd $builddir-$ARCH-build
     sed -i 's/$(MAKE) $(AM_MAKEFLAGS) check-TESTS check-local/#$(MAKE) $(AM_MAKEFLAGS) check-TESTS check-local/g'  Makefile
+    sed -i 's/check-TESTS: $(check_PROGRAMS)/check-TESTS: /g'  Makefile
     $MAKE check >> $buildlog 2>&1
     ret=$?
     echo "The test must be on an OpenHarmony device!"
