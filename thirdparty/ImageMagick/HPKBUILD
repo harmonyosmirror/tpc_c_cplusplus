@@ -54,8 +54,8 @@ prepare() {
 
 build() {
     cd $builddir-$ARCH-build
-    export CPPFLAGS="-I${LYCIUM_ROOT}/usr/jpeg/${ARCH}/include -I${LYCIUM_ROOT}/usr/jbigkit/${ARCH}/include -I${LYCIUM_ROOT}/usr/bzip2/${ARCH}/include"
-    export LDFLAGS="-L${LYCIUM_ROOT}/usr/jbigkit/${ARCH}/lib -L${LYCIUM_ROOT}/usr/jpeg/${ARCH}/lib -L${LYCIUM_ROOT}/usr/bzip2/${ARCH}/lib"
+    export CPPFLAGS="-I${LYCIUM_ROOT}/usr/jpeg/${ARCH}/include -I${LYCIUM_ROOT}/usr/jbigkit/${ARCH}/include -I${LYCIUM_ROOT}/usr/bzip2/${ARCH}/include ${CPPFLAGS}"
+    export LDFLAGS="-L${LYCIUM_ROOT}/usr/jbigkit/${ARCH}/lib -L${LYCIUM_ROOT}/usr/jpeg/${ARCH}/lib -L${LYCIUM_ROOT}/usr/bzip2/${ARCH}/lib ${LDFLAGS}"
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" ./configure "$@" --host=$host > $buildlog 2>&1
     $MAKE >> $buildlog 2>&1
     ret=$?
