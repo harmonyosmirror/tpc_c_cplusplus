@@ -16,18 +16,17 @@
 
 source HPKBUILD > /dev/null 2>&1
 logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
-lunasvgtestfile=lunasvgtest.svg
+lunasvgtestfile=line.svg
+
+# svg文件用于测试svg转换png程序
+svgfileurl=https://gitee.com/openharmony-sig/ohos-svg/raw/master/entry/src/main/resources/rawfile/line.svg
 
 openharmonycheck() {
     res=0
     cd ${builddir}/${ARCH}-build
-    ./svg2png ../../$lunasvgtestfile > ${logfile} 2>&1
+    curl svgfileurl > ./${lunasvgtestfile}
+    ./svg2png ./${lunasvgtestfile} > ${logfile} 2>&1
     res=$?
     cd $OLDPWD
-    if [ $res -ne 0 ]
-    then
-        return -1
-    fi
-
-    return 0
+    return $res
 }

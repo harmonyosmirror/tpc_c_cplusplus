@@ -69,7 +69,7 @@
 
 -  进入到构建目录获取，事先准备一个svg测试文件用于转换为png。执行命令./svg2png test.svg，运行测试用例（lunasvg-2.3.9/arm64-v8a-build为构建64位的目录，lunasvg-2.3.9/armeabi-v7a-build为构建32位的目录）
 
-&nbsp;![FFmpeg_test](pic/lunasvg_test2.png)
+&nbsp;![lunasvg_test](pic/lunasvg_test2.png)
 
 ## 参考资料
 
