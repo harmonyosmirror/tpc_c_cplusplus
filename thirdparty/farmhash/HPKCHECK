@@ -20,13 +20,9 @@ logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_
 openharmonycheck() {
     res=0	
     export LD_LIBRARY_PATH=/data:${builddir}/${ARCH}-build/src/.libs:$LD_LIBRARY_PATH    
-    cd ${builddir}/${ARCH}-build/src/.libs
+    cd $builddir-$ARCH-build/src/.libs
     ./farmhash_unittest > ${logfile} 2>&1
     res=$?
-    if [ $res -ne 0 ]; then
-        cd $OLDPWD
-        return $res
-    fi
     cd $OLDPWD
     return $res
 }
