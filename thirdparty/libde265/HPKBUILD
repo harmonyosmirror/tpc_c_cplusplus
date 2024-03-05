@@ -1,5 +1,18 @@
-# Contributor: zhengxiaoqing <zhaoxiaoqing17@h-partners.com>
-# Maintainer: zhengxiaoqing <zhaoxiaoqing17@h-partners.com>
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: leehom <llh_01129@163.com>, zhengxiaoqing <zhaoxiaoqing17@h-partners.com>
+# Maintainer: leehom <llh_01129@163.com>
 
 pkgname=libde265
 pkgver=v1.0.15
@@ -19,11 +32,11 @@ buildtools="cmake"
 builddir=$pkgname-${pkgver:1}
 packagename=$builddir.tar.gz
 
-prepare() {
+prepare() { 
     mkdir -p $builddir/$ARCH-build
 }
 
-build() {
+build() { 
     cd $builddir
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DENABLE_ENCODER=ON -DENABLE_SDL=OFF -B$ARCH-build -S./ > $buildlog 2>&1
     $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
@@ -32,13 +45,13 @@ build() {
     return $ret
 }
 
-package() {
+package() { 
     cd $builddir
     $MAKE VERBOSE=1 -C $ARCH-build install >> $buildlog 2>&1
     cd $OLDPWD
 }
 
-check() {
+check() { 
     echo "The test must be on an OpenHarmony device!"
     # 测试方式
     # 进入构建目录
@@ -46,6 +59,6 @@ check() {
 }
 
 # 清理环境
-cleanbuild(){
+cleanbuild() { 
     rm -rf ${PWD}/$builddir  #${PWD}/$packagename
 }
