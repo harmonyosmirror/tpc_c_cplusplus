@@ -86,7 +86,6 @@ package() {
     cp hevcdec $LYCIUM_ROOT/usr/$pkgname/$ARCH/bin/
     cp hevcenc $LYCIUM_ROOT/usr/$pkgname/$ARCH/bin/
     
-    cd ../../ && cd $builddir/common
     cp ../common/ihevc_typedefs.h $LYCIUM_ROOT/usr/$pkgname/$ARCH/include/
     cp ../common/iv.h $LYCIUM_ROOT/usr/$pkgname/$ARCH/include/
     cp ../common/ivd.h $LYCIUM_ROOT/usr/$pkgname/$ARCH/include/
