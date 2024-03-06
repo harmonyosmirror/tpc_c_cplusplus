@@ -35,6 +35,7 @@ builddir=$pkgname-$pkgver
 packagename=$builddir.tar.gz
 systempro=
 cc=
+
 prepare() {
     if [ "$patchflag" == true ]
     then
