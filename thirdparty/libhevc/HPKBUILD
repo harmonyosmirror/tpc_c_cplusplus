@@ -100,7 +100,7 @@ package() {
 }
 
 check() {
-    #拷贝测试资源
+    # 拷贝测试资源
     cp enc.cfg $builddir/$ARCH-build/
     cp test.cfg $builddir/$ARCH-build/
     cp *.yuv $builddir/$ARCH-build/

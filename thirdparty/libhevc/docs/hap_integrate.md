@@ -74,8 +74,6 @@
 
 进入到构建目录执行（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
 ```shell
-  chmod 777 hevcdec                           #添加解码脚本权限
-  chmod 777 hevcenc                           #添加编码脚本权限
   ./hevcdec                                   #执行解码测试用例
   ./hevcenc                                   #执行编码测试用例
 ```
