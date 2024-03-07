@@ -4,7 +4,7 @@
         "License": "Apache License 2.0",
         "License File": "README.md",
         "Version Number": "simpleperf-release",
-        "Owner": "kangxiangjuan1@h-partners.com",
+        "Owner": "huangminzhong2@huawei.com",
         "Upstream URL": "https://android.googlesource.com/platform/external/libhevc",
         "Description": "libhevc is a format codec library."
     }
