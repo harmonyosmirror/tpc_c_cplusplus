@@ -27,7 +27,6 @@ makedepends=()
 # source="https://android.googlesource.com/platform/external/$pkgname/+archive/refs/heads/$pkgver.tar.gz"
 source="https://gitee.com/lycium_pkg_mirror/$pkgname/repository/archive/$pkgver.tar.gz"
 
-# 自动解压文件会分散,不自动解压，需手动解压到文件夹中
 autounpack=true
 downloadpackage=true
 buildtools="cmake"
