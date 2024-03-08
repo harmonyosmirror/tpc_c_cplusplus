@@ -74,8 +74,8 @@
 
 进入到构建目录执行（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
 ```shell
-  ./hevcdec                                   #执行解码测试用例
-  ./hevcenc                                   #执行编码测试用例
+  ./hevcdec                                   #执行解码脚本，将.h265文件解码为./yuv文件，输出yuv文件详细参数。配置文件为：test.cfg，文件内含有input和output配置，需要将被测试文件.h265名称放进去
+  ./hevcenc                                   #执行编码脚本，将.yuv文件转换成.265文件，输出out.265文件。配置文件为：enc.cfg，文件内含有input和output配置，需要将被测试文件.yuv名称放进去
 ```
 &nbsp;![libhevc_decoder_test](pic/libhevc_decoder_test.png)
 &nbsp;![libhevc_encoder_test](pic/libhevc_encoder_test.png)
