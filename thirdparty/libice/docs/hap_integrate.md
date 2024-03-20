@@ -25,8 +25,8 @@
     ├── SHA512SUM                         #三方库校验文件
     ├── README.OpenSource                 #说明三方库源码的下载地址，版本，license等信息
     ├── README_zh.md                      #三方库简介
-    ├── libice_pkg.patch                  #用于libice库编译的补丁
-    ├── libice_head.patch                 #用于libice库编译的补丁
+    ├── libice_ohos_pkg.patch             #用于libice库编译的补丁
+    ├── libice_ohos_test.patch            #用于编译libice库的测试用例的补丁
     ```
 
 *   在lycium目录下编译三方库
