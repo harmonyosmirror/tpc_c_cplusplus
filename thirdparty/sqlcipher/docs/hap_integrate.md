@@ -49,6 +49,7 @@
 
 - 拷贝动态库到`\\entry\libs\${OHOS_ARCH}\`目录：
   动态库需要在`\\entry\libs\${OHOS_ARCH}\`目录，才能集成到hap包中，所以需要将对应的so文件拷贝到对应CPU架构的目录
+- 注意，这个库的编译依赖tcl和openssl，有garget文件存在于依赖库的目录下，如libcrypto.a在openssl目录中，如果没有动态链接库(.so文件)，可以找找静态库文件(.a)
 - 在IDE的cpp目录下新增thirdparty目录，将编译生成的库拷贝到该目录下，如下图所示
 
   &nbsp;![thirdparty_install_dir](pic/sqlcipher_install_dir.png)
@@ -57,7 +58,7 @@
   ```shell
   #将三方库加入工程中
   target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/libsqlcipher.so.0
-                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/libtcl8.6.so
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/libtcl8.6.a
                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/libcrypto.a
                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/libssl.a
                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/libsqlcipher.a
