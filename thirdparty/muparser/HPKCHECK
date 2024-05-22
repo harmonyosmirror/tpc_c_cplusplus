@@ -15,6 +15,7 @@ openharmonycheck() {
     if [ $res -ne 0 ]
     then
 		echo "test 1 error" >> $logfile
+		cd $OLDPWD
 		return $res
     fi 
 	echo "1 pass" >> $logfile
@@ -23,6 +24,7 @@ openharmonycheck() {
 	if [ $res -ne 0 ]
     then
 		echo "test 2 error" >> $logfile
+		cd $OLDPWD
 		return $res
     fi 
     echo "2 pass" >> $logfile
@@ -34,5 +36,6 @@ openharmonycheck() {
 		return $res
     fi 
 	echo "3 pass" >> $logfile
+	cd $OLDPWD
 	return $res
 }
