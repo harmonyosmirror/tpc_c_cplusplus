@@ -31,9 +31,9 @@
     │   ├── README_zh.md					# MUPARSER 三方库说明
     │   ├── SHA512SUM						#三方库校验文件
     │   └── docs                            #三方库相关文档的文件夹
-    │       ├── dic
+    │       ├── pic
     │       │   ├── muparser-dev.png
-    │       │   └── test-cmd-ret.png
+    │       │   └── test-muparser.png
     │       └── hap_integrate.md 
   ```
   
@@ -81,7 +81,8 @@
 
 三方库的测试使用原库自带的测试用例来做测试，[准备三方库测试环境](../../../lycium/README.md#3ci环境准备)
 
-进入到构建目录cd ${builddir}/${ARCH}-build，执行./t_ParserTest运行测试用例（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
+进入到构建目录/tpc_c_cplusplus/thirdparty/muparser/muparser-2.3.4/armeabi-v7a-build，执行./t_ParserTest运行测试用例（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
+测试用例如下：&nbsp;![thirdparty_install_dir](pic/test-muparser.png)
 
 ## 参考资料
 
