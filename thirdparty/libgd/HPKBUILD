@@ -17,9 +17,9 @@
 pkgname=libgd
 pkgver=gd-2.3.3
 pkgrel=0
-pkgdesc="OPUS is an open, royalty-free audio codec designed to provide high-fidelity audio transmission across various network environments."
+pkgdesc="GD is an open source code library for the dynamic creation of images by programmers."
 archs=("armeabi-v7a" "arm64-v8a")
-url="https://github.com/beltoforion/muparser/"
+url="https://github.com/libgd/libgd"
 license=("BSD 2-Clause")
 depends=()
 makedepends=()

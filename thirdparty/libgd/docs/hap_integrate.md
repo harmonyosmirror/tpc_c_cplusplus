@@ -1,4 +1,4 @@
-# paho.muparser.c 集成到应用hap
+# paho.libgd.c 集成到应用hap
 
 本库是在RK3568开发板上基于OpenHarmony3.2 Release版本的镜像验证的，如果是从未使用过RK3568，可以先查看[润和RK3568开发板标准系统快速上手](https://gitee.com/openharmony-sig/knowledge_demo_temp/tree/master/docs/rk3568_helloworld)。
 
@@ -22,8 +22,8 @@
 - 三方库目录结构
 
   ```
-    tpc_c_cplusplus/thirdparty/libgd				#三方库libmuparser的目录结构如下
-    ── libgd 										#三方库libmuparser的目录
+    tpc_c_cplusplus/thirdparty/libgd				#三方库libgd的目录结构如下
+    ── libgd 										#三方库libgd的目录
     │   ├── HPKBUILD								#构建脚本
     │   ├── HPKCHECK								#测试脚本
     │   ├── OAT.xml									#OAT文件
