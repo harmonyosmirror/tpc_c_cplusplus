@@ -1,8 +1,8 @@
 [
     {
         "Name": "libgd",
-        "License": "GPL",
-        "License File": "INTSTALL",
+        "License": "permissive license",
+        "License File": "COPYING",
         "Version Number": "2.3-3",
         "Owner": "huangminzhong2@huawei.com",
         "Upstream URL": "https://github.com/libgd/libgd/",

@@ -15,15 +15,15 @@
 # Maintainer:  huangminzhong <huangminzhong2@huawei.com>
 
 pkgname=libgd
-pkgver=gd-2.3.3
+pkgver=2.3.3
 pkgrel=0
 pkgdesc="GD is an open source code library for the dynamic creation of images by programmers."
 archs=("armeabi-v7a" "arm64-v8a")
 url="https://github.com/libgd/libgd"
-license=("BSD 2-Clause")
+license=("permissive license")
 depends=()
 makedepends=()
-source="https://github.com/libgd/${pkgname}/archive/refs/tags/${pkgver}.tar.gz"
+source="https://github.com/libgd/${pkgname}/archive/refs/tags/gd-${pkgver}.tar.gz"
 
 downloadpackage=true
 autounpack=true
