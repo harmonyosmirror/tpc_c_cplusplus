@@ -29,7 +29,7 @@ downloadpackage=true
 autounpack=true
 buildtools="cmake"
 
-builddir=$pkgname-${pkgver}
+builddir=$pkgname-gd-${pkgver}
 packagename=$builddir.tar.gz
 
 prepare() {
