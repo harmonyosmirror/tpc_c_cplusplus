@@ -37,6 +37,8 @@ cc=
 ar=
 
 prepare() {
+    apt-get update  
+    apt-get install lzip
     tar -xvf $packagename > $buildlog 2>&1
     cp -rf $builddir $builddir-$ARCH-build
     cd $builddir-$ARCH-build
