@@ -1,7 +1,7 @@
 [
     {
         "Name": "postgresql",
-        "License": "BSD",
+        "License": "PostgreSQL License",
         "License File": "COPYRIGHT",
         "Version Number": "postgresql-16.3",
         "Owner": "huangminzhong2@huawei.com",
