@@ -11,38 +11,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Contributor: huangminzhong2 <huangminzhong2@huawei.com>
-# Maintainer: huangminzhong2 <huangminzhong2@huawei.com>
+# Contributor: Jeff Han <hanjinfei@foxmail.com>, Sunjiamei<939650669@qq.com>
+# Maintainer: Jeff Han <hanjinfei@foxmail.com>
 
 source HPKBUILD > /dev/null 2>&1
 logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
 
 openharmonycheck() {
-    cd $builddir/$ARCH-build
-    echo "total test 4"  > $logfile 2>&1
-    if [ $ARCH == "armeabi-v7a" ]
-    then
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/data/tpc_c_cplusplus/lycium/usr/proj.4/armeabi-v7a/lib/
-    elif [ $ARCH == "arm64-v8a" ]
-    then
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/data/tpc_c_cplusplus/lycium/usr/proj.4/arm64-v8a/lib/
-    else
-        echo "$ARCH not support!" >> $logfile 2>&1
-        cd $OLDPWD
-        return -1
-    fi
-    
-    ctest >> ${logfile} 2>&1
+    res=0
+    cd $builddir-$ARCH-build/src/main
+    make check-TESTS > ${logfile} 2>&1
     res=$?
-    if [ $res -ne 0 ]
-    then
-        echo "test failed" >> $logfile 2>&1
+    if [ $res -ne 0 ]; then
+        echo "test main failed" >> ${logfile} 2>&1
         cd $OLDPWD
         return $res
-    else
-        echo "test passed" >> $logfile 2>&1
-    fi 
-
+    fi
+    echo "test main pass" >> ${logfile} 2>&1
+    cd $OLDPWD
+    cd $builddir-$ARCH-build/src/plugins
+    make check-TESTS >> ${logfile} 2>&1
+    res=$?
+    if [ $res -ne 0 ]; then
+        echo "test plugins failed" >> ${logfile} 2>&1
+        cd $OLDPWD
+        return $res
+    fi
+    echo "test plugins pass" >> ${logfile} 2>&1
     cd $OLDPWD
     return $res
 }
