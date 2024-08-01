@@ -14,7 +14,7 @@
 # Contributor: wangjialun<2271411@stu.neu.edu.cn>, zhangqian<2371418@stu.neu.edu.cn>, wangyihao<2942375747@qq.com>, wangying<wangying@swc.neu.edu.cn>
 # Maintainer: wangyihao<2471389@stu.neu.edu.cn>, wangjialun<2271411@stu.neu.edu.cn>, zhangqian<2371418@stu.neu.edu.cn>, wangying<wangying@swc.neu.edu.cn>
 
-pkgname=libiec61850
+pkgname=libiec61850-1.1.1
 pkgver=v1.1.1
 pkgrel=0
 pkgdesc="libiec61850 is an open-source (GPLv3) implementation of an IEC 61850 client and server library implementing the protocols MMS, GOOSE and SV. "
@@ -23,14 +23,14 @@ archs=("armeabi-v7a" "arm64-v8a")
 license=("GPL-3.0 license")
 depends=()
 makedepends=()
-source="https://github.com/mz-automation/$pkgname/archive/refs/tags/$pkgver.zip"
+source="https://github.com/mz-automation/libiec61850/archive/refs/tags/v1.1.1.zip"
 
 downloadpackage=true
 autounpack=true
 buildtools="cmake"
 
-builddir=$pkgname-${pkgver}
-packagename=$builddir.zip
+builddir=libiec61850-1.1.1
+packagename=libiec61850-v1.1.1.zip
 
 prepare() {
     mkdir -p $builddir/$ARCH-build
