@@ -21,12 +21,7 @@ openharmonycheck() {
     res=0
     cd $builddir/$ARCH-build/tests
     ./unit_tests >> $logfile 2>&1
-    res=$?      
-    if [ $res -ne 0 ];then
-        mkdir ${LYCIUM_FAULT_PATH}/${pkgname}
-        cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/     
-    fi 
-
+    res=$?
     cd $OLDPWD
     return $res
 }
