@@ -24,6 +24,7 @@ checkprepare() {
 openharmonycheck() {
     cd ${builddir}/${ARCH}-build/test/tools
     ctest > ${logfile} 2>&1 || return -1
+    cp ${logfile} ${LYCIUM_FAULT_PATH}/${pkgname}/
     cd ${OLDPWD}
     return 0
 }

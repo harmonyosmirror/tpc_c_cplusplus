@@ -2,6 +2,7 @@
 本库是在RK3568开发板上基于OpenHarmony的镜像验证的，如果是从未使用过RK3568，可以先查看[润和RK3568开发板标准系统快速上手](https://gitee.com/openharmony-sig/knowledge_demo_temp/tree/master/docs/rk3568_helloworld)。
 ## 开发环境
 - ubuntu22.04
+- [OpenHarmony3.2Release镜像](https://gitee.com/link?target=https%3A%2F%2Frepo.huaweicloud.com%2Fopenharmony%2Fos%2F3.2-Release%2Fdayu200_standard_arm32.tar.gz)
 - [ohos_sdk_public 5.0.0.13 (API Version 12 Release)](https://cidownload.openharmony.cn/version/Master_Version/OpenHarmony_5.0.0.13_dev/20240303_020132/version-Master_Version-OpenHarmony_5.0.0.13_dev-20240303_020132-ohos-sdk-full.tar.gz)
 - [DevEco Studio 3.1 Release](https://contentcenter-vali-drcn.dbankcdn.cn/pvt_2/DeveloperAlliance_package_901_9/81/v3/tgRUB84wR72nTfE8Ir_xMw/devecostudio-windows-3.1.0.501.zip?HW-CC-KV=V1&HW-CC-Date=20230621T074329Z&HW-CC-Expire=315360000&HW-CC-Sign=22F6787DF6093ECB4D4E08F9379B114280E1F65DA710599E48EA38CB24F3DBF2)
 - [准备三方库构建环境](../../../lycium/README.md#1编译环境准备)
@@ -14,7 +15,7 @@
   
 - 三方库目录结构
   ```
-  tpc_c_cplusplus/thirdparty/AES            		        #三方库的目录结构如下
+  tpc_c_cplusplus/thirdparty/libxml          		        #三方库的目录结构如下
   ├── docs                                                #三方库相关文档的文件夹
   ├── HPKBUILD                                            #构建脚本
   ├── HPKCHECK						                    #测试脚本
