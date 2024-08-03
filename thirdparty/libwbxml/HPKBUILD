@@ -15,49 +15,38 @@
 # Maintainer: wangyang497@h-partners.com
 
 pkgname=libwbxml
-pkgver=79461f8bd49861287c0f1689adb75e7753630e5a
-pkgrel=
+pkgver=0.11.10
+pkgrel=0
 pkgdesc="AES algorithm implementation using C."
 url=https://gitee.com/dddddddr/libwbxml
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("arm64-v8a" "armeabi-v7a")
 license=(MIT)
 depends=(libexpat)
 makedepends=()
+source=https://kkgithub.com/$pkgname/$pkgname/archive/refs/tags/$pkgname-$pkgver.tar.gz
+autounpack=true
+downloadpackage=true
+buildtools=
 
-source=
-autounpack=false
-downloadpackage=false
-buildtools=cmake
-clonesrcflag=true
+builddir=$pkgname-$pkgname-$pkgver
+packagename=$pkgname-$pkgver.tar.gz
 
-builddir=${pkgname}-${pkgver}
-packagename=
 
 prepare() {
-    if [ ${clonesrcflag} -a ! -d ${builddir} ]
-    then
-        git clone ${url}.git ${builddir} > ${publicbuildlog} 2>&1 || return -1
-        cd ${builddir}
-        git reset --hard ${pkgver} >> ${publicbuildlog} 2>&1 || return -1
-    else
-        cd ${builddir}
-    fi
-    mkdir -p ${ARCH}-build
-    cd ${OLDPWD}
-    return 0
+  mkdir -p $builddir/$ARCH-build
 }
 
 build() {
     cd ${builddir}
-    PKG_CONFIG_LIBDIR="${pkgconfigpath}" ${OHOS_SDK}/native/build-tools/cmake/bin/cmake -D BUILD_STATIC_LIBS=true "$@" -B${ARCH}-build -S./ > ${buildlog} 2>&1 || return -1
-    ${MAKE} -C${ARCH}-build >> ${buildlog} 2>&1 || return -1
+    PKG_CONFIG_LIBDIR="${pkgconfigpath}" ${OHOS_SDK}/native/build-tools/cmake/bin/cmake -D BUILD_STATIC_LIBS=true "$@" -B${ARCH}-build -S./ > `pwd`/$ARCH-build/build.log 2>&1 || return -1
+    ${MAKE} -j4 VERBOSE=1 -C ${ARCH}-build >> `pwd`/$ARCH-build/build.log 2>&1 || return -2
     cd ${OLDPWD}
     return 0
 }
 
 package() {
-    cd ${builddir}/${ARCH}-build
-    ${MAKE} install >> ${buildlog} 2>&1 || return -1
+    cd ${builddir}
+    ${MAKE} -C ${ARCH}-build install >> ${buildlog} 2>&1 || return -1
     cd ${OLDPWD}
     return 0
 }
