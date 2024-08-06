@@ -37,7 +37,7 @@ prepare() {
 
 build() {
     cd ${builddir}
-    PKG_CONFIG_LIBDIR="${pkgconfigpath}" ${OHOS_SDK}/native/build-tools/cmake/bin/cmake -D BUILD_STATIC_LIBS=true "$@" -B${ARCH}-build -S./ >> $buildlog 2>&1
+    PKG_CONFIG_LIBDIR="${pkgconfigpath}" ${OHOS_SDK}/native/build-tools/cmake/bin/cmake -DBUILD_STATIC_LIBS=true "$@" -B${ARCH}-build -S./ > $buildlog 2>&1
     ${MAKE} VERBOSE=1 -C ${ARCH}-build >> $buildlog  2>&1
     ret=$?
     cd $OLDPWD
