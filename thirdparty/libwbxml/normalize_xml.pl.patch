@@ -1,5 +1,5 @@
 --- normalize_xml.pl	2024-08-08 13:31:55.000000000 +0800
-+++ normalize_xml.pl.new	2024-08-08 15:25:13.988904338 +0800
++++ normalize_xml.pl	2024-08-08 15:25:13.988904338 +0800
 @@ -2,9 +2,7 @@
  
  # Copyright (C) 2009 Michael Bell <michael.bell@opensync.org>
