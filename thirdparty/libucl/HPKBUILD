@@ -14,7 +14,7 @@
 # Contributor: wangjialun<2271411@stu.neu.edu.cn>, zhangqian<2371418@stu.neu.edu.cn>, wangyihao<2942375747@qq.com>, wangying<wangying@swc.neu.edu.cn>
 # Maintainer: wangyihao<2471389@stu.neu.edu.cn>, wangjialun<2271411@stu.neu.edu.cn>, zhangqian<2371418@stu.neu.edu.cn>, wangying<wangying@swc.neu.edu.cn>
 
-pkgname=libucl-0.8.2
+pkgname=libucl
 pkgver=0.8.2
 pkgrel=0
 pkgdesc="UCL is an universal configuration library parser,it is compatible with JSON language and therefore can be used as a simple JSON parser."
@@ -29,8 +29,8 @@ downloadpackage=true
 autounpack=true
 buildtools=cmake
 
-builddir=libucl-0.8.2
-packagename=libucl-0.8.2.zip
+builddir=$pkgname-${pkgver}
+packagename=$builddir.zip
 
 # 为编译设置环境，如设置环境变量，创建编译目录等
 prepare() {
