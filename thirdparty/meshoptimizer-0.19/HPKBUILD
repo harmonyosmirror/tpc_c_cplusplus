@@ -38,6 +38,8 @@ prepare() {
     if $patchflag
     then
         cd $builddir
+        # 为了可以在${builddir}/${ARCH}-build 目录下执行ctest来测试原库的测试用例
+        # 需要在原库根目录下的CMakeLists.txt中打开构建单元测试的开关，并且进行链接库文件、注册测试用例等操作，将测试用例构建、编译为可执行文件
         patch -p1 < `pwd`/../meshoptimizer-0.19_oh_pkg.patch
         # patch只需要打一次,关闭打patch
         patchflag=false
