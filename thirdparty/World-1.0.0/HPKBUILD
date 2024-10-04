@@ -39,7 +39,7 @@ prepare() {
         then
         cd $builddir
         patch -p1 < `pwd`/../World-1.0.0_oh_pkg.patch
-        # 基于源库test文件夹里的测试文件，激活测试
+        # 基于源库test文件夹里的测试文件，激活测试，从而在交叉编译时构建编译出测试用例的可执行文件
         patchflag=false
         cd $OLDPWD
     fi
