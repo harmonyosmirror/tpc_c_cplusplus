@@ -15,21 +15,35 @@
 # Maintainer: wangyihao<2471389@stu.neu.edu.cn>, wangjialun<2271411@stu.neu.edu.cn>, zhangqian<2371418@stu.neu.edu.cn>, wangying<wangying@swc.neu.edu.cn>
 
 source HPKBUILD > /dev/null 2>&1    # 导入HPKBUILD文件
-logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${OHOS_SDK_VER}_test.log
-
-checkprepare(){
-    return 0
-}
+logfile=/data/tpc_c_cplusplus/thirdparty/log4z-3.4.0/test/bin/${OHOS_SDK_VER}_test.log
 
 # 在OH环境执行测试的接口
 openharmonycheck() {
     res=0                               
     cd /data/tpc_c_cplusplus/thirdparty/log4z-3.4.0/test/bin
+    
     ./advanced_test >> ${logfile} 2>&1
+    if [ $? -ne 0 ]; then
+        res=1
+        # 保存测试失败日志
+        mkdir ${LYCIUM_FAULT_PATH}/${pkgname}
+        cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/advanced_test_failed.log
+    fi
+    
     ./fast_test >> ${logfile} 2>&1
+    if [ $? -ne 0 ]; then
+        res=1
+        mkdir ${LYCIUM_FAULT_PATH}/${pkgname}
+        cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/fast_test_failed.log
+    fi
+    
     ./stress_test >> ${logfile} 2>&1
-    res=$?                              
-    cd $OLDPWD                          
+    if [ $? -ne 0 ]; then
+        res=1
+        mkdir ${LYCIUM_FAULT_PATH}/${pkgname}
+        cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/stress_test_failed.log
+    fi
 
+    cd $OLDPWD                          
     return $res                         
 }
