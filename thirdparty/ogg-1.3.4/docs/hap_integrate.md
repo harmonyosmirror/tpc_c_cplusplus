@@ -62,12 +62,12 @@
   ```
 
 ## 测试三方库
-- 编译出可执行的文件，使用原库自带的测试用例来做测试[准备三方库测试环境](../../../lycium/README.md#3ci环境准备)
+- 编译出可执行的文件，使用原库自带的测试用例来做测试 [准备三方库测试环境](../../../lycium/README.md#3ci环境准备)
 进入到构建目录运行测试用例（注意arm64-v8a为构建64位的目录，armeabi-v7a为构建32位的目录），执行结果如图所示
 
 ```shell
   cd /data/tpc_c_cplusplus/thirdparty/ogg-1.3.4/ogg-1.3.4/arm64-v8a-build/
-  ./ctest
+  ctest
 ```
 &nbsp;![ogg_test](pic/ogg_test.png)
 
