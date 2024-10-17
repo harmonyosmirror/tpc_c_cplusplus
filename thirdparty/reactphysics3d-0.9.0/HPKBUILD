@@ -37,16 +37,13 @@ packagename=reactphysics3d-v0.9.0.zip
 prepare() {
     if $patchflag
     then
-        cd $builddir
-        #为了可以在${builddir}/${ARCH}-build 目录下执行ctest来一键测试原库所有测试用例，
-	      #需要在原库根目录下的CMakeLists.txt中打开构建单元测试的开关，并且进行注册测试用例、链接库文件等操作，
-     	  #具体操作如reactphysics3d-0.9.0.patch文件所示
-        patch -p1 < `pwd`/../reactphysics3d-0.9.0.patch
-        # patch只需要打一次,关闭打patch
-        patchflag=false
-        cd $OLDPWD
+    cd $builddir
+    #在原库根目录下的CMakeLists.txt中构建单元测试，并且进行注册测试用例、链接库文件等操作，
+    patch -p1 < `pwd`/../reactphysics3d-0.9.0.patch
+    # patch只需要打一次,关闭打patch
+    patchflag=false
+    cd $OLDPWD
     fi
-
     mkdir -p $builddir/$ARCH-build
 }
 
