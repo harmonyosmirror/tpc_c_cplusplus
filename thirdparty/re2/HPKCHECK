@@ -12,7 +12,7 @@
 # limitations under the License.
 
 # Contributor: wangjialun <2271411@stu.neu.edu.cn>, zhangqian<2371418@stu.neu.edu.cn>, wangyihao<2942375747@qq.com> , wangying<wangying@swc.neu.edu.cn>
-# Maintainer: wangyihao<2942375747@qq.com>
+# Maintainer: wangyihao<2471389@stu.neu.edu.cn>, wangjialun<2271411@stu.neu.edu.cn>, zhangqian<2371418@stu.neu.edu.cn>, wangying<wangying@swc.neu.edu.cn>
 
 source HPKBUILD > /dev/null 2>&1    # 导入HPKBUILD文件
 logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
@@ -26,25 +26,33 @@ checkprepare(){
 openharmonycheck() {
     res=0                               
     cd ${builddir}/${ARCH}-build
-    #ctest一键测试时，exhaustive1_test 和 exhaustive_test 会超时，因此单独执行
+    #ctest批量测试时，exhaustive1_test 和 exhaustive_test 会超时，因此单独执行
+    echo "开始测试 exhaustive1_test：" >> ${logfile}
     ./exhaustive1_test >> ${logfile} 2>&1
     if [ $? -ne 0 ]; then
         res=1
         # 保存测试失败日志
         mkdir ${LYCIUM_FAULT_PATH}/${pkgname}
-        cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/advanced_test_failed.log
+        cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/exhaustive1_test_failed.log
     fi 
 
+    echo "开始测试 exhaustive_test：" >> ${logfile}
     ./exhaustive_test >> ${logfile} 2>&1
     if [ $? -ne 0 ]; then
         res=1
         mkdir ${LYCIUM_FAULT_PATH}/${pkgname}
-        cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/fast_test_failed.log
+        cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/exhaustive_test_failed.log
     fi
-      
-    ctest >> ${logfile} 2>&1            
-    res=$?                              
+    
+    echo "ctest批量测试，排除已执行的exhaustive1_test和exhaustive_test：" >> ${logfile}  
+    #ctest 时忽略上面两个可能会超时的测试用例，只运行其他测试用例
+    ctest -E "exhaustive1_test|exhaustive_test" >> ${logfile} 2>&1            
+    if [ $? -ne 0 ]; then
+        res=1
+        mkdir ${LYCIUM_FAULT_PATH}/${pkgname}
+        cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/test_failed.log
+    fi
+                              
     cd $OLDPWD                          
-
     return $res                         
 }
