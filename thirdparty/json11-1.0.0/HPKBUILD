@@ -37,12 +37,12 @@ packagename=json11-v1.0.0.zip
 prepare() {
     if $patchflag
     then
-    cd $builddir
-    #在原库根目录下的CMakeLists.txt中打开构建单元测试的开关，并激活ctest
-    patch -p1 < `pwd`/../json11-1.0.0_oh_pkg.patch
-    # patch只需要打一次,关闭打patch
-    patchflag=false
-    cd $OLDPWD
+        cd $builddir
+        #在原库根目录下的CMakeLists.txt中打开构建单元测试的开关，并激活ctest
+        patch -p1 < `pwd`/../json11-1.0.0_oh_pkg.patch
+        #patch只需要打一次,关闭打patch
+        patchflag=false
+        cd $OLDPWD
     fi
     mkdir -p $builddir/$ARCH-build
 }
