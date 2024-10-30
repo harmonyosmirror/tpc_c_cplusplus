@@ -47,7 +47,7 @@
 
 ## 应用中使用三方库
 
-- 在IDE的cpp目录下新增thirdparty目录，将编译生成的头文件和库文件拷贝到该目录下，将编译生成的三方库以及依赖库全部（动态库名字带版本号和不带版本号的都需要）拷贝到工程的libs目录下，如下图所示：
+- 在IDE的cpp目录下新增thirdparty目录，将编译生成的头文件和库文件拷贝到该目录下，将编译生成的动态库（动态库名字带版本号和不带版本号的都需要）拷贝到工程的libs目录下，如下图所示：
   &nbsp;
 
   &nbsp;![thirdparty_install_dir](pic/squirrel_install_dir.png)
@@ -67,7 +67,7 @@
  执行结果如图所示：
 ```shell
   cd /data/tpc_c_cplusplus/thirdparty/squirrel-3.2/squirrel-3.2/arm64-v8a-build/bin
-  ./sq /data/tpc_c_cplusplus/thirdparty/squirrel-3.2/squirrel-3.2/samples/hello.nut
+  ./sq ../../samples/hello.nut
 ```
 &nbsp;![squirrel_test](pic/squirrel_test.png)
 
