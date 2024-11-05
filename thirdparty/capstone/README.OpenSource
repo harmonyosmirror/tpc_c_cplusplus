@@ -1,6 +1,6 @@
 [
     {
-        "Name": "capstone-4.0",
+        "Name": "capstone",
         "License": "LLVM Release License",
         "License File": "https://github.com/capstone-engine/capstone/tree/4.0?tab=License-2-ov-file",
         "Version Number": "4.0",
