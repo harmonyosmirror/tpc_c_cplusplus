@@ -1,6 +1,6 @@
 [
     {
-        "Name": "squirrel-3.2",
+        "Name": "squirrel",
         "License": "MIT license",
         "License File": "https://github.com/albertodemichelis/squirrel/blob/master/COPYRIGHT",
         "Version Number": "v3.2",

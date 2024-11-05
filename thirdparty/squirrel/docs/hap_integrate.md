@@ -17,7 +17,7 @@
 - 三方库目录结构
 
   ```shell
-  tpc_c_cplusplus/thirdparty/squirrel-3.2   #三方库squirrel-3.2的目录结构如下
+  tpc_c_cplusplus/thirdparty/squirrel   #三方库squirrel的目录结构如下
   ├── docs                              #三方库相关文档的文件夹
   ├── HPKBUILD                          #构建脚本
   ├── HPKCHECK                          #测试脚本
@@ -32,7 +32,7 @@
 
   ```shell
   cd lycium
-  ./build.sh squirrel-3.2
+  ./build.sh squirrel
   ```
 
 - 三方库头文件及生成的库
@@ -40,7 +40,7 @@
   在lycium目录下会生成usr目录，该目录下存在已编译完成的32位和64位三方库
 
   ```shell
-  squirrel-3.2/arm64-v8a   squirrel-3.2/armeabi-v7a
+  squirrel/arm64-v8a   squirrel/armeabi-v7a
   ```
 
 - [测试三方库](#测试三方库)

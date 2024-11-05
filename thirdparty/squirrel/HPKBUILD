@@ -14,7 +14,7 @@
 # Contributor: wangjialun <2271411@stu.neu.edu.cn>, zhangqian<2371418@stu.neu.edu.cn>, wangyihao<2942375747@qq.com> , wangying<wangying@swc.neu.edu.cn>
 # Maintainer: wangyihao<2471389@stu.neu.edu.cn>, wangjialun<2271411@stu.neu.edu.cn>, zhangqian<2371418@stu.neu.edu.cn>, wangying<wangying@swc.neu.edu.cn>
 
-pkgname=squirrel-3.2
+pkgname=squirrel
 pkgver=v3.2
 pkgrel=0
 pkgdesc="Squirrel is a lightweight programming language commonly used for game development and application scripting,which is simpler and easier to embed into applications than C."
