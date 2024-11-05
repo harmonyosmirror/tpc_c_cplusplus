@@ -17,14 +17,14 @@
 - 三方库目录结构
 
   ```shell
-  tpc_c_cplusplus/thirdparty/spirv-reflect-sdk-1.3.204.0  #三方库spirv-reflect-sdk-1.3.204.0的目录结构如下
+  tpc_c_cplusplus/thirdparty/spirv-reflect  #三方库spirv-reflect的目录结构如下
   ├── docs                              #三方库相关文档的文件夹
   ├── HPKBUILD                          #构建脚本
   ├── HPKCHECK                          #测试脚本
   ├── SHA512SUM                         #三方库校验文件
   ├── README.OpenSource                 #说明三方库源码的下载地址，版本，license等信息
   ├── README_zh.md                      #三方库简介
-  ├── spirv-reflect-sdk-1.3.204.0_oh_pkg.patch            #用于spirv-reflect-sdk-1.3.204.0库编译的补丁
+  ├── spirv-reflect-sdk-1.3.204.0_oh_pkg.patch  #用于spirv-reflect库编译的补丁
   ```
 
 - 在lycium目录下编译三方库
@@ -33,7 +33,7 @@
 
   ```shell
   cd lycium
-  ./build.sh spirv-reflect-sdk-1.3.204.0
+  ./build.sh spirv-reflect
   ```
 
 - 三方库头文件及生成的库
@@ -41,7 +41,7 @@
   在lycium目录下会生成usr目录，该目录下存在已编译完成的32位和64位三方库
 
   ```shell
-  spirv-reflect-sdk-1.3.204.0/arm64-v8a   spirv-reflect-sdk-1.3.204.0/armeabi-v7a
+  spirv-reflect/arm64-v8a   spirv-reflect/armeabi-v7a
   ```
 
 - [测试三方库](#测试三方库)
@@ -67,7 +67,7 @@
 进入到构建目录运行测试用例（注意arm64-v8a为构建64位的目录，armeabi-v7a为构建32位的目录）。执行结果如图所示
 
 ```shell
-  cd /data/tpc_c_cplusplus/thirdparty/spirv-reflect-sdk-1.3.204.0/spirv-reflect-sdk-1.3.204.0/arm64-v8a-build/
+  cd /data/tpc_c_cplusplus/thirdparty/spirv-reflect/spirv-reflect-sdk-1.3.204.0/arm64-v8a-build/
   ./ctest
 ```
 &nbsp;![spirv-reflect_test](pic/spirv_reflect_test.png)
