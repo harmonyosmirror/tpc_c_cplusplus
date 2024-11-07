@@ -65,7 +65,7 @@ package() {
 check() { 
     cd $builddir-$ARCH-build/build
     #make -j 编译会出错
-    make V=1 CXX=$cxx CXXFLAGS=$cxxflags tests >> $buildlog 2>&1
+    make VERBOSE=1 CXX=$cxx CXXFLAGS=$cxxflags tests >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
     unset cxx cxxflags
