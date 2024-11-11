@@ -36,7 +36,7 @@ source envset.sh
 prepare() {
     if $cloneFlag
     then
-        git clone --branch v5.1.0 https://github.com/yanyiwu/$pkgname.git > $publicbuildlog 2>&1
+        git clone --branch v5.1.0 https://gitee.com/lycium_pkg_mirror/$pkgname.git > $publicbuildlog 2>&1
 	ret=$?
 	if [ $ret -ne 0 ]; then
 	    return $ret
