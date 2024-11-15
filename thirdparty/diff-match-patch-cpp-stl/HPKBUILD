@@ -15,7 +15,7 @@ downloadpackage=false
 buildtools="cmake"
 
 builddir=$pkgname-${pkgver}
-packagename=$builddir.zip
+#packagename=$builddir.zip
 commitid=673dfc9d4bcb8cd0234894f5a245e9824abf5fbc
 cloneflag=true
 prepare() {
@@ -34,7 +34,7 @@ prepare() {
         then
             return -1
         fi
-        cd ..
+        cd $OLDPWD
         cloneflag=false
     fi
 
