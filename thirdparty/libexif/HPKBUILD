@@ -25,7 +25,7 @@ depends=()
 #要安装bzip2才能编译过
 makedepends=()
 #source="https://github.com/libexif/$pkgname/releases/download/$pkgver/$pkgname-${pkgver:1}.tar.bz2"github链接挂了
-source="https://gitee.com/lycium_pkg_mirror/libexif/repository/archive/v0.6.24.tar.gz"
+source="https://gitee.com/lycium_pkg_mirror/libexif/repository/archive/$pkgver.tar.gz"
 autounpack=true
 downloadpackage=true
 buildtools="configure"
