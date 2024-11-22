@@ -11,7 +11,7 @@ license=("MIT")
 depends=()
 makedepends=()
 #source="https://github.com/sisong/$pkgname/archive/refs/tags/$pkgver.tar.gz"
-source="https://gitee.com/lycium_pkg_mirror/$pkgname/repository/archive/v4.6.3"
+source="https://gitee.com/lycium_pkg_mirror/$pkgname/repository/archive/$pkgver"
 autounpack=true
 downloadpackage=true
 
