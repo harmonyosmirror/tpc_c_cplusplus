@@ -14,7 +14,7 @@ makedepends=()
 source="https://gitee.com/lycium_pkg_mirror/fdk-aac/repository/archive/$pkgver.tar.gz"
 autounpack=true
 downloadpackage=true
-builddir=$pkgname-v${pkgver:1}
+builddir=$pkgname-${pkgver}
 packagename=$builddir.tar.gz
 
 prepare() {
