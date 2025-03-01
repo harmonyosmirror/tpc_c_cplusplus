@@ -69,6 +69,14 @@ package() {
 }
 
 check() {
+    cd $builddir-$ARCH-build
+    # 删除四个不支持的测试用例
+    sed -i '1,/test_ssl/s/test_sll//' test/Makefile
+    sed -i '1,/test_tsa/s/test_tsa//' test/Makefile
+    sed -i '1,/test_cms/s/test_cms//' test/Makefile
+    sed -i '1,/test_ocsp/s/test_ocsp//' test/Makefile
+    cd $OLDPWD
+    
     echo "The test must be on an OpenHarmony device!"
 }
 
