@@ -35,7 +35,8 @@ openharmonycheck() {
     res=$?
     if [ $res != 0 ]
     then
-        cp ${logfile} $LYCIUM_ROOT/check_result/check_fault
+        mkdir ${LYCIUM_FAULT_PATH}/${pkgname}
+        cp ${logfile} ${LYCIUM_FAULT_PATH}/${pkgname}/
     fi
     cd $OLDPWD
     return $res
