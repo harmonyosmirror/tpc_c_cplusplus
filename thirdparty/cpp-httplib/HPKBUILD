@@ -38,10 +38,11 @@ prepare() {
     mkdir -p $builddir/$ARCH-build
     if $patchflag
     then
-        cd $builddir/test
+        cd $builddir
         # 1.修改test目录下的 makefile 该修改可以解决测试用例在arm环境编译失败的问题
         # 2.修改test目录下的 test.cc 该修改可以解决部分测试用例因为安全证书原因导致失败的问题
         patch -p1 < $PKGBUILD_ROOT/cpp-httplib_oh_pkg.patch
+        patch -p1 < $PKGBUILD_ROOT/cpp-httplib_oh_test.patch
         patchflag=false
         cd $OLDPWD
     fi
@@ -49,11 +50,11 @@ prepare() {
 
 build() {
     cd $builddir
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH \
+    PKG_CONFIG_PATH="${pkgconfigpath}" ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH \
         -DHTTPLIB_COMPILE=ON -DHTTPLIB_REQUIRE_OPENSSL=ON -DHTTPLIB_USE_OPENSSL_IF_AVAILABLE=ON -DHTTPLIB_REQUIRE_ZLIB=ON -DHTTPLIB_REQUIRE_BROTLI=ON \
-        -B$ARCH-build -S./ -L  > `pwd`/$ARCH-build/build.log 2>&1
+        -B$ARCH-build -S./ -L  > $buildlog 2>&1
 
-    make VERBOSE=1 -j4 -C $ARCH-build >> `pwd`/$ARCH-build/build.log 2>&1
+    $MAKE VERBOSE=1  -C $ARCH-build >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
     return $ret
@@ -61,7 +62,7 @@ build() {
 
 package() {
     cd $builddir
-    make -C $ARCH-build install >> `pwd`/$ARCH-build/build.log 2>&1
+    $MAKE -C $ARCH-build install >> $buildlog 2>&1
     cd $OLDPWD
 }
 
