@@ -24,7 +24,7 @@ license=("Apache License 2.0")
 depends=("libtool")
 makedepends=("python" "autoconf")
 
-source="https://dlcdn.apache.org/$pkgname/${pkgname}-$pkgver.tar.gz"
+source="https://github.com/apache/apr/archive/refs/tags/$pkgver.tar.gz"
 
 autounpack=true
 downloadpackage=true
@@ -75,6 +75,7 @@ prepare() {
 
 build() {
     cd $builddir-${ARCH}-build
+    ./buildconf > `pwd`/build.log
     ./configure "$@" --host=$host CFLAGS="-Wno-error=int-conversion" --enable-so  --with-mpm=worker \
         ac_cv_file__dev_zero=yes ac_cv_func_setpgrp_void=yes apr_cv_process_shared_works=yes apr_cv_mutex_robust_shared=yes \
         apr_cv_tcp_nodelay_with_cork=yes ap_void_ptr_lt_long=no --prefix=$LYCIUM_ROOT/usr/$pkgname/$ARCH TCP_NODELAY=0 TCP_CORK=0 \
