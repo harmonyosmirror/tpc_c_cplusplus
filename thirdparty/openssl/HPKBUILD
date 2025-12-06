@@ -70,6 +70,8 @@ prepare() {
 #参数1
 build() {
     cd $builddir/$ARCH-build
+    export CFLAGS="$CFLAGS -O3"
+    export CXXFLAGS="$CXXFLAGS -O3"
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
     ../Configure "$@" $host no-shared > $buildlog 2>&1
     $MAKE >> $buildlog 2>&1
