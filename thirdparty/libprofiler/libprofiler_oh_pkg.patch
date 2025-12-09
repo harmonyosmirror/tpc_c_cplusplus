@@ -1,0 +1,85 @@
+diff --git a/libprofiler.cpp b/libprofiler.cpp
+index c982ba2..fda3f58 100644
+--- a/libprofiler.cpp
++++ b/libprofiler.cpp
+@@ -20,11 +20,28 @@
+ #include <math.h>
+ #include <set> // To be replaced by hashset ?
+ 
+-#define GET_EBX(var)  __asm__ __volatile__( "movl %%ebx, %0" : "=a"(var) ) 
+-#define SET_EBX(var)  __asm__ __volatile__( "movl %0, %%ebx" : :"a"(var) ) 
++// 定义arm和aarch64内联汇编宏
++#if defined(__arm__)
++#define GET_EBX(var)  __asm__ __volatile__( "mov %0, r1" : "=r"(var) )
++#define SET_EBX(var)  __asm__ __volatile__( "mov r1, %0" : :"r"(var) )
+ 
+-#define GET_RAX(var)  __asm__ __volatile__( "mov %%rax, %0" : "=a"(var) ) 
+-#define SET_RAX(var)  __asm__ __volatile__( "mov %0, %%rax" : :"a"(var) ) 
++#define GET_RAX(var)  __asm__ __volatile__( "mov %0, r0" : "=r"(var) )
++#define SET_RAX(var)  __asm__ __volatile__( "mov r0, %0" : :"r"(var) )
++
++#elif defined(__aarch64__)
++#define GET_EBX(var)  __asm__ __volatile__( "mov %0, x1" : "=r"(var) )
++#define SET_EBX(var)  __asm__ __volatile__( "mov x1, %0" : :"r"(var) )
++
++#define GET_RAX(var)  __asm__ __volatile__( "mov %0, x0" : "=r"(var) )
++#define SET_RAX(var)  __asm__ __volatile__( "mov x0, %0" : :"r"(var) )
++
++#else
++#define GET_EBX(var)  __asm__ __volatile__( "movl %%ebx, %0" : "=a"(var) )
++#define SET_EBX(var)  __asm__ __volatile__( "movl %0, %%ebx" : :"a"(var) )
++
++#define GET_RAX(var)  __asm__ __volatile__( "mov %%rax, %0" : "=a"(var) )
++#define SET_RAX(var)  __asm__ __volatile__( "mov %0, %%rax" : :"a"(var) )
++#endif
+ 
+ #define ORDER_COUNT    0
+ #define ORDER_CPU      1
+@@ -216,7 +233,7 @@ extern "C" WINDOW *create_newwin(int height, int width, int starty, int startx)
+ {	WINDOW *local_win;
+ 
+ 	local_win = newwin(height, width, starty, startx);
+-	
++
+ 	wrefresh(local_win);		/* Show that box 		*/
+ 
+ 	return local_win;
+@@ -631,8 +648,14 @@ extern "C" int demangle(char* oBuffer, int iSize, void *func){
+ 	char aMangled[2048];
+ 
+ 	char** data = backtrace_symbols(&func, 1);
++	// 获取函数名称
++#ifdef __OHOS__
++	char* aFirst = strchr(data[0],'<');
++	char* aLast = strchr(data[0],'>');
++#else
+ 	char* aFirst = strchr(data[0],'(');
+ 	char* aLast = strchr(data[0],')');
++#endif
+ 
+ 	int aSize = aLast-aFirst-1;
+ 	if ((aSize<iSize) && (aSize<2048) ) {
+@@ -1379,7 +1402,11 @@ extern "C" void manageSignals(){
+ 
+ 	_hdlErrorStruct.sa_handler = 0;
+ 	_hdlErrorStruct.sa_sigaction = handlingErrorSignals;
++#ifdef __OHOS__
++	sigemptyset(&_hdlErrorStruct.sa_mask);
++#else
+ 	_hdlErrorStruct.sa_mask = 0;
++#endif
+ 	_hdlErrorStruct.sa_flags = SA_SIGINFO;
+ 	_hdlErrorStruct.sa_restorer = 0;
+ 
+@@ -1390,7 +1417,11 @@ extern "C" void manageSignals(){
+ 
+ 	_hdlTermStruct.sa_handler = 0;
+ 	_hdlTermStruct.sa_sigaction = handlingTerminate;
++#ifdef __OHOS__
++	sigemptyset(&_hdlErrorStruct.sa_mask);
++#else
+ 	_hdlTermStruct.sa_mask = 0;
++#endif
+ 	_hdlTermStruct.sa_flags = SA_SIGINFO;
+ 	_hdlTermStruct.sa_restorer = 0;
+ 
