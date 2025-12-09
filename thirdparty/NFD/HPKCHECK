@@ -1,0 +1,71 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: <1321018403@qq.com>
+# Maintainer: <1321018403@qq.com>
+
+source HPKBUILD > /dev/null 2>&1
+logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
+
+openharmonycheck() {
+   cd $builddir/$ARCH-build
+
+   echo "\n unit-tests-core test begin" > ${logfile} 2>&1
+   ./unit-tests-core >> $logfile 2>&1
+   res=$?
+   if [ $res -ne 0 ]; then
+       cd $OLDPWD
+       return $res
+   fi
+
+   echo "\n unit-tests-tools test begin" >> ${logfile} 2>&1
+   ./unit-tests-tools >> $logfile 2>&1
+   res=$?
+   if [ $res -ne 0 ]; then
+       cd $OLDPWD
+       return $res
+   fi
+
+   echo "\n cs-benchmark test begin" >> ${logfile} 2>&1
+   ./cs-benchmark >> $logfile 2>&1
+   res=$?
+   if [ $res -ne 0 ]; then
+       cd $OLDPWD
+       return $res
+   fi
+
+   echo "\n pit-fib-benchmark test begin" >> ${logfile} 2>&1
+   ./pit-fib-benchmark >> $logfile 2>&1
+   res=$?
+   if [ $res -ne 0 ]; then
+       cd $OLDPWD
+       return $res
+   fi
+
+   echo "\n unit-tests-daemon test begin" >> ${logfile} 2>&1
+   ./unit-tests-daemon -t !Face/TestUnixStreamChannel -t !Mgmt/TestGeneralConfigSection >> $logfile 2>&1
+   res=$?
+   if [ $res -ne 0 ]; then
+       cd $OLDPWD
+       return $res
+   fi
+
+   ./unit-tests-daemon -t Mgmt/TestGeneralConfigSection >> $logfile 2>&1
+   res=$?
+   if [ $res -ne 0 ]; then
+       cd $OLDPWD
+       return $res
+   fi
+   cd $OLDPWD
+   return $res
+}
