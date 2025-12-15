@@ -66,6 +66,9 @@ prepare() {
 
 build() {
     cd $builddir/$ARCH-build
+    export CFLAGS="-O3 -DNDEBUG -flto $CFLAGS"
+    export CXXFLAGS="-O3 -DNDEBUG -flto $CXXFLAGS"
+    export LDFLAGS="-flto $LDFLAGS"
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
     ../configure "$@" --host=$host --disable-xzdec --disable-lzmadec \
     --disable-xz  --disable-lzmainfo > $buildlog 2>&1
