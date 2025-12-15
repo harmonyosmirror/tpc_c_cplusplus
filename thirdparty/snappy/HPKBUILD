@@ -49,8 +49,8 @@ prepare() {
 
 build() {
     cd $builddir
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake -DCMAKE_CXX_FLAGS="-w" "$@" -S./ \
-        -B$ARCH-build -DOHOS_ARCH=$ARCH > $ARCH-build/build.log 2>&1
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake -DCMAKE_CXX_FLAGS="-w" "$@" -S./ -B$ARCH-build -DOHOS_ARCH=$ARCH \
+        -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG -flto" -DCMAKE_CXX_FLAGS_RELEASE="-O3 -DNDEBUG -flto" > $ARCH-build/build.log 2>&1
     make VERBOSE=1 -j4 -C $ARCH-build >> $ARCH-build/build.log 2>&1
     ret=$?
     cd $OLDPWD
