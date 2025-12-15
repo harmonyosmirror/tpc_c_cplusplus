@@ -37,7 +37,8 @@ prepare() {
 
 build() {
     cd $builddir
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -B$ARCH-build -S./ > $buildlog 2>&1
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -B$ARCH-build -S./ \
+        -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG -flto" -DCMAKE_CXX_FLAGS_RELEASE="-O3 -DNDEBUG -flto" > $buildlog 2>&1
     $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
     # 对最关键一步的退出码进行判断
     ret=$?
