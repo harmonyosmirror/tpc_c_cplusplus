@@ -15,7 +15,7 @@
 # Maintainer: Jeff Han <hanjinfei@foxmail.com>
 
 pkgname=nghttp2
-pkgver=v1.52.0
+pkgver=v1.65.0
 pkgrel=0
 pkgdesc=""
 url=""
@@ -39,7 +39,16 @@ prepare() {
 
 build() {
     cd $builddir
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DENABLE_STATIC_CRT=ON -DENABLE_STATIC_LIB=ON -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
+
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
+    -DENABLE_STATIC_CRT=ON -DENABLE_STATIC_LIB=ON \
+    -DOHOS_ARCH=$ARCH \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_C_FLAGS="${CFLAGS:-} -O3 -flto=thin " \
+    -DCMAKE_CXX_FLAGS="${CXXFLAGS:-} -O3 -flto=thin " \
+    -DCMAKE_SHARED_LINKER_FLAGS="-flto=thin" \
+    -B$ARCH-build -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
+
     make -j4 -C $ARCH-build >> `pwd`/$ARCH-build/build.log 2>&1
     ret=$?
     cd $OLDPWD
