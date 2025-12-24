@@ -10,20 +10,19 @@ license=()
 depends=()
 makedepends=()
 install=
-# source="https://sourceforge.net/projects/cunit/files/$pkgname/$pkgver/$pkgname-$pkgver.tar.bz2"
-source="https://github.com/jacklicn/$pkgname/archive/refs/tags/$pkgver.tar.gz"
+source="https://sourceforge.net/projects/cunit/files/$pkgname/${pkgver:1}/$pkgname-${pkgver:1}.tar.bz2"
+# source="https://github.com/jacklicn/$pkgname/archive/refs/tags/$pkgver.tar.gz"
 autounpack=false
 downloadpackage=true
 buildtools="configure"
 
 builddir=$pkgname-${pkgver:1}
-packagename=$builddir.tar.gz
-
+packagename=$builddir.tar.bz2
 source envset.sh
 host=
 prepare() {
     mkdir $pkgname-$ARCH-build
-    tar -zxf $packagename -C $pkgname-$ARCH-build
+    tar -xvf $packagename -C $pkgname-$ARCH-build
     if [ $ARCH == "armeabi-v7a" ]
     then
         setarm32ENV
