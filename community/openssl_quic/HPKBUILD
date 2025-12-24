@@ -55,7 +55,11 @@ prepare() {
 build() {
     cd $builddir/$ARCH-build
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
-    ../Configure "$@" $host > $buildlog 2>&1
+    ../Configure "$@" $host \
+        -O3 -flto=thin \
+        -Wl,--gc-sections \
+        > $buildlog 2>&1
+
     $MAKE >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
