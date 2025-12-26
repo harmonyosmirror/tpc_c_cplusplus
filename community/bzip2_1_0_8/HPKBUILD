@@ -19,7 +19,7 @@ pkgver=1.0.8
 pkgrel=
 pkgdesc="bzip2 is a freely available, patent free (see below), high-quality data compressor."
 url=https://sourceware.org/git/bzip2
-archs=(armeabi-v7a arm64-v8a)
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=(bzip2-1.0.6)
 depends=()
 makedepends=()
@@ -60,6 +60,13 @@ prepare() {
     if [ $ARCH == "arm64-v8a" ]
     then
         cc=${OHOS_SDK}/native/llvm/bin/aarch64-linux-ohos-clang
+        ar=${OHOS_SDK}/native/llvm/bin/llvm-ar
+        ranlib=${OHOS_SDK}/native/llvm/bin/llvm-ranlib
+    fi
+
+    if [ $ARCH == "x86_64" ]
+    then
+        cc=${OHOS_SDK}/native/llvm/bin/x86_64-linux-ohos-clang
         ar=${OHOS_SDK}/native/llvm/bin/llvm-ar
         ranlib=${OHOS_SDK}/native/llvm/bin/llvm-ranlib
     fi
