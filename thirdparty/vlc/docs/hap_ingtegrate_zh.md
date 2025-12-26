@@ -1,4 +1,4 @@
-# vid.stab集成到应用hap
+# vlc集成到应用hap
 
 本库是在RK3568开发板上基于OpenHarmony3.2 Release版本的镜像验证的，如果是从未使用过RK3568，可以先查看[润和RK3568开发板标准系统快速上手](https://gitee.com/openharmony-sig/knowledge_demo_temp/tree/master/docs/rk3568_helloworld)。
 
@@ -40,21 +40,16 @@
   vlc/arm64-v8a
   ```
 
-- [测试三方库](#测试三方库)
-
 ## 应用中使用三方库
 
-- 将编译生成的库和依赖库拷贝\ohos_vlc-master\entry\libs下，如下图所示
+- 将编译生成的库拷贝\ohos_vlc-master\entry\libs下，如下图所示
   &nbsp;
-  ![thirdparty_install_dir](thirdparty.png)
+  ![thirdparty_install_dir](./pig/thirdparty.png)
 
-  - 在最外层（\src\main\cpp目录下）CMakeLists.txt中添加如下语句
-
-  #将三方库加入工程中 
- # 创建VLC导入目标
+- 在最外层（\src\main\cpp目录下）CMakeLists.txt中添加如下语句
   add_library(vlc SHARED IMPORTED)
   set_target_properties(vlc PROPERTIES
-      IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/libvlc.so.5.6.1"
+      IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/libvlc.so.5.6.1")
 
 
 
