@@ -7,7 +7,7 @@ pkgdesc="minizip-ng is a zip manipulation library written in C that is supported
 url="https://github.com/zlib-ng/minizip-ng"
 archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("zlib")
-depends=("openssl" "xz" "bzip2" "zstd" "googletest")
+depends=("openssl" "xz" "bzip2_1_0_8" "zstd" "googletest" "zlib_1_3_1")
 makedepends=()
 source="https://github.com/zlib-ng/${pkgname}/archive/refs/tags/${pkgver}.tar.gz"
 
@@ -32,7 +32,22 @@ prepare() {
 
 build() {
     cd $builddir
-    PKG_CONFIG_PATH="${pkgconfigpath}" cmake "$@"  -DMZ_BUILD_TESTS=ON -DMZ_BUILD_UNIT_TESTS=ON -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
+    PKG_CONFIG_PATH="${pkgconfigpath}" cmake "$@" \
+    -DOHOS_ARCH=$ARCH \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    -DMZ_BUILD_TESTS=ON \
+    -DMZ_BUILD_UNIT_TESTS=ON \
+    -DCMAKE_C_FLAGS="${CFLAGS:-}  -O3 -flto=thin" \
+    -DCMAKE_CXX_FLAGS="${CXXFLAGS:-}  -O3 -flto=thin" \
+    -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS:-} -flto=thin " \
+    -DBZIP2_LIBRARY_RELEASE=${LYCIUM_ROOT}/usr/bzip2_1_0_8/$ARCH/lib/libbz2.a \
+    -DBZIP2_LIBRARIES=${LYCIUM_ROOT}/usr/bzip2_1_0_8/$ARCH/lib/libbz2.a \
+    -DBZIP2_INCLUDE_DIR=${LYCIUM_ROOT}/usr/bzip2_1_0_8/$ARCH/include \
+    -DZLIB_LIBRARY=${LYCIUM_ROOT}/usr/zlib_1_3_1/$ARCH/lib/libz.so \
+    -DZLIB_INCLUDE_DIR=${LYCIUM_ROOT}/usr/zlib_1_3_1/$ARCH/include \
+    -B$ARCH-build -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
+
     make -j4 -C $ARCH-build >> `pwd`/$ARCH-build/build.log 2>&1
     ret=$?
     cd $OLDPWD
