@@ -43,7 +43,6 @@
 ## 应用中使用三方库
 
 - 将编译生成的库拷贝\ohos_vlc-master\entry\libs下，如下图所示
-  &nbsp;
   ![thirdparty_install_dir](./pig/thirdparty.png)
 
 - 在最外层（\src\main\cpp目录下）CMakeLists.txt中添加如下语句
