@@ -55,11 +55,23 @@ prepare() {
 }
 
 build() {
-    LDFLAGS="-flto"
-    $MAKE CC=${cc} LD=${ld} CFLAGS="-DLUA_USE_LINUX -fPIC -O3 -flto" MYLIBS=-ldl -C $builddir-$ARCH-build -B VERBOSE=1 > \
-    $buildlog 2>&1
-    ret=$?
-    return $ret
+    local EXTRA=""
+    if [ "$ARCH" == "armeabi-v7a" ]; then
+        EXTRA="--target=armv7-unknown-linux-ohos -march=armv7a -flto=thin"
+    else
+        EXTRA="-flto=thin"
+    fi
+
+    $MAKE \
+      CC=${cc} \
+      AR="${ar} rcu" \
+      RANLIB="${OHOS_SDK}/native/llvm/bin/llvm-ranlib" \
+      CFLAGS="-DLUA_USE_LINUX -fPIC -O3 ${EXTRA}" \
+      LDFLAGS="${EXTRA}" \
+      MYLIBS="-ldl" \
+      SYSLIBS="-Wl,-E -ldl" \
+      -C $builddir-$ARCH-build -B VERBOSE=1 > $buildlog 2>&1
+    return $?
 }
 
 package() {
