@@ -40,7 +40,6 @@
 - 在最外层（cpp目录下）CMakeLists.txt中添加如下语句
 ```shell
 # 将三方库加入工程中
-target_link_libraries(zlib PUBLIC libhilog_ndk.z.so)
 target_link_libraries(zlib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/zlib/${OHOS_ARCH}/lib/libz.so.1)
 target_link_libraries(zlib PUBLIC libace_napi.z.so)
 # 将三方库的头文件加入工程中
@@ -52,11 +51,7 @@ target_include_directories(zlib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/zl
 ## 测试三方库
 三方库的测试使用原库自带的测试用例来做测试，[准备三方库测试环境](../../../lycium/README.md#3ci环境准备)
 
-- 将编译生成的可执行文件及生成的动态库准备好,打包
-- 修改系统权限为可读写
-- 将准备好的文件推送到开发板
-- 添加和lib库环境
-- 进入到构建的目录执行测试程序 ./test.sh zlib
+- 进入到构建目录执行ctest运行测试用例
 
 &nbsp;![zlib_test](pic/zlib_test.PNG)
 
