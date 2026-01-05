@@ -1,0 +1,71 @@
+source HPKBUILD > /dev/null 2>&1
+
+# 设置 ARCH 变量
+if [ -z "$ARCH" ] || [ "$ARCH" = "armeabi-v7a" ]; then
+    export ARCH="arm64-v8a"
+fi
+
+logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
+
+openharmonycheck() {
+    local res=0
+    
+    # 构建目录路径
+    local build_dir="${builddir}-${ARCH}-build"
+    
+    if [ ! -d "$build_dir" ]; then
+        echo "Error: Build directory $build_dir not found" >> $logfile
+        echo "Available directories:" >> $logfile
+        ls -la >> $logfile
+        return 1
+    fi
+    
+    # 进入构建目录
+    cd "$build_dir" || {
+        echo "Error: Cannot enter build directory $build_dir" >> $logfile
+        return 1
+    }
+    
+    
+    # 检查是否有 build 子目录
+    if [ -d "build" ]; then
+        cd "build" || {
+            echo "Error: Cannot enter build/ subdirectory" >> $logfile
+            return 1
+        }
+    fi
+    
+    # 检查测试程序
+    if [ ! -f "test" ] || [ ! -x "test" ]; then
+        echo "Error: test executable not found or not executable" >> $logfile
+        echo "Available files in $(pwd):" >> $logfile
+        ls -la >> $logfile
+        cd $OLDPWD
+        return 1
+    fi
+    
+    # 保存当前环境
+    local old_ld_path="$LD_LIBRARY_PATH"
+    local old_path="$PATH"
+    
+    # 设置与手动运行相同的环境 - 使用正确的架构名称
+    export LD_LIBRARY_PATH="${LYCIUM_ROOT}/usr/udt/${ARCH}/lib:${old_ld_path}"
+    export PATH=".:${PATH}"
+    
+    # 运行测试
+    timeout 3000s ./test >> $logfile 2>&1
+    res=$?
+    
+    # 恢复环境
+    export LD_LIBRARY_PATH="$old_ld_path"
+    export PATH="$old_path"
+    
+    cd $OLDPWD
+	
+	if [ $res -ne 0 ]; then
+        mkdir -p "${LYCIUM_FAULT_PATH}/${pkgname}"
+        cp "$logfile" "${LYCIUM_FAULT_PATH}/${pkgname}/" 2>/dev/null || true
+    fi
+	
+    return $res
+}
