@@ -6,7 +6,7 @@ Boost provides free peer-reviewed portable C++ source libraries。
 - 1.81.0
 
 ## 已适配功能
-- 除去log,python,locale的其他功能都适配
+- 除去python,locale的其余功能都适配
 
 ## 使用约束
 - [IDE和SDK版本](../../docs/constraint.md)
