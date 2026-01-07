@@ -22,15 +22,15 @@ archs=("arm64-v8a") # armeabi-v7a causes compiler bugs
 license=("MIT")
 depends=("icu")
 makedepends=()
-
-source="https://github.com/WebKit/WebKit/archive/refs/tags/$pkgver.tar.gz"
+# source="https://github.com/WebKit/WebKit/archive/refs/tags/$pkgver.tar.gz"
+source="https://webkitgtk.org/releases/$pkgver.tar.xz"
 
 autounpack=true
 downloadpackage=true
 patchflag=true
 
-builddir=WebKit-${pkgver}
-packagename=$builddir.tar.gz
+builddir=${pkgver}
+packagename=$builddir.tar.xz
 
 prepare() {
     if $patchflag
