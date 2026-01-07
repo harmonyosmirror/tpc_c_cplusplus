@@ -21,7 +21,7 @@ pkgdesc="libaim is a library for C++ used to communicate with AOL's instant mess
 url="https://gitee.com/tigerz001/libaim.git"
 archs=("armeabi-v7a" "arm64-v8a")
 license=(LGPLv2)
-makedepends=() # 构建库时的依赖工具->需要用户安装的工具
+makedepends=("cvs") # 构建库时的依赖工具->需要用户安装的工具
 source="https://gitee.com/tigerz001/libaim/repository/archive/master.zip"
 
 
