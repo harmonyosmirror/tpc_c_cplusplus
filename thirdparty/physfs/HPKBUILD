@@ -1,0 +1,70 @@
+# Contributor: wangmingfu6 <wangmingfu6@h-partners.com>
+# Maintainer: wangmingfu6 <wangmingfu6@h-partners.com>
+
+pkgname=physfs
+pkgver=3.2.0
+pkgrel=0
+pkgdesc="PhysicsFS is a library to provide abstract access to various archives"
+url="https://github.com/icculus/physfs"
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+license=()
+depends=()
+makedepends=()
+source="https://github.com/icculus/${pkgname}/archive/refs/tags/release-${pkgver}.tar.gz"
+
+downloadpackage=true
+autounpack=true
+buildtools=cmake
+
+builddir=$pkgname-release-${pkgver}
+packagename=$builddir.tar.gz
+
+patchflag=true
+
+prepare() {
+  mkdir -p $builddir/$ARCH-build
+  if $patchflag; then
+    cd $builddir
+    patch -p1 < `pwd`/../physfs_platform_posix.patch
+    patchflag=false
+  fi
+  return $?
+}
+
+build() {
+  cd $builddir
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -B$ARCH-build -S./ > $buildlog 2>&1
+    $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
+    ret=$?
+    cd $OLDPWD
+    return $ret
+}
+
+package() {
+    cd $builddir
+    $MAKE -C $ARCH-build install VERBOSE=1 >> $buildlog 2>&1
+    ret=$?
+    cd $OLDPWD
+    return $ret
+}
+
+check() {
+    if [ $ARCH == "armeabi-v7a" ]
+    then
+        cp ${OHOS_SDK}/native/llvm/lib/arm-linux-ohos/libc++_shared.so $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/
+    elif [ $ARCH == "arm64-v8a" ]
+    then
+        cp ${OHOS_SDK}/native/llvm/lib/aarch64-linux-ohos/libc++_shared.so $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/
+    elif [ $ARCH == "x86_64" ]
+    then
+        cp ${OHOS_SDK}/native/llvm/lib/x86_64-linux-ohos/libc++_shared.so $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/
+    else
+        echo "${ARCH} not support"
+        return -1.
+    fi
+    echo "The test must be on an OpenHarmony device!"
+}
+
+cleanbuild() {
+  rm -rf ${PWD}/$builddir #${PWD}/$packagename
+}

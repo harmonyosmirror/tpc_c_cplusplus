@@ -1,0 +1,17 @@
+diff --git a/src/physfs_platform_posix.c b/src/physfs_platform_posix.c
+index 7ba5e107..a980fac7 100644
+--- a/src/physfs_platform_posix.c
++++ b/src/physfs_platform_posix.c
+@@ -86,7 +86,11 @@ static char *getUserDirByUID(void)
+ char *__PHYSFS_platformCalcUserDir(void)
+ {
+     char *retval = NULL;
+-    char *envr = getenv("HOME");
++ #ifdef __OHOS__   /*If the device type is OHOS,  set the environment variable path directly*/
++    char *envr = "/data/storage/el2/base/files";
++#else
++     char *envr = getenv("HOME");
++#endif
+ 
+     /* if the environment variable was set, make sure it's really a dir. */
+     if (envr != NULL)
