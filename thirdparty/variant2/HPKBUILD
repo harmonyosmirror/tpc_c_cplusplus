@@ -24,18 +24,22 @@ license=("Boost Software License")
 depends=()
 makedepends=()
 
-source="https://boostorg.jfrog.io/artifactory/main/release/$pkgver/source/boost_1_81_0.tar.gz"
+source="https://github.com/boostorg/boost.git"
 
-autounpack=true
-downloadpackage=true
+autounpack=false
+downloadpackage=false
 buildtools=jamfile
+cloneflag=true
 
 builddir=variant2
 packagename=boost_1_81_0.tar.gz
 
 compileflags=
 prepare() {
-    cp -rf boost_1_81_0 $builddir-$ARCH-build
+    if [ $cloneflag == true ];then
+        git clone --recursive $source -b boost-$pkgver $builddir
+    fi
+    cp -rf $builddir $builddir-$ARCH-build
     cd $builddir-$ARCH-build
     if [ $ARCH == "armeabi-v7a" ]
     then
