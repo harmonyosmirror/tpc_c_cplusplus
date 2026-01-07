@@ -21,7 +21,7 @@ pkgdesc="libaim is a library for C++ used to communicate with AOL's instant mess
 url="https://gitee.com/tigerz001/libaim.git"
 archs=("armeabi-v7a" "arm64-v8a")
 license=(LGPLv2)
-makedepends=("cvs") # 构建库时的依赖工具->需要用户安装的工具
+makedepends=() # 构建库时的依赖工具->需要用户安装的工具
 source="https://gitee.com/tigerz001/libaim/repository/archive/master.zip"
 
 
@@ -49,16 +49,16 @@ prepare() {
         if [ $? -ne 0 ];then
             return -1
         fi
-        patch -p3 < "libaim_ohos_test.patch"
+        if [ -e "patch_file" ]; then
+            rm -rf patch_file
+        fi
+        mkdir patch_file
+        patch -d patch_file -p3 < "libaim_ohos_test.patch"
         cd ${builddir}
         find . -type f \( -name "*.cpp" -o -name "*.h" \) -exec sed -i 's/byte/mybyte/g' {} \;
         sed -i '/#include <ctype.h>/a #include <string.h>' flap.cpp
         sed -i '/mask\[/,/]/{s/\b0x[0-9A-Fa-f]\+/\(char\)&/g}' aimsession.cpp
-        cp ../CMakeLists.txt .
-        cp ../test_aim_session.cpp .
-        cp ../test_flap.cpp .
-        cp ../build_test_native.sh .
-        cp ../test_libaim_ohos.cpp .
+        cp ../patch_file/* .
         cd $OLDPWD
         clonsrcflag=false
     fi
@@ -82,7 +82,7 @@ prepare() {
 
 build() {
     cd ${builddir}
-    ${OHOS_SDK}native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=${ARCH} -DBUILD_OHOS_TEST=ON -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${ARCH}-build/bin -B${ARCH}-build -S./ -L > `pwd`/${ARCH}-build/build.log 2>&1
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=${ARCH} -DBUILD_OHOS_TEST=ON -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${ARCH}-build/bin -B${ARCH}-build -S./ -L > `pwd`/${ARCH}-build/build.log 2>&1
     make -C ${ARCH}-build >> `pwd`/${ARCH}-build/build.log 2>&1
     ret=$?
     cd $OLDPWD
