@@ -83,6 +83,7 @@ build() {
 	BUILDCC=gcc ../configure "$@" --host=$host --disable-lua --disable-a52 --disable-rpath \
         --disable-xcb --disable-appdata --enable-gles2 --disable-alsa --disable-vlc --disable-v4l2 \
         --enable-freetype ac_cv_func_open_memstream=no > $buildlog 2>&1
+
     $MAKE >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
@@ -108,6 +109,5 @@ check() {
 }
 
 cleanbuild() {
-    echo "The test must be on an OpenHarmony device!"
     rm -rf ${PWD}/$builddir #${PWD}/$packagename
 }
