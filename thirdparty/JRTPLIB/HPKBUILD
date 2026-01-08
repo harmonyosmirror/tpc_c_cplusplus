@@ -24,18 +24,24 @@ license=("MIT License")
 depends=()
 makedepends=()
 
-source=https://github.com/j0r1/${pkgname}/archive/refs/tags/${pkgver}.tar.gz
-
-autounpack=true
+#source=https://github.com/j0r1/${pkgname}/archive/refs/tags/${pkgver}.tar.gz
+source="https://codeberg.org/j0r1/${pkgname}/archive/${pkgver}.tar.gz"
+autounpack=false
 downloadpackage=true
 buildtools=cmake
 patchflag=true
 
 builddir=${pkgname}-${pkgver:1}
 packagename=${builddir}.tar.gz
+actpackagename=jrtplib
 
 prepare() {
+    if [ $autounpack == false ];then
+       tar xvf $builddir.tar.gz > ${buildlog} 2>&1
+       mv $actpackagename $builddir
+    fi
     mkdir -p ${builddir}/${ARCH}-build
+
     if ${patchflag}
     then
         cd ${builddir}
