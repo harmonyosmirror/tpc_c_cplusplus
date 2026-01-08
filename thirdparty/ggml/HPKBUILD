@@ -37,8 +37,6 @@ autounpack=true
 
 downloadpackage=true
 
-patchflag=true
-
 builddir=$pkgname-${pkgver}
 
 packagename=$builddir.zip
@@ -46,17 +44,6 @@ packagename=$builddir.zip
 prepare() {
     
     mkdir -p $builddir/$ARCH-build
-    
-    if $patchflag
-    then
-        cd $builddir
-        
-        patch -p1 -l < `pwd`/../ggml_oh_test.patch
-        
-        patchflag=false
-        
-        cd $OLDPWD
-    fi
 }
 
 build() {
@@ -66,6 +53,7 @@ build() {
         -DBUILD_STATIC_LIBS=ON \
         -DGGML_OPENMP=OFF \
         -DOPENMP=OFF \
+        -DCMAKE_CXX_FLAGS="-Wno-c++11-narrowing" \
         -B$ARCH-build -S./ -L > $buildlog 2>&1
     $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
     ret=$?
