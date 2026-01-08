@@ -16,280 +16,87 @@ pkgver=4.12
 pkgrel=1
 pkgdesc="DP-based Data Transfer (UDT) Library"
 url="https://github.com/whtghst1/udt"
-
-# 添加 x86_64 架构支持
-archs=("arm64-v8a" "x86_64")
-license=()
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+license=("MIT")
 depends=()
 makedepends=()
+
 source="https://codeload.github.com/whtghst1/udt/zip/refs/tags/v4.12"
 
 autounpack=true
 downloadpackage=true
+patchflag=true
 buildtools="make"
 
 builddir=${pkgname}-${pkgver}
 packagename=$builddir.zip
 
+
+cc=
+ar=
+ranlib=
+# udt 采用makefile编译构建，为了保留构建环境(方便测试)。因此同一份源码在解压后分为三份,各自编译互不干扰
 prepare() {
-    echo "Preparing build for $ARCH..."
-    
-    # 获取脚本所在目录的绝对路径
-    local SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local THIRDPARTY_ROOT="$(dirname "$SCRIPT_DIR")"
-    
-    cd "$THIRDPARTY_ROOT/udt" || {
-        echo "Error: Cannot change to udt directory"
-        return 1
-    }
-    
-    echo "Current directory: $(pwd)"
-    
-    # 检查源目录是否存在
-    if [ ! -d "$builddir" ]; then
-        echo "Error: Source directory '$builddir' not found"
-        return 1
+    if $patchflag
+    then
+        cd $builddir
+        # 使用patch的原因：
+        # 1. 源库写死的编译工具链需要修改成交叉编译工具链，源库未写install安装目录，增加指定安装目录
+        # 2. 鸿蒙系统编译错误修改, bind 在系统库和STL中都有定义，需要指定调用哪一个
+        patch -p1 < `pwd`/../udt_test.patch
+        patchflag=false
+        cd $OLDPWD
     fi
-    
-    # 创建构建目录
-    local build_dir="$builddir-$ARCH-build"
-    echo "Creating build directory: $build_dir"
-    rm -rf "$build_dir"
-    cp -rf "$builddir" "$build_dir"
-    
-    cd "$build_dir"
-    
-    # 修改：移除patch应用逻辑，因为patchflag=false
-    
-    # 设置 OpenHarmony NDK 路径
-    OHOS_NDK="${OHOS_SDK}/native/llvm/bin"
-    if [ ! -d "$OHOS_NDK" ]; then
-        echo "Error: OpenHarmony NDK not found at $OHOS_NDK"
-        return 1
+    cp -rf $builddir $builddir-$ARCH-build
+    cd $builddir-$ARCH-build
+    if [ $ARCH == "armeabi-v7a" ]
+    then
+        cc=${OHOS_SDK}/native/llvm/bin/arm-linux-ohos-clang
+        cxx=${OHOS_SDK}/native/llvm/bin/arm-linux-ohos-clang++
+        ar=${OHOS_SDK}/native/llvm/bin/llvm-ar
+        ranlib=${OHOS_SDK}/native/llvm/bin/llvm-ranlib
     fi
-    
-    # 根据架构设置交叉编译工具链
-    case "$ARCH" in
-        "arm64-v8a")
-            export CC="${OHOS_NDK}/aarch64-linux-ohos-clang"
-            export CXX="${OHOS_NDK}/aarch64-linux-ohos-clang++"
-            export TARGET="aarch64-linux-ohos"
-            export MARCH="armv8-a"
-            ;;
-        "x86_64")
-            export CC="${OHOS_NDK}/x86_64-linux-ohos-clang"
-            export CXX="${OHOS_NDK}/x86_64-linux-ohos-clang++"
-            export TARGET="x86_64-linux-ohos"
-            export MARCH="x86-64"
-            ;;
-        *)
-            echo "Error: Unsupported architecture: $ARCH"
-            return 1
-            ;;
-    esac
-    
-    # 设置正确的编译标志
-    export CFLAGS="-fPIC -DOHOS --target=${TARGET} -march=${MARCH} --sysroot=${OHOS_SDK}/native/sysroot -O2 -I./src"
-    export CXXFLAGS="-fPIC -DOHOS --target=${TARGET} -march=${MARCH} --sysroot=${OHOS_SDK}/native/sysroot -std=c++11 -O2 -I./src"
-    export LDFLAGS="-fPIC --target=${TARGET} --sysroot=${OHOS_SDK}/native/sysroot -static"
-    
-    export AR="${OHOS_NDK}/llvm-ar"
-    export RANLIB="${OHOS_NDK}/llvm-ranlib"
-    export STRIP="${OHOS_NDK}/llvm-strip"
-    
-    echo "Preparation completed for $ARCH"
+    if [ $ARCH == "arm64-v8a" ]
+    then
+        cc=${OHOS_SDK}/native/llvm/bin/aarch64-linux-ohos-clang
+        cxx=${OHOS_SDK}/native/llvm/bin/aarch64-linux-ohos-clang++
+        ar=${OHOS_SDK}/native/llvm/bin/llvm-ar
+        ranlib=${OHOS_SDK}/native/llvm/bin/llvm-ranlib
+    fi
+
+    if [ $ARCH == "x86_64" ]
+    then
+        cc=${OHOS_SDK}/native/llvm/bin/x86_64-linux-ohos-clang
+        cxx=${OHOS_SDK}/native/llvm/bin/x86_64-linux-ohos-clang++
+        ar=${OHOS_SDK}/native/llvm/bin/llvm-ar
+        ranlib=${OHOS_SDK}/native/llvm/bin/llvm-ranlib
+    fi
+    cd $OLDPWD # 1> /dev/null
 }
 
 build() {
-    echo "Building for $ARCH..."
-    
-    local current_dir=$(basename "$(pwd)")
-    local expected_build_dir="$builddir-$ARCH-build"
-    
-    if [ "$current_dir" != "$expected_build_dir" ]; then
-        echo "Not in build directory, switching to $expected_build_dir"
-        cd "$expected_build_dir"
-    fi
-    
-    echo "Now building in directory: $(pwd)"
-    
-    # 构建UDT库
-    build_udt_library
-    
-    # 构建应用程序（不包含simple_test，因为patch没有应用）
-    build_applications
-}
-
-build_udt_library() {
-    echo "Building UDT library..."
-    rm -rf build
-    mkdir -p build
-    
-    # 编译src目录
-    cd src
-    for file in *.cpp *.c; do
-        if [ -f "$file" ]; then
-            echo "Compiling src/$file..."
-            if [[ $file == *.cpp ]]; then
-                $CXX $CXXFLAGS -c $file -o ../build/${file%.*}.o
-            else
-                $CC $CFLAGS -c $file -o ../build/${file%.*}.o
-            fi
-        fi
-    done
-    cd ..
-    
-    # 创建库文件
-    $AR rcs build/libudt.a build/*.o
-    $CXX $LDFLAGS -shared build/*.o -o build/libudt.so
-}
-
-build_applications() {
-    echo "Building applications..."
-    
-    if [ -d "app" ]; then
-        echo "Compiling app directory source files..."
-        cd app
-        
-        # 编译所有文件（不包括test.cpp）
-        for file in *.cpp *.c; do
-            if [ -f "$file" ] && [ "$file" != "test.cpp" ]; then
-                echo "Compiling app/$file..."
-                if [[ $file == *.cpp ]]; then
-                    $CXX $CXXFLAGS -I../src -c $file -o ../build/app_${file%.*}.o
-                else
-                    $CC $CFLAGS -I../src -c $file -o ../build/app_${file%.*}.o
-                fi
-                if [ $? -ne 0 ]; then
-                    echo "Failed to compile app/$file"
-                    return 1
-                fi
-            fi
-        done
-        cd ..
-        
-        # 编译可执行文件
-        echo "Building app executables..."
-        cd app
-        
-        # 编译所有可执行文件
-        for target in appserver appclient sendfile recvfile; do
-            source_file="${target}.cpp"
-            if [ -f "$source_file" ]; then
-                echo "Building executable: $target from $source_file"
-                $CXX $CXXFLAGS -I../src $source_file -o ../build/$target -L../build -ludt -lpthread
-                if [ $? -eq 0 ]; then
-                    echo "Successfully built executable: $target"
-                else
-                    echo "Failed to build executable: $target"
-                fi
-            fi
-        done
-        
-        # 方案2：直接修改源代码编译 test
-        if [ -f "test.cpp" ]; then
-            echo "Building test executable using direct source modification..."
-            
-            # 创建修复版本
-            cp test.cpp test_fixed.cpp
-            
-            # 使用 sed 精确修复有问题的行
-            sed -i 's/if (bind(ssock, res->ai_addr, res->ai_addrlen) != 0)/if (::bind(ssock, res->ai_addr, res->ai_addrlen) != 0)/g' test_fixed.cpp
-            sed -i 's/connect(ssock, peer->ai_addr, peer->ai_addrlen);/::connect(ssock, peer->ai_addr, peer->ai_addrlen);/g' test_fixed.cpp
-            
-            # 编译修复后的版本 - 关键修改：添加 -static 标志
-            $CXX $CXXFLAGS -static -I../src test_fixed.cpp -o ../build/test -L../build -ludt -lpthread
-            
-            if [ $? -eq 0 ]; then
-                echo "Successfully built test executable with direct modification"
-                # 验证文件类型
-                file ../build/test
-                rm -f test_fixed.cpp
-            else
-                echo "Direct modification failed, trying without static..."
-                # 如果静态链接失败，尝试动态链接
-                $CXX $CXXFLAGS -I../src test_fixed.cpp -o ../build/test -L../build -ludt -lpthread
-                if [ $? -eq 0 ]; then
-                    echo "Successfully built test executable (dynamic)"
-                    file ../build/test
-                fi
-                rm -f test_fixed.cpp
-            fi
-        fi
-        cd ..
-    else
-        echo "Warning: app directory not found, skipping app source compilation"
-    fi
+    cd $builddir-$ARCH-build
+    $MAKE VERBOSE=1 CXX=${cxx} CC=${cc} AR=${ar} RANLIB=${ranlib} arch=$ARCH -C src all > $buildlog 2>&1
+    $MAKE VERBOSE=1 CXX=${cxx} CC=${cc} AR=${ar} RANLIB=${ranlib} arch=$ARCH -C app all > $buildlog 2>&1
+    ret=$?
+    cd $OLDPWD
+    return $ret
 }
 
 package() {
-    echo "Packaging for $ARCH..."
-    echo "Current directory: $(pwd)"
-    
-    local build_dir="$builddir-$ARCH-build"
-    
-    # 检查是否在正确的目录中
-    local current_dir=$(basename "$(pwd)")
-    if [ "$current_dir" != "$build_dir" ]; then
-        echo "Switching to build directory: $build_dir"
-        if [ ! -d "$build_dir" ]; then
-            echo "Error: Build directory '$build_dir' not found for packaging"
-            return 1
-        fi
-        cd "$build_dir"
-    fi
-    
-    echo "Now packaging in directory: $(pwd)"
-    
-    mkdir -p $LYCIUM_ROOT/usr/$pkgname/$ARCH/{include,lib,bin}
-    
-    # 安装头文件
-    echo "Installing header files from src directory..."
-    if [ -d "src" ]; then
-        find src -name "*.h" -exec install -D {} $LYCIUM_ROOT/usr/$pkgname/$ARCH/include/ \;
-    fi
-    
-    # 安装 app 目录的头文件
-    if [ -d "app" ]; then
-        echo "Installing header files from app directory..."
-        find app -name "*.h" -exec install -D {} $LYCIUM_ROOT/usr/$pkgname/$ARCH/include/ \;
-    fi
-    
-    # 安装库文件
-    echo "Installing library files..."
-    if [ -f "build/libudt.so" ]; then
-        install -D build/libudt.so $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/libudt.so
-    fi
-    
-    if [ -f "build/libudt.a" ]; then
-        install -D build/libudt.a $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/libudt.a
-    fi
-    
-    # 安装可执行文件
-    if [ -d "build" ]; then
-        echo "Installing executable files..."
-        for exec_file in build/*; do
-            if [ -f "$exec_file" ] && [ -x "$exec_file" ] && [[ ! "$exec_file" =~ \.(o|so|a)$ ]]; then
-                install -D $exec_file $LYCIUM_ROOT/usr/$pkgname/$ARCH/bin/$(basename $exec_file)
-                echo "Installed: $(basename $exec_file)"
-            fi
-        done
-    fi
-    
-    echo "Final installation check for $ARCH:"
-    if [ -f "$LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/libudt.so" ]; then
-        file $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/libudt.so
-    fi
+    cd $builddir-$ARCH-build
+    $MAKE VERBOSE=1 -C src install PREFIX=$LYCIUM_ROOT/usr/$pkgname/$ARCH >> $buildlog 2>&1
+    $MAKE VERBOSE=1 -C app install PREFIX=$LYCIUM_ROOT/usr/$pkgname/$ARCH >> $buildlog 2>&1
+    cd $OLDPWD
+    unset cc ar ranlib
 }
 
 check() {
     echo "The test must be on an OpenHarmony device!"
+    # make check
 }
 
-cleanbuild() {
-    echo "cleanbuild function called but disabled"
-    # rm -rf ${PWD}/$builddir \
-    #        $builddir-armeabi-v7a-build \
-    #        $builddir-arm64-v8a-build \
-    #        $builddir-x86_64-build
+# 清理环境
+cleanbuild(){
+    rm -rf ${PWD}/$builddir $builddir-armeabi-v7a-build  $builddir-arm64-v8a-build $builddir-x86_64-build
 }

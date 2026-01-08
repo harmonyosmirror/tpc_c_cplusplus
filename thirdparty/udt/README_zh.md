@@ -17,4 +17,4 @@ UDT（UDP-based Data Transfer）库是一个基于UDP协议的高性能数据传
 - [IDE和SDK版本](../../docs/constraint.md)
 
 ## 集成方式
-+ [应用hap包集成](docs/hap_ingtegrate.md)
++ [应用hap包集成](docs/hap_integrate.md)
