@@ -84,6 +84,7 @@ build() {
 
 package() {
     cd $pkgname-$ARCH-build
+    ${STRIP} --strip-all ./src/.libs/libespeak-ng.so.1.1.51
     $MAKE install-libLTLIBRARIES >> $buildlog 2>&1
     $MAKE install-espeak_ng_includeHEADERS >> $buildlog 2>&1
     ret=$?
