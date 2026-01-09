@@ -29,8 +29,8 @@ downloadpackage=true
 buildtools="configure"
 
 packagename="$pkgname"_$pkgver.zip
-source="https://nchc.dl.sourceforge.net/project/gsoap2/$packagename"
-
+#source="https://nchc.dl.sourceforge.net/project/gsoap2/$packagename"
+source="https://sourceforge.net/projects/gsoap2/files/${pkgname}_${pkgver}.zip"
 packagedir="$pkgname"-"${pkgver:0:3}"
 builddir="$pkgname"-$pkgver
 
