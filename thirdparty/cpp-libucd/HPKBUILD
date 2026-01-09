@@ -90,11 +90,11 @@ build() {
         ac_cv_func_realloc_0_nonnull=yes \
         --host=$host \
         --disable-icu >> $buildlog 2>&1
-    make clean >> $buildlog 2>&1
-    make ChangeLog >> $buildlog 2>&1
-    make dist >> $buildlog 2>&1
+    $MAKE clean >> $buildlog 2>&1
+    $MAKE ChangeLog >> $buildlog 2>&1
+    $MAKE dist >> $buildlog 2>&1
     cp lib*-*.tar.gz pacman >> $buildlog 2>&1
-    make check >> $buildlog 2>&1
+    $MAKE check >> $buildlog 2>&1
     $MAKE VERBOSE=1 >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
@@ -103,6 +103,7 @@ build() {
 
 package() {
     cd $pkgname-$ARCH-build
+    ${STRIP} --strip-all ./utils/ucd
     $MAKE VERBOSE=1 install >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
