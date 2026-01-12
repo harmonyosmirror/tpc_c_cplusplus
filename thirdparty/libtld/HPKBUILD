@@ -52,11 +52,10 @@ prepare() {
         cd $builddir-host-build/BUILD
         cmake -DCMAKE_PREFIX_PATH=../SnapCMakeModules/Modules \
             -DLIBTLD_VERSION_MAJOR=2 -DLIBTLD_VERSION_MINOR=0 -DLIBTLD_VERSION_PATCH=5 \
-            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_CXX_STANDARD=20 \
             -DCMAKE_CXX_STANDARD_REQUIRED=ON \
-            -DCMAKE_CXX_FLAGS="-std=c++17" \
             ../libtld-2.0.5/ > $publicbuildlog 2>&1
-        make VERBOSE=1 > $publicbuildlog 2>&1
+        $MAKE VERBOSE=1 > $publicbuildlog 2>&1
         buildhostlibtld=false
         cd $OLDPWD
     fi
@@ -82,8 +81,8 @@ build() {
         -DLIBTLD_VERSION_MAJOR=2 -DLIBTLD_VERSION_MINOR=0 -DLIBTLD_VERSION_PATCH=5 \
         -DCMAKE_CXX_STANDARD=17 \
         -DCMAKE_CXX_STANDARD_REQUIRED=ON \
-        -DCMAKE_C_FLAGS="-w -Wno-error -Wno-unused-command-line-argument -Wno-unknown-warning-option -Wno-sign-compare -Wno-error=sign-compare" \
-        -DCMAKE_CXX_FLAGS="-w -Wno-error -Wno-unused-command-line-argument -Wno-unknown-warning-option -Wno-sign-compare -Wno-tautological-pointer-compare -Wno-error=sign-compare -Wno-c++17-attribute-extensions -std=c++17" \
+        -DCMAKE_C_FLAGS="-w -s -Wno-error -Wno-unused-command-line-argument -Wno-unknown-warning-option -Wno-sign-compare -Wno-error=sign-compare" \
+        -DCMAKE_CXX_FLAGS="-w -s -Wno-error -Wno-unused-command-line-argument -Wno-unknown-warning-option -Wno-sign-compare -Wno-tautological-pointer-compare -Wno-error=sign-compare -Wno-c++17-attribute-extensions -std=c++17" \
         -DLIBTLD_VERSION_PATCH=0 ../libtld-2.0.5 >>  $buildlog 2>&1
     #构建过程中需要执行宿主机的可执行文件
     cp ../../libtld-2.0.5-host-build/BUILD/libtld/tld_parser ./libtld/
