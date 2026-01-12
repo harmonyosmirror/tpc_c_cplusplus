@@ -11,54 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Contributor: wangmingfu6 <wangmingfu6@h-partners.com>
-# Maintainer: wangmingfu6 <wangmingfu6@h-partners.com>
+# Contributor: xiafeng <xiafeng@huawei.com>
+# Maintainer: xiafeng <xiafeng@huawei.com>
 
 source HPKBUILD > /dev/null 2>&1
 logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
-# 创建必要目录的函数
-create_required_dirs() {
-    local dirs_to_create=(
-        "/data/storage"
-        "/data/storage/el2"
-        "/data/storage/el2/base"
-        "/data/storage/el2/base/files"
-    )
-    
-    echo "正在检查并创建必要的目录结构..." | tee -a ${logfile}
-    
-    for dir in "${dirs_to_create[@]}"; do
-        if [ ! -d "${dir}" ]; then
-            echo "创建目录: ${dir}" | tee -a ${logfile}
-            mkdir -p "${dir}"
-            
-            # 检查是否创建成功
-            if [ $? -ne 0 ]; then
-                echo "警告: 无法创建目录 ${dir} (权限不足?)" | tee -a ${logfile}
-            else
-                chmod 755 "${dir}" 2>/dev/null
-                echo "目录 ${dir} 创建成功" | tee -a ${logfile}
-            fi
-        else
-            echo "目录 ${dir} 已存在" | tee -a ${logfile}
-        fi
-    done
-    
-    # 验证最终目录是否存在且可访问
-    if [ ! -d "/data/storage/el2/base/files" ]; then
-        echo "错误: 无法访问 /data/storage/el2/base/files 目录" | tee -a ${logfile}
-        return 1
-    fi
-    
-    # 检查目录权限
-    if [ ! -w "/data/storage/el2/base/files" ]; then
-        echo "警告: /data/storage/el2/base/files 目录不可写" | tee -a ${logfile}
-    fi
-    return 0
-}
 openharmonycheck() {
     res=0
-    create_required_dirs
+    mkdir -p "/data/storage/el2/base/files"
     cd ${builddir}/${ARCH}-build/
     echo "${builddir}/${ARCH}-build/"
     ./test_physfs q > ${logfile} 2>&1
