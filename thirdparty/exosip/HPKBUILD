@@ -23,16 +23,20 @@ depends=("openssl" "libosip2" "c-ares")
 makedepends=()
 
 source="https://git.savannah.nongnu.org/cgit/exosip.git/snapshot/$pkgname-$pkgver.tar.gz"
-autounpack=true
-downloadpackage=true
+autounpack=false
+downloadpackage=false
 buildtools="configure"
 
 builddir=$pkgname-${pkgver}
 packagename=$builddir.tar.gz
-
+cloneflag=true
+url="https://github.com/aurelihein/exosip.git"
 source envset.sh
 host=
 prepare() {
+    if [ $cloneflag == true ];then
+        git clone $url $builddir
+    fi
     cp -arf $builddir $builddir-$ARCH-build
     if [ $ARCH == "armeabi-v7a" ]; then
         setarm32ENV
