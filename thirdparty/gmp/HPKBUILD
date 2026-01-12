@@ -10,35 +10,42 @@ license=("gplv2" "gplv3")
 depends=()
 makedepends=()
 
-source="https://gmplib.org/download/$pkgname/$pkgname-$pkgver.tar.xz"
-
+# source="https://gmplib.org/download/$pkgname/$pkgname-$pkgver.tar.xz"
+source="https://gitee.com/mirrors/$pkgname/repository/archive/$pkgver"
 downloadpackage=true
 autounpack=true
 buildtools="configure"
 
 builddir=$pkgname-${pkgver}
-packagename=$builddir.tar.xz
+packagename=$builddir.zip
 
 source envset.sh
 host=
-
 prepare() {
-    mkdir -p $builddir/$ARCH-build
-    if [ $ARCH == "armeabi-v7a" ]
-    then
+    cd "$builddir" || return 1
+    # 生成 configure（失败就退出）
+    autoreconf -fi -v || return 1
+    ls -l configure || return 1
+    cd "$OLDPWD" || return 1
+    mkdir -p "$builddir/$ARCH-build"
+
+    if [ "$ARCH" = "armeabi-v7a" ]; then
         setarm32ENV
         host=arm-linux
-    fi
-    if [ $ARCH == "arm64-v8a" ]
-    then
+    elif [ "$ARCH" = "arm64-v8a" ]; then
         setarm64ENV
         host=aarch64-linux
+    else
+        echo "$ARCH not support!"
+        return 1
     fi
 }
 
+
 build() {
     cd $builddir/$ARCH-build
-    PKG_CONFIG_LIBDIR="${pkgconfigpath}" ../configure "$@" --host=$host > $buildlog 2>&1
+    # PKG_CONFIG_LIBDIR="${pkgconfigpath}" ../configure "$@" --host=$host > $buildlog 2>&1
+    MAKEINFO=true PKG_CONFIG_LIBDIR="${pkgconfigpath}" ../configure "$@" --host=$host >> "$buildlog" 2>&1
     $MAKE VERBOSE=1 >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
