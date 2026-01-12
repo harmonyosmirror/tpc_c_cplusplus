@@ -15,7 +15,7 @@
 # Maintainer: Jeff Han <hanjinfei@foxmail.com>
 
 pkgname=graphicsmagick
-pkgver=1.3.43
+pkgver=1.3.46
 pkgrel=
 pkgdesc="GraphicsMagick is the swiss army knife of image processing."
 url=http://www.graphicsmagick.org
@@ -27,7 +27,8 @@ makedepends=()
 builddir=GraphicsMagick-${pkgver}
 packagename=${builddir}.tar.xz
 
-source=https://jaist.dl.sourceforge.net/project/${pkgname}/${pkgname}/${pkgver}/${packagename}?viasf=1
+#source=https://jaist.dl.sourceforge.net/project/${pkgname}/${pkgname}/${pkgver}/${packagename}?viasf=1
+source="https://sourceforge.net/projects/graphicsmagick/files/graphicsmagick/1.3.46/GraphicsMagick-${pkgver}.tar.xz"
 
 autounpack=true
 downloadpackage=true
@@ -37,6 +38,9 @@ source envset.sh
 host=
 
 prepare() {
+    g++ --version
+    strings /usr/lib/x86_64-linux-gnu/libstdc++.so.6 | grep "LIBCXX"
+    echo "*************************************************"
     mkdir -p ${builddir}/${ARCH}-build
     if [ ${ARCH} == armeabi-v7a ]
     then
