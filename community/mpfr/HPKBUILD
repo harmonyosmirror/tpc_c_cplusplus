@@ -15,7 +15,7 @@
 # Maintainer: Jeff Han <hanjinfei@foxmail.com>
 
 pkgname=mpfr
-pkgver=4.2.1
+pkgver=4.2.2
 pkgrel=0
 pkgdesc="The mpfr library is a C library for multiple-precision floating-point computations with correct rounding."
 url="https://www.mpfr.org"
@@ -54,7 +54,8 @@ prepare() {
 
 build() {
     cd $builddir-$ARCH-build
-    ./configure "$@" --host=$host > $buildlog 2>&1
+    # ./configure "$@" --host=$host > $buildlog 2>&1
+    am_cv_maintainer_mode=no ./configure "$@" --host=$host --disable-maintainer-mode >> $buildlog 2>&1
     $MAKE VERBOSE=1 >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
