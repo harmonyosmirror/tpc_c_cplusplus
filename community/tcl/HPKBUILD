@@ -5,7 +5,7 @@ pkgver=8.6.13
 pkgrel=0
 pkgdesc="Tool Command Language (Tcl) is an interpreted language and very portable interpreter for that language. Tcl is embeddable and extensible, and has been widely used since its creation in 1988 by John Ousterhout."
 url="https://sourceforge.net/projects/tcl/"
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("TCL/TK License")
 depends=(zlib_1_3_1)
 makedepends=()
@@ -33,6 +33,11 @@ prepare() {
     then
         setarm64ENV
         host=aarch64-linux
+    fi
+    if [ $ARCH == "x86_64" ]
+    then
+        setx86_64ENV
+        host=x86_64-linux
     fi
 }
 
@@ -68,6 +73,10 @@ package() {
     if [ $ARCH == "arm64-v8a" ]
     then
         unsetarm64ENV
+    fi
+    if [ $ARCH == "x86_64" ]
+    then
+        unsetx86_64ENV
     fi
     unset host
     return $ret
