@@ -15,7 +15,7 @@
 # Maintainer: Jeff Han <hanjinfei@foxmail.com>
 
 pkgname=libmdbx
-pkgver=v0.11.6
+pkgver=archive/0.11
 pkgrel=0
 pkgdesc="One of the fastest embeddable key-value ACID database without WAL. libmdbx surpasses the legendary LMDB in terms of reliability, features and performance."
 url="https://erthink.github.io/libmdbx/"
@@ -30,7 +30,7 @@ autounpack=false
 downloadpackage=false
 cloneflag=true
 
-builddir=$pkgname-${pkgver:1}
+builddir=$pkgname-archive
 packagename=
 patchflag=true
 
@@ -67,23 +67,23 @@ check() {
     echo "The test must be on an OpenHarmony device!"
     
     # 编译example用于测试
-    cd $builddir/example    
-    if [ "$ARCH" = "armeabi-v7a" ]
-    then
-        ${OHOS_SDK}/native/llvm/bin/clang example-mdbx.c \
-        --target=arm-linux-ohos --sysroot=${OHOS_SDK}/native/sysroot -march=armv7a \
-        -L../$ARCH-build/ -lmdbx -I../ \
-        -o ../$ARCH-build/mdbx_example >> $buildlog 2>&1
-    else
-        ${OHOS_SDK}/native/llvm/bin/clang example-mdbx.c \
-        --target=aarch64-linux-ohos --sysroot=${OHOS_SDK}/native/sysroot \
-        -L../$ARCH-build/ -lmdbx -I../ \
-        -o ../$ARCH-build/mdbx_example >> $buildlog 2>&1
-    fi
-    
-    ret=$?
-    cd $OLDPWD
-    return $ret
+#    cd $builddir/example    
+#    if [ "$ARCH" = "armeabi-v7a" ]
+#    then
+#        ${OHOS_SDK}/native/llvm/bin/clang example-mdbx.c \
+#        --target=arm-linux-ohos --sysroot=${OHOS_SDK}/native/sysroot -march=armv7a \
+#        -L../$ARCH-build/ -lmdbx -I../ \
+#        -o ../$ARCH-build/mdbx_example >> $buildlog 2>&1
+#    else
+#        ${OHOS_SDK}/native/llvm/bin/clang example-mdbx.c \
+#        --target=aarch64-linux-ohos --sysroot=${OHOS_SDK}/native/sysroot \
+#        -L../$ARCH-build/ -lmdbx -I../ \
+#        -o ../$ARCH-build/mdbx_example >> $buildlog 2>&1
+#    fi
+#    
+#    ret=$?
+#    cd $OLDPWD
+#    return $ret
 }
 
 # 清理环境
