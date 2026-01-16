@@ -19,7 +19,7 @@ pkgver=fips-20251031
 pkgrel=0
 pkgdesc="BoringSSL is a fork of OpenSSL that is designed to meet Google's needs."
 url="https://boringssl.googlesource.com/boringssl"
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("Apache License 2.0 and ISC License") # under OpenSSL licensing
 depends=()
 makedepends=("perl" "go")
@@ -65,6 +65,9 @@ check() {
     elif [ $ARCH == "arm64-v8a" ]
     then
         cp ${OHOS_SDK}/native/llvm/lib/aarch64-linux-ohos/libc++_shared.so $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/
+    elif [ $ARCH == "x86_64" ]
+    then
+        cp ${OHOS_SDK}/native/llvm/lib/x86_64-linux-ohos/libc++_shared.so $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/
     else
         echo "${ARCH} not support"
         return -1
