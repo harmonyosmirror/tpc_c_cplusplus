@@ -1,0 +1,588 @@
+diff --git a/tensorflow/lite/tools/cmake/patches/flatbuffers_checksymbol_ohos.patch b/tensorflow/lite/tools/cmake/patches/flatbuffers_checksymbol_ohos.patch
+new file mode 100644
+--- /dev/null
++++ b/tensorflow/lite/tools/cmake/patches/flatbuffers_checksymbol_ohos.patch
+@@ -0,0 +1,11 @@
++--- a/CMakeLists.txt
+++++ b/CMakeLists.txt
++@@ -93,6 +93,8 @@ if(DEFINED FLATBUFFERS_MAX_PARSING_DEPTH)
++   message(STATUS "FLATBUFFERS_MAX_PARSING_DEPTH: ${FLATBUFFERS_MAX_PARSING_DEPTH}")
++ endif()
++ 
+++# Used below for HAVE_REALPATH; must run even when FLATBUFFERS_LOCALE_INDEPENDENT is preset (e.g. OHOS cache).
+++include(CheckSymbolExists)
++ # Auto-detect locale-narrow 'strtod_l' and  'strtoull_l' functions.
++ if(NOT DEFINED FLATBUFFERS_LOCALE_INDEPENDENT)
++   include(CheckCXXSymbolExists)
+diff --git a/tensorflow/lite/tools/cmake/patches/cpuinfo_ohos_pkg.patch b/tensorflow/lite/tools/cmake/patches/cpuinfo_ohos_pkg.patch
+new file mode 100644
+--- /dev/null
++++ b/tensorflow/lite/tools/cmake/patches/cpuinfo_ohos_pkg.patch
+@@ -0,0 +1,127 @@
++--- a/CMakeLists.txt
+++++ b/CMakeLists.txt
++@@ -95,7 +95,7 @@
++       "cpuinfo will compile, but cpuinfo_initialize() will always fail.")
++     SET(CPUINFO_SUPPORTED_PLATFORM FALSE)
++   ENDIF()
++-ELSEIF(NOT CPUINFO_TARGET_PROCESSOR MATCHES "^(i[3-6]86|AMD64|x86(_64)?|armv[5-8].*|aarch64|arm64.*|ARM64.*|riscv(32|64))$")
+++ELSEIF(NOT CPUINFO_TARGET_PROCESSOR MATCHES "^(i[3-6]86|AMD64|x86(_64)?|armv[5-8].*|aarch64|arm64.*|ARM64.*|riscv(32|64)|arm.*)$")
++   MESSAGE(WARNING
++     "Target processor architecture \"${CPUINFO_TARGET_PROCESSOR}\" is not supported in cpuinfo. "
++     "cpuinfo will compile, but cpuinfo_initialize() will always fail.")
++@@ -108,7 +108,7 @@
++       "Target operating system is not specified. "
++       "cpuinfo will compile, but cpuinfo_initialize() will always fail.")
++   SET(CPUINFO_SUPPORTED_PLATFORM FALSE)
++-ELSEIF(NOT CMAKE_SYSTEM_NAME MATCHES "^(Windows|WindowsStore|CYGWIN|MSYS|Darwin|Linux|Android|FreeBSD)$")
+++ELSEIF(NOT CMAKE_SYSTEM_NAME MATCHES "^(Windows|WindowsStore|CYGWIN|MSYS|Darwin|Linux|Android|FreeBSD|OHOS)$")
++   IF(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.14" AND NOT IS_APPLE_OS)
++     MESSAGE(WARNING
++       "Target operating system \"${CMAKE_SYSTEM_NAME}\" is not supported in cpuinfo. "
++@@ -173,7 +173,7 @@
++       src/x86/cache/init.c
++       src/x86/cache/descriptor.c
++       src/x86/cache/deterministic.c)
++-    IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+++    IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++       LIST(APPEND CPUINFO_SRCS
++         src/x86/linux/init.c
++         src/x86/linux/cpuinfo.c)
++@@ -189,11 +189,11 @@
++       src/arm/windows/init-by-logical-sys-info.c
++       src/arm/windows/init.c
++       src/arm/uarch.c)
++-  ELSEIF(CPUINFO_TARGET_PROCESSOR MATCHES "^(armv[5-8].*|aarch64|arm64.*)$" OR IOS_ARCH MATCHES "^(armv7.*|arm64.*)$")
+++  ELSEIF(CPUINFO_TARGET_PROCESSOR MATCHES "^(armv[5-8].*|aarch64|arm64.*|arm.*)$" OR IOS_ARCH MATCHES "^(armv7.*|arm64.*|arm.*)$")
++     LIST(APPEND CPUINFO_SRCS
++       src/arm/uarch.c
++       src/arm/cache.c)
++-    IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+++    IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++       LIST(APPEND CPUINFO_SRCS
++         src/arm/linux/init.c
++         src/arm/linux/cpuinfo.c
++@@ -201,9 +201,9 @@
++         src/arm/linux/chipset.c
++         src/arm/linux/midr.c
++         src/arm/linux/hwcap.c)
++-      IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^armv[5-8]")
+++      IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^armv[5-8]|arm.*")
++         LIST(APPEND CPUINFO_SRCS src/arm/linux/aarch32-isa.c)
++-        IF(CMAKE_SYSTEM_NAME STREQUAL "Android" AND ANDROID_ABI STREQUAL "armeabi")
+++        IF((CMAKE_SYSTEM_NAME STREQUAL "Android" AND ANDROID_ABI STREQUAL "armeabi") OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++           SET_SOURCE_FILES_PROPERTIES(src/arm/linux/aarch32-isa.c PROPERTIES COMPILE_FLAGS -marm)
++         ENDIF()
++       ELSEIF(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
++@@ -219,7 +219,7 @@
++   ELSEIF(CPUINFO_TARGET_PROCESSOR MATCHES "^(riscv(32|64))$")
++     LIST(APPEND CPUINFO_SRCS
++       src/riscv/uarch.c)
++-    IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+++    IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++       LIST(APPEND CPUINFO_SRCS
++         src/riscv/linux/init.c
++ 	src/riscv/linux/riscv-hw.c
++@@ -232,7 +232,7 @@
++       src/emscripten/init.c)
++   ENDIF()
++ 
++-  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+++  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++     LIST(APPEND CPUINFO_SRCS
++       src/linux/smallfile.c
++       src/linux/multiline.c
++@@ -244,7 +244,7 @@
++     LIST(APPEND CPUINFO_SRCS src/freebsd/topology.c)
++   ENDIF()
++ 
++-  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+++  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++     SET(CMAKE_THREAD_PREFER_PTHREAD TRUE)
++     SET(THREADS_PREFER_PTHREAD_FLAG TRUE)
++     FIND_PACKAGE(Threads REQUIRED)
++@@ -304,7 +304,7 @@
++ 
++ IF(CPUINFO_SUPPORTED_PLATFORM)
++   TARGET_COMPILE_DEFINITIONS(cpuinfo INTERFACE CPUINFO_SUPPORTED_PLATFORM=1)
++-  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+++  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++     TARGET_LINK_LIBRARIES(cpuinfo PUBLIC ${CMAKE_THREAD_LIBS_INIT})
++     TARGET_LINK_LIBRARIES(cpuinfo_internals PUBLIC ${CMAKE_THREAD_LIBS_INIT})
++     TARGET_COMPILE_DEFINITIONS(cpuinfo PRIVATE _GNU_SOURCE=1)
++@@ -348,7 +348,7 @@
++       "${CONFU_DEPENDENCIES_BINARY_DIR}/googlebenchmark")
++   ENDIF()
++ 
++-  IF(CMAKE_SYSTEM_NAME MATCHES "^(Linux|Android)$")
+++  IF(CMAKE_SYSTEM_NAME MATCHES "^(Linux|Android|OHOS)$")
++     ADD_EXECUTABLE(get-current-bench bench/get-current.cc)
++     TARGET_LINK_LIBRARIES(get-current-bench cpuinfo benchmark)
++   ENDIF()
++@@ -377,7 +377,7 @@
++   IF(CPUINFO_TARGET_PROCESSOR MATCHES "^(i[3-6]86|AMD64|x86(_64)?)$")
++     LIST(APPEND CPUINFO_MOCK_SRCS src/x86/mockcpuid.c)
++   ENDIF()
++-  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+++  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++     LIST(APPEND CPUINFO_MOCK_SRCS src/linux/mockfile.c)
++   ENDIF()
++ 
++@@ -390,7 +390,7 @@
++   TARGET_COMPILE_DEFINITIONS(cpuinfo_mock PUBLIC "CPUINFO_MOCK=1")
++   TARGET_COMPILE_DEFINITIONS(cpuinfo_mock PRIVATE "CPUINFO_LOG_LEVEL=5")
++   TARGET_COMPILE_DEFINITIONS(cpuinfo_mock PRIVATE "CPUINFO_LOG_TO_STDIO=1")
++-  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+++  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++     TARGET_LINK_LIBRARIES(cpuinfo_mock PUBLIC ${CMAKE_THREAD_LIBS_INIT})
++     TARGET_COMPILE_DEFINITIONS(cpuinfo_mock PRIVATE _GNU_SOURCE=1)
++   ENDIF()
++@@ -815,7 +815,7 @@
++   TARGET_LINK_LIBRARIES(init-test PRIVATE cpuinfo gtest gtest_main)
++   ADD_TEST(NAME init-test COMMAND init-test)
++ 
++-  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+++  IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++     ADD_EXECUTABLE(get-current-test test/get-current.cc)
++     CPUINFO_TARGET_ENABLE_CXX11(get-current-test)
++     CPUINFO_TARGET_RUNTIME_LIBRARY(get-current-test)
+diff --git a/tensorflow/lite/tools/cmake/patches/xnnpack_ohos_pkg.patch b/tensorflow/lite/tools/cmake/patches/xnnpack_ohos_pkg.patch
+new file mode 100644
+--- /dev/null
++++ b/tensorflow/lite/tools/cmake/patches/xnnpack_ohos_pkg.patch
+@@ -0,0 +1,11 @@
++--- a/CMakeLists.txt	2026-01-05 17:08:13.736217379 +0800
+++++ b/CMakeLists.txt	2026-01-06 10:02:51.979086225 +0800
++@@ -362,7 +362,7 @@
++ # ---[ Build flags
++ IF(NOT CMAKE_SYSTEM_NAME)
++   MESSAGE(FATAL_ERROR "CMAKE_SYSTEM_NAME not defined")
++-ELSEIF(NOT CMAKE_SYSTEM_NAME MATCHES "^(Android|Darwin|iOS|Linux|Windows|CYGWIN|MSYS|QURT)$")
+++ELSEIF(NOT CMAKE_SYSTEM_NAME MATCHES "^(Android|Darwin|iOS|Linux|Windows|CYGWIN|MSYS|QURT|OHOS)$")
++   MESSAGE(FATAL_ERROR "Unrecognized CMAKE_SYSTEM_NAME value \"${CMAKE_SYSTEM_NAME}\"")
++ ENDIF()
++ IF(CMAKE_SYSTEM_NAME MATCHES "Windows")
+--- a/tensorflow/core/public/release_version.h
++++ b/tensorflow/core/public/release_version.h
+@@ -26,19 +26,19 @@
+ #define _TF_STR_HELPER(x) #x
+ #define _TF_STR(x) _TF_STR_HELPER(x)
+ 
+ #ifndef TF_MAJOR_VERSION
+-#error "TF_MAJOR_VERSION is not defined!"
++#define TF_MAJOR_VERSION 2
+ #endif
+ 
+ #ifndef TF_MINOR_VERSION
+-#error "TF_MINOR_VERSION is not defined!"
++#define TF_MINOR_VERSION 20
+ #endif
+ 
+ #ifndef TF_PATCH_VERSION
+-#error "TF_PATCH_VERSION is not defined!"
++#define TF_PATCH_VERSION 0
+ #endif
+ 
+ #ifndef TF_VERSION_SUFFIX
+-#error "TF_VERSION_SUFFIX is not defined!"
++#define TF_VERSION_SUFFIX ""
+ #endif
+ 
+ // e.g. "0.5.0" or "0.6.0-alpha".
+--- a/tensorflow/lite/core/model_building.h
++++ b/tensorflow/lite/core/model_building.h
+@@ -100,16 +100,16 @@
+   BufferIdx buffer_idx_;
+ };
+ 
+ // Assigns data to be managed by the given Buffer.
+ template <TfLiteType kType, class T>
+ void Assign(Buffer b, std::vector<int> shape, const std::vector<T>& data,
+             Quantization quantization) {
+-  using Storage = TfLiteTypeToType<kType>::Type;
++  using Storage = typename TfLiteTypeToType<kType>::Type;
+   std::unique_ptr<Storage[]> buffer_data(new Storage[data.size()]);
+   std::copy(begin(data), end(data), buffer_data.get());
+   Assign(
+       b, kType, std::move(shape),
+       reinterpret_cast<char*>(buffer_data.release()),
+       [](char* data) { delete[] reinterpret_cast<Storage*>(data); },
+       sizeof(Storage) * data.size(), std::move(quantization));
+ }
+--- a/tensorflow/lite/tools/cmake/modules/Findgoogle_benchmark.cmake
++++ b/tensorflow/lite/tools/cmake/modules/Findgoogle_benchmark.cmake
+@@ -31,6 +31,13 @@
+ if(NOT google_benchmark_POPULATED)
+   OverridableFetchContent_Populate(google_benchmark)
+ endif()
+ 
++if(CMAKE_CROSSCOMPILING)
++  # THREAD_SAFETY_ATTRIBUTES try_compile includes src/check.h, which needs
++  # generated include/benchmark/export.h. Skip the configure-time test; the real
++  # build supplies that header (see google_benchmark/cmake/CXXFeatureCheck.cmake).
++  set(HAVE_THREAD_SAFETY_ATTRIBUTES 1 CACHE INTERNAL "")
++endif()
++
+ option(HAVE_GNU_POSIX_REGEX OFF)
+ 
+ add_subdirectory(
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -76,6 +76,7 @@
+ option(TFLITE_ENABLE_EXTERNAL_DELEGATE "Enable External Delegate backend" ON)
+ 
+ option(TFLITE_KERNEL_TEST "Enable tflite kernel unit test" OFF)
++option(TFLITE_ENABLE_LITE_TESTING "Build tensorflow/lite/testing C++ unit tests (CMake)." OFF)
+ 
+ if(${CMAKE_CROSSCOMPILING})
+   set(TFLITE_HOST_TOOLS_DIR "" CACHE PATH "Host tools directory")
+@@ -563,6 +564,11 @@
+   list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DXNNPACK_DELEGATE_ENABLE_QU8")
+   list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DXNNPACK_DELEGATE_USE_LATEST_OPS")
+   list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DXNNPACK_DELEGATE_ENABLE_SUBGRAPH_RESHAPING")
++endif()
++# FP16 headers are required by core kernels (e.g. embedding_lookup) even when XNNPACK is off.
++# fp16_headers.cmake skips work when TFLITE_ENABLE_XNNPACK is ON (XNNPACK supplies includes).
++if(NOT TFLITE_ENABLE_XNNPACK)
++  find_package(fp16_headers REQUIRED)
+ endif()
+ if(TFLITE_ENABLE_EXTERNAL_DELEGATE)
+   populate_tflite_source_vars("delegates/external"
+@@ -727,6 +733,7 @@
+     Eigen3::Eigen
+     absl::flags
+     absl::hash
++    absl::log
+     absl::status
+     absl::strings
+     absl::synchronization
+@@ -812,6 +819,12 @@
+ # The label_image example.
+ add_subdirectory(${TFLITE_SOURCE_DIR}/examples/label_image)
+ 
++# Portable C++ tests under tensorflow/lite/testing/ (subset of Bazel cc_test).
++if(TFLITE_ENABLE_LITE_TESTING)
++  enable_testing()
++  add_subdirectory(${TFLITE_SOURCE_DIR}/testing)
++endif()
++
+ # Python interpreter wrapper.
+ add_library(_pywrap_tensorflow_interpreter_wrapper SHARED EXCLUDE_FROM_ALL
+   ${TFLITE_SOURCE_DIR}/python/interpreter_wrapper/interpreter_wrapper.cc
+@@ -838,7 +851,9 @@
+   PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
+ )
+ 
+-target_compile_options(xnnpack-delegate
+-  PUBLIC ${TFLITE_TARGET_PUBLIC_OPTIONS}
+-  PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
+-)
++if(TARGET xnnpack-delegate)
++  target_compile_options(xnnpack-delegate
++    PUBLIC ${TFLITE_TARGET_PUBLIC_OPTIONS}
++    PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
++  )
++endif()
+--- a/tensorflow/lite/kernels/CMakeLists.txt
++++ b/tensorflow/lite/kernels/CMakeLists.txt
+@@ -51,11 +51,18 @@
+   --gen-object-api
+   --gen-mutable
+ )
++if(CMAKE_CROSSCOMPILING)
++  set(_TFLITE_KERNEL_FB_DEP "")
++else()
++  set(_TFLITE_KERNEL_FB_DEP "flatbuffers-flatc")
++endif()
++# Quote additional_dependencies: an empty dep must still be one argument; bare
++# ${var} when empty is omitted and breaks build_flatbuffers()'s arity check.
+ build_flatbuffers(
+   "${SCHEMA_FILE}"
+   ""
+   mutable_schema_file
+-  flatbuffers-flatc
++  "${_TFLITE_KERNEL_FB_DEP}"
+   "${SCHEMA_GENERATED_PATH}"
+   ""
+   ""
+@@ -73,7 +80,6 @@
+   # List of delegates referenced as options in the tensorflow/lite/CMakeLists.txt
+   ${TFLITE_SOURCE_DIR}/tools/delegates/gpu_delegate_provider.cc
+   ${TFLITE_SOURCE_DIR}/tools/delegates/nnapi_delegate_provider.cc
+-  ${TFLITE_SOURCE_DIR}/tools/delegates/xnnpack_delegate_provider.cc
+ )
+ 
+ if(TFLITE_ENABLE_EXTERNAL_DELEGATE)
+@@ -89,7 +95,7 @@
+   ${DELEGATE_PROVIDERS}
+   ${TFLITE_SOURCE_DIR}/tools/optimize/model_utils.cc
+   ${TF_SOURCE_DIR}/compiler/mlir/lite/tools/optimize/operator_property.cc
+-  ${TF_SOURCE_DIR}/compiler/mlir/tools/optimize/quantization_utils.cc
++  ${TF_SOURCE_DIR}/compiler/mlir/lite/tools/versioning/op_signature.cc
+   ${TF_SOURCE_DIR}/compiler/mlir/lite/kernels/internal/runtime_shape.cc
+   ${TFLITE_SOURCE_DIR}/tools/optimize/quantization_utils.cc
+   ${TFLITE_SOURCE_DIR}/tools/tool_params.cc
+--- a/tensorflow/lite/testing/CMakeLists.txt
++++ b/tensorflow/lite/testing/CMakeLists.txt
+@@ -0,0 +1,127 @@
++#
++# CMake build for portable unit tests under tensorflow/lite/testing.
++# Bazel remains the full source of truth; this covers the lightweight cc_test
++# targets that build with the standalone tensorflow-lite CMake graph.
++#
++# CMake target names use prefix tflite_lite_testing_ to avoid clashing with
++# tensorflow/lite/kernels/*_test when TFLITE_KERNEL_TEST is also ON.
++#
++
++if(NOT TARGET GTest::gtest_main)
++  find_package(googletest REQUIRED)
++endif()
++
++# ---- Small static libs (aligned with //tensorflow/lite/testing:BUILD) ----
++
++add_library(tflite_testing_tokenize STATIC "${CMAKE_CURRENT_SOURCE_DIR}/tokenize.cc")
++target_include_directories(tflite_testing_tokenize PUBLIC "${TENSORFLOW_SOURCE_DIR}")
++target_link_libraries(tflite_testing_tokenize PUBLIC tensorflow-lite)
++
++add_library(tflite_testing_message STATIC "${CMAKE_CURRENT_SOURCE_DIR}/message.cc")
++target_include_directories(tflite_testing_message PUBLIC "${TENSORFLOW_SOURCE_DIR}")
++target_link_libraries(tflite_testing_message PUBLIC tflite_testing_tokenize tensorflow-lite)
++
++add_library(tflite_testing_split STATIC "${CMAKE_CURRENT_SOURCE_DIR}/split.cc")
++target_include_directories(tflite_testing_split PUBLIC "${TENSORFLOW_SOURCE_DIR}")
++target_link_libraries(tflite_testing_split PUBLIC tensorflow-lite)
++
++add_library(tflite_testing_join INTERFACE)
++target_include_directories(tflite_testing_join INTERFACE "${TENSORFLOW_SOURCE_DIR}")
++target_link_libraries(tflite_testing_join INTERFACE tensorflow-lite)
++
++add_library(tflite_testing_test_runner INTERFACE)
++target_include_directories(tflite_testing_test_runner INTERFACE "${TENSORFLOW_SOURCE_DIR}")
++target_link_libraries(tflite_testing_test_runner INTERFACE tensorflow-lite)
++
++# kernel_test/input_generator (no TF Core; no Flex)
++add_library(tflite_testing_input_generator STATIC
++  "${CMAKE_CURRENT_SOURCE_DIR}/kernel_test/input_generator.cc"
++)
++target_include_directories(tflite_testing_input_generator PUBLIC "${TENSORFLOW_SOURCE_DIR}")
++target_link_libraries(tflite_testing_input_generator PUBLIC
++  tflite_testing_join
++  tflite_testing_split
++  tensorflow-lite
++)
++
++add_library(tflite_testing_diff_analyzer STATIC
++  "${CMAKE_CURRENT_SOURCE_DIR}/kernel_test/diff_analyzer.cc"
++)
++target_include_directories(tflite_testing_diff_analyzer PUBLIC "${TENSORFLOW_SOURCE_DIR}")
++target_link_libraries(tflite_testing_diff_analyzer PUBLIC
++  tflite_testing_split
++  tensorflow-lite
++)
++
++# ---- cc_test equivalents (prefixed targets) ----
++
++function(_tflite_lite_testing_executable name)
++  add_executable(${name} ${ARGN})
++  target_include_directories(${name} PRIVATE "${TENSORFLOW_SOURCE_DIR}")
++  target_link_libraries(${name} PRIVATE
++    tensorflow-lite
++    GTest::gtest_main
++    GTest::gmock
++    absl::check
++    absl::log
++  )
++  set_target_properties(${name} PROPERTIES
++    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
++  )
++  add_test(
++    NAME ${name}
++    COMMAND ${name}
++    WORKING_DIRECTORY "${TENSORFLOW_SOURCE_DIR}"
++  )
++endfunction()
++
++_tflite_lite_testing_executable(tflite_lite_testing_matchers_test
++  "${CMAKE_CURRENT_SOURCE_DIR}/matchers_test.cc"
++)
++
++_tflite_lite_testing_executable(tflite_lite_testing_message_test
++  "${CMAKE_CURRENT_SOURCE_DIR}/message_test.cc"
++)
++target_link_libraries(tflite_lite_testing_message_test PRIVATE tflite_testing_message)
++
++_tflite_lite_testing_executable(tflite_lite_testing_split_test
++  "${CMAKE_CURRENT_SOURCE_DIR}/split_test.cc"
++)
++target_link_libraries(tflite_lite_testing_split_test PRIVATE tflite_testing_split)
++
++_tflite_lite_testing_executable(tflite_lite_testing_join_test
++  "${CMAKE_CURRENT_SOURCE_DIR}/join_test.cc"
++)
++target_link_libraries(tflite_lite_testing_join_test PRIVATE tflite_testing_join)
++
++_tflite_lite_testing_executable(tflite_lite_testing_tokenize_test
++  "${CMAKE_CURRENT_SOURCE_DIR}/tokenize_test.cc"
++)
++target_link_libraries(tflite_lite_testing_tokenize_test PRIVATE tflite_testing_tokenize)
++
++_tflite_lite_testing_executable(tflite_lite_testing_test_runner_test
++  "${CMAKE_CURRENT_SOURCE_DIR}/test_runner_test.cc"
++)
++target_link_libraries(tflite_lite_testing_test_runner_test PRIVATE tflite_testing_test_runner)
++
++_tflite_lite_testing_executable(tflite_lite_testing_input_generator_test
++  "${CMAKE_CURRENT_SOURCE_DIR}/kernel_test/input_generator_test.cc"
++)
++target_link_libraries(tflite_lite_testing_input_generator_test PRIVATE tflite_testing_input_generator)
++
++_tflite_lite_testing_executable(tflite_lite_testing_diff_analyzer_test
++  "${CMAKE_CURRENT_SOURCE_DIR}/kernel_test/diff_analyzer_test.cc"
++)
++target_link_libraries(tflite_lite_testing_diff_analyzer_test PRIVATE tflite_testing_diff_analyzer)
++
++# One-shot build of every lite/testing target defined in this CMake file.
++add_custom_target(lite_testing_cmake_all DEPENDS
++  tflite_lite_testing_matchers_test
++  tflite_lite_testing_message_test
++  tflite_lite_testing_split_test
++  tflite_lite_testing_join_test
++  tflite_lite_testing_tokenize_test
++  tflite_lite_testing_test_runner_test
++  tflite_lite_testing_input_generator_test
++  tflite_lite_testing_diff_analyzer_test
++)
+--- a/tensorflow/lite/testing/kernel_test/diff_analyzer_test.cc
++++ b/tensorflow/lite/testing/kernel_test/diff_analyzer_test.cc
+@@ -14,11 +14,11 @@
+ ==============================================================================*/
+ #include "tensorflow/lite/testing/kernel_test/diff_analyzer.h"
+ 
++#include <filesystem>
+ #include <fstream>
+ #include <string>
+ 
+ #include <gtest/gtest.h>
+-#include "tensorflow/core/lib/io/path.h"
+ 
+ namespace tflite {
+ namespace testing {
+@@ -32,7 +32,7 @@
+   ASSERT_EQ(diff_analyzer.ReadFiles(filename, filename), kTfLiteOk);
+ 
+   string output_file =
+-      tensorflow::io::JoinPath(::testing::TempDir(), "diff_report.csv");
++      (std::filesystem::path(::testing::TempDir()) / "diff_report.csv").string();
+   ASSERT_EQ(diff_analyzer.WriteReport(output_file), kTfLiteOk);
+ 
+   std::string content;
+--- a/tensorflow/lite/tools/cmake/modules/Findgoogletest.cmake
++++ b/tensorflow/lite/tools/cmake/modules/Findgoogletest.cmake
+@@ -16,7 +16,13 @@
+ if(TARGET googletest OR googletest_POPULATED)
+   return()
+ endif()
+ 
++# Kernels (or other subdirs) may have already populated GTest without a target
++# literally named "googletest".
++if(TARGET GTest::gtest_main)
++  return()
++endif()
++
+ include(OverridableFetchContent)
+ 
+ OverridableFetchContent_Declare(
+--- a/tensorflow/lite/tools/cmake/modules/flatbuffers.cmake
++++ b/tensorflow/lite/tools/cmake/modules/flatbuffers.cmake
+@@ -19,6 +19,8 @@
+ 
+ include(OverridableFetchContent)
+ 
++set(_FLATBUFFERS_OHOS_PATCH "${CMAKE_CURRENT_LIST_DIR}/../patches/flatbuffers_checksymbol_ohos.patch")
++
+ OverridableFetchContent_Declare(
+   flatbuffers
+   GIT_REPOSITORY https://github.com/google/flatbuffers
+@@ -33,6 +35,25 @@
+ OverridableFetchContent_GetProperties(flatbuffers)
+ if(NOT flatbuffers_POPULATED)
+   OverridableFetchContent_Populate(flatbuffers)
++endif()
++
++# FetchContent only runs PATCH_COMMAND on a fresh clone; OHOS rebuilds often reuse
++# the tree. Apply after populate so include(CheckSymbolExists) is always present
++# when FLATBUFFERS_LOCALE_INDEPENDENT is preset (HPKBUILD -DFLATBUFFERS_LOCALE_INDEPENDENT=ON).
++if(EXISTS "${_FLATBUFFERS_OHOS_PATCH}" AND EXISTS "${flatbuffers_SOURCE_DIR}/CMakeLists.txt")
++  file(READ "${flatbuffers_SOURCE_DIR}/CMakeLists.txt" _flatbuffers_cm_probe LIMIT 12000)
++  if(NOT _flatbuffers_cm_probe MATCHES "include\\(CheckSymbolExists\\)")
++    execute_process(
++      COMMAND patch -p1 -i "${_FLATBUFFERS_OHOS_PATCH}"
++      WORKING_DIRECTORY "${flatbuffers_SOURCE_DIR}"
++      RESULT_VARIABLE _flatbuffers_patch_rc
++    )
++    if(NOT _flatbuffers_patch_rc EQUAL 0)
++      message(FATAL_ERROR
++        "Failed to patch FlatBuffers for OHOS (include CheckSymbolExists). "
++        "patch exit ${_flatbuffers_patch_rc}, file=${_FLATBUFFERS_OHOS_PATCH}")
++    endif()
++  endif()
+ endif()
+ 
+ option(FLATBUFFERS_BUILD_TESTS OFF)
+@@ -61,7 +82,7 @@
+ 
+ # In case of a standalone (native) build of flatc for unit test cross-compilation
+ # purposes the FLATC_INSTALL_PREFIX is already in cache and is just used in this module.
+-# In case of standard flatbuffers build (as a dependency) the variable needs to be set. 
++# In case of standard flatbuffers build (as a dependency) the variable needs to be set.
+ if(NOT DEFINED FLATC_INSTALL_PREFIX)
+   set(FLATC_INSTALL_PREFIX <INSTALL_DIR> CACHE PATH "Flatc installation directory")
+ endif()
+--- a/tensorflow/lite/tools/cmake/modules/cpuinfo.cmake
++++ b/tensorflow/lite/tools/cmake/modules/cpuinfo.cmake
+@@ -19,6 +19,13 @@
+ 
+ include(OverridableFetchContent)
+ 
++set(_CPUINFO_PATCH_ARGS)
++if(OHOS_ARCH OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++  list(APPEND _CPUINFO_PATCH_ARGS
++    PATCH_COMMAND patch -p1 < "${CMAKE_CURRENT_LIST_DIR}/../patches/cpuinfo_ohos_pkg.patch"
++  )
++endif()
++
+ OverridableFetchContent_Declare(
+   cpuinfo
+   GIT_REPOSITORY https://github.com/pytorch/cpuinfo
+@@ -26,6 +33,7 @@
+   GIT_TAG de0ce7c7251372892e53ce9bc891750d2c9a4fd8
+   GIT_PROGRESS TRUE
+   SOURCE_DIR "${CMAKE_BINARY_DIR}/cpuinfo"
++  ${_CPUINFO_PATCH_ARGS}
+ )
+ OverridableFetchContent_GetProperties(cpuinfo)
+ if(NOT cpuinfo_POPULATED)
+--- a/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
++++ b/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
+@@ -19,6 +19,13 @@
+ 
+ include(OverridableFetchContent)
+ 
++set(_XNNPACK_PATCH_ARGS)
++if(OHOS_ARCH OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
++  list(APPEND _XNNPACK_PATCH_ARGS
++    PATCH_COMMAND patch -p1 < "${CMAKE_CURRENT_LIST_DIR}/../patches/xnnpack_ohos_pkg.patch"
++  )
++endif()
++
+ OverridableFetchContent_Declare(
+   xnnpack
+   GIT_REPOSITORY https://github.com/google/XNNPACK
+@@ -27,6 +34,7 @@
+   GIT_PROGRESS TRUE
+   PREFIX "${CMAKE_BINARY_DIR}"
+   SOURCE_DIR "${CMAKE_BINARY_DIR}/xnnpack"
++  ${_XNNPACK_PATCH_ARGS}
+ )
+ OverridableFetchContent_GetProperties(xnnpack)
+ if(NOT xnnpack_POPULATED)
