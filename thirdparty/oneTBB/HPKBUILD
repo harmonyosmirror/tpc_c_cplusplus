@@ -50,6 +50,7 @@ build() {
     cd $builddir
     # 关闭编译严格检查
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_PLATFORM=ON -DTBB_STRICT=OFF -DTBB_TEST=ON \
+      -DCMAKE_CXX_FLAGS="-fno-emulated-tls" \
       -B$ARCH-build -S./ > $buildlog 2>&1
     $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
     ret=$?
