@@ -8,7 +8,7 @@ index 7ba5e107..a980fac7 100644
      char *retval = NULL;
 -    char *envr = getenv("HOME");
 + #ifdef __OHOS__   /*If the device type is OHOS,  set the environment variable path directly*/
-+    char *envr = "/data/storage/el2/base/files";
++    char *envr = "/data/storage/el2/base/haps/entry/files/physfs";
 +#else
 +     char *envr = getenv("HOME");
 +#endif
