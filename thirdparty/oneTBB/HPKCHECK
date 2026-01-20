@@ -25,6 +25,8 @@ openharmonycheck() {
         source ${target_file}
     fi
     ctest >> ${logfile} 2>&1
+    export LD_PRELOAD=${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/lib/libtbbmalloc_proxy.so:$LD_PRELOAD
+    ctest --rerun-failed  >> ${logfile} 2>&1
     res=$?
     if [ $res -ne 0 ]
     then
