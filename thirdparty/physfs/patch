@@ -18,7 +18,7 @@ source HPKBUILD > /dev/null 2>&1
 logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
 openharmonycheck() {
     res=0
-    mkdir -p "/data/storage/el2/base/files"
+    mkdir -p "/data/storage/el2/base/haps/entry/files/physfs"
     cd ${builddir}/${ARCH}-build/
     echo "${builddir}/${ARCH}-build/"
     ./test_physfs q > ${logfile} 2>&1
