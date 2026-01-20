@@ -73,7 +73,7 @@ build() {
     cd $pkgname-$ARCH-build
     chmod +x ./autogen.sh
     ./autogen.sh > $buildlog 2>&1
-    PKG_CONFIG_LIBDIR="${pkgconfigpath}" ./configure "$@" --with-klatt --with-extdict-cmn --host=$host >> $buildlog 2>&1
+    PKG_CONFIG_LIBDIR="${pkgconfigpath}" ./configure "$@" --with-klatt --with-extdict-cmn --host=$host SED=/bin/sed >> $buildlog 2>&1
     $MAKE VERBOSE=1 >> $buildlog 2>&1
     mv ./src/.libs/espeak-ng ./src/.libs/espeak-ng.${ARCH}
     cp -f ../../$pkgname/$builddir-host-build/src/.libs/espeak-ng ./src/.libs/espeak-ng
@@ -107,6 +107,11 @@ check() {
     sed -i '/^tests\/ssml-fuzzer\.check:/,/^$/ {/^$/! s/^/# /}' Makefile
     make check >> $buildlog-$ARCH 2>&1
     mv ./src/.libs/espeak-ng.${ARCH} ./src/.libs/espeak-ng
+    if [ -f ./src/espeak-ng ]; then
+        sed -i 's|/usr/bin/sed|/bin/sed|g' ./src/espeak-ng
+    fi
+    sed -i 's|/usr/bin/sed|/bin/sed|g' ./tests/encoding.test
+    sed -i 's|/usr/bin/sed|/bin/sed|g' ./tests/ssml-fuzzer.test
     cd $OLDPWD
     return $ret
     echo "The test must be on an OpenHarmony device!"
