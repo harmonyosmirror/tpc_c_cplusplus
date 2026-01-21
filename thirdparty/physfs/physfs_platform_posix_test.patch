@@ -1,16 +1,52 @@
 diff --git a/src/physfs_platform_posix.c b/src/physfs_platform_posix.c
-index 7ba5e107..a980fac7 100644
+index 7ba5e107..a8b63561 100644
 --- a/src/physfs_platform_posix.c
 +++ b/src/physfs_platform_posix.c
-@@ -86,7 +86,11 @@ static char *getUserDirByUID(void)
+@@ -21,6 +21,12 @@
+ #include <fcntl.h>
+ #include <pthread.h>
+ 
++#ifdef __OHOS__
++#include <libgen.h>
++#include <stdlib.h>
++#include <string.h>
++#endif
++
+ #include "physfs_internal.h"
+ 
+ 
+@@ -82,11 +88,35 @@ static char *getUserDirByUID(void)
+     return retval;
+ } /* getUserDirByUID */
+ 
++#ifdef __OHOS__
++void createDirectoryIfMissing(char* path) {
++    char* pathCopy = strdup(path); // 复制路径
++    char* parentDir = dirname(pathCopy); // 获取父目录路径
++
++    // 检查父目录是否存在
++    if (access(parentDir, F_OK) != 0) {
++        createDirectoryIfMissing(parentDir); // 递归创建父目录
++    }
++
++    // 创建当前目录（权限 0755 = 所有者可读写执行，组和其他可读执行）
++    if (mkdir(path, 0755) != 0) {
++        return;
++    }
++}
++#endif
+ 
  char *__PHYSFS_platformCalcUserDir(void)
  {
      char *retval = NULL;
--    char *envr = getenv("HOME");
-+ #ifdef __OHOS__   /*If the device type is OHOS,  set the environment variable path directly*/
++#ifdef __OHOS__   /*If the device type is OHOS,  set the environment variable path directly*/
 +    char *envr = "/data/storage/el2/base/haps/entry/files/physfs";
++	if (access(envr, F_OK) != 0) {
++		char* pathCopy = strdup(envr);
++		createDirectoryIfMissing(pathCopy);
++	}
 +#else
-+     char *envr = getenv("HOME");
+     char *envr = getenv("HOME");
 +#endif
  
      /* if the environment variable was set, make sure it's really a dir. */
