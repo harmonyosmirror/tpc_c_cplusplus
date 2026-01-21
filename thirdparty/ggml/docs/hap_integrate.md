@@ -25,10 +25,10 @@
   ./build.sh ggml
   ```
 - 三方库头文件及生成的库
-  在lycium目录下会生成usr目录，该目录下存在已编译完成的32位和64位三方库
+  在lycium目录下会生成usr目录，该目录下存在已编译完成的32位和64，x86_64位三方库
   
   ```
-  ggml/arm64-v8a   ggml/armeabi-v7a
+  ggml/arm64-v8a   ggml/armeabi-v7a    ggml/x86_64
   ```
   
 - [测试三方库](#测试三方库)
@@ -43,9 +43,9 @@
 - 在最外层（cpp目录下）CMakeLists.txt中添加如下语句
   ```
   
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ggml/${OHOS_ARCH}/lib/libggml.a)
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ggml/${OHOS_ARCH}/lib/libggml-base.a)
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ggml/${OHOS_ARCH}/lib/libggml-cpu.a)
+  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ggml/${OHOS_ARCH}/lib/libggml.so)
+  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ggml/${OHOS_ARCH}/lib/libggml-base.so)
+  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ggml/${OHOS_ARCH}/lib/libggml-cpu.so)
   target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ggml/${OHOS_ARCH}/include)
   
   ```
