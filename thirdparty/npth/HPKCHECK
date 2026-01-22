@@ -46,6 +46,8 @@ openharmonycheck() {
         cd $OLDPWD
         return $res
     fi
+
+    echo "All tests passed successfully" >> ${logfile}
 	
     cd $OLDPWD
     return $res
