@@ -177,7 +177,14 @@ findarglibsdir() {
             tmplibs[${#tmplibs[@]}]=$tmplib
         fi
     done
+    if [ ${#tmplibs[@]} -eq 0 ]
+    then
+        echo "find libs failed!"
+        return 1
+    fi
+
     makelibsdir ${tmplibs[@]}
+    return 0
 }
 
 # 找到 $1 目录下的所有目录
@@ -384,6 +391,10 @@ main() {
         # 搜集所有可编译的库
         findhpkdir $hpksdir
     fi
+    if [ $? -ne 0 ]
+    then
+        return 1
+    fi
     # 准备脚本软链接
     prepareshell ${hpkPaths[@]}
     # 编译
@@ -391,9 +402,15 @@ main() {
     # 清理
     cleanhpkdir
     unset LYCIUM_BUILD_OS LYCIUM_ROOT CLANG_VERSION
+    return 0
 }
 
 main $*
+
+if [ $? -ne 0 ]
+then
+    exit -1
+fi
 
 # 编译任务不成功, 返回-1
 if [ ${#buildfalselist[*]} -ne 0 -o ${#nextroundlist[*]} -ne 0 ]
