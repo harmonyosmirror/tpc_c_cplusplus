@@ -1,23 +1,23 @@
 diff --git a/src/physfs_platform_posix.c b/src/physfs_platform_posix.c
-index 7ba5e107..a8b63561 100644
+index 7ba5e1070..20f46de68 100644
 --- a/src/physfs_platform_posix.c
 +++ b/src/physfs_platform_posix.c
-@@ -21,6 +21,12 @@
+@@ -20,7 +20,11 @@
+ #include <errno.h>
  #include <fcntl.h>
  #include <pthread.h>
- 
+-
 +#ifdef __OHOS__
 +#include <libgen.h>
 +#include <stdlib.h>
 +#include <string.h>
 +#endif
-+
  #include "physfs_internal.h"
  
  
-@@ -82,11 +88,35 @@ static char *getUserDirByUID(void)
-     return retval;
+@@ -83,10 +87,35 @@ static char *getUserDirByUID(void)
  } /* getUserDirByUID */
+ 
  
 +#ifdef __OHOS__
 +void createDirectoryIfMissing(char* path) {
@@ -35,16 +35,16 @@ index 7ba5e107..a8b63561 100644
 +    }
 +}
 +#endif
- 
++
  char *__PHYSFS_platformCalcUserDir(void)
  {
      char *retval = NULL;
 +#ifdef __OHOS__   /*If the device type is OHOS,  set the environment variable path directly*/
 +    char *envr = "/data/storage/el2/base/haps/entry/files/physfs";
-+	if (access(envr, F_OK) != 0) {
-+		char* pathCopy = strdup(envr);
-+		createDirectoryIfMissing(pathCopy);
-+	}
++        if (access(envr, F_OK) != 0) {
++                char* pathCopy = strdup(envr);
++                createDirectoryIfMissing(pathCopy);
++        }
 +#else
      char *envr = getenv("HOME");
 +#endif
