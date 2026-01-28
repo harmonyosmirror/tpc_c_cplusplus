@@ -1,0 +1,498 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: xiafeng <xiafeng@huawei.com>
+# Maintainer: xiafeng <xiafeng@huawei.com>
+
+pkgname=libsentences
+pkgver=master
+pkgrel=0
+pkgdesc="libsentences is a C++ library that splits text into sentences"
+url="https://github.com/fsaric/libsentences"
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+license=()
+depends=()
+makedepends=()
+source="https://github.com/fsaric/${pkgname}/archive/refs/heads/${pkgver}.zip"
+
+downloadpackage=true
+autounpack=true
+buildtools=cmake
+
+builddir=$pkgname-master
+packagename=$builddir.zip
+
+log_to_file() {
+    local message="$1"
+    local show_terminal="${2:-false}"
+    
+    # 输出到构建日志文件
+    echo "$message" >> "$buildlog" 2>&1
+
+    if [ "$show_terminal" = "true" ]; then
+        echo "$message"
+    fi
+}
+
+# 编译libunistring库的函数
+compile_libunistring() {
+  local arch=$1
+  local unistring_version="1.4"
+  local unistring_src="libunistring-${unistring_version}.tar.gz"
+  local unistring_dir="libunistring-${unistring_version}"
+  
+  # 设置目标架构
+  case $arch in
+    "armeabi-v7a")
+      local target="arm-linux-ohos"
+      ;;
+    "arm64-v8a")
+      local target="aarch64-linux-ohos"
+      ;;
+    "x86_64")
+      local target="x86_64-linux-ohos"
+      ;;
+    *)
+      log_to_file "错误: 不支持的架构: $arch"
+      return 1
+      ;;
+  esac
+  
+  local toolchain="${OHOS_SDK}/native/llvm/bin"
+  local sysroot="${OHOS_SDK}/native/sysroot"
+  local arch_prefix="${sysroot}/usr/local/${arch}"
+  
+  log_to_file "========================================"
+  log_to_file "为架构 $arch 编译 libunistring"
+  log_to_file "目标平台: $target"
+  log_to_file "安装目录: $arch_prefix"
+  log_to_file "========================================"
+  
+  # 保存当前目录
+  local current_dir=$(pwd)
+  
+  # 1. 下载源码（如果不存在）
+  cd /tmp
+  if [ ! -f "${unistring_src}" ]; then
+    log_to_file "下载 libunistring-${unistring_version}..."
+    wget -q "https://ftp.gnu.org/gnu/libunistring/libunistring-${unistring_version}.tar.gz" \
+      || wget -q "http://ftp.gnu.org/gnu/libunistring/libunistring-${unistring_version}.tar.gz"
+    
+    if [ ! -f "${unistring_src}" ]; then
+      log_to_file "错误: 下载libunistring失败"
+      cd "$current_dir"
+      return 1
+    fi
+  fi
+  
+  # 2. 解压
+  log_to_file "解压源码..."
+  tar -xzf "${unistring_src}" 2>/dev/null || {
+    log_to_file "错误: 解压失败，重新下载..."
+    rm -f "${unistring_src}"
+    wget -q "https://ftp.gnu.org/gnu/libunistring/libunistring-${unistring_version}.tar.gz"
+    tar -xzf "${unistring_src}"
+  }
+  
+  cd "${unistring_dir}"
+  
+  # 3. 清理之前的构建
+  log_to_file "清理构建..."
+  make distclean 2>/dev/null || true
+  rm -rf build-${arch}
+  mkdir -p build-${arch}
+  cd build-${arch}
+  
+  # 4. 配置
+  log_to_file "配置..."
+  ../configure \
+    --host=${target} \
+    --prefix=${arch_prefix} \
+    --enable-static \
+    --disable-shared \
+    CC="${toolchain}/clang --target=${target} --sysroot=${sysroot}" \
+    CXX="${toolchain}/clang++ --target=${target} --sysroot=${sysroot}" \
+    CFLAGS="-fPIC -O2" \
+    CXXFLAGS="-fPIC -O2" \
+    > configure.log 2>&1
+  
+  if [ $? -ne 0 ]; then
+    log_to_file "配置失败，查看日志:"
+    cat configure.log >> "$buildlog" 2>&1
+    cd "$current_dir"
+    return 1
+  fi
+  
+  # 5. 编译
+  log_to_file "编译..."
+  make -j$(nproc) > make.log 2>&1
+  
+  if [ $? -ne 0 ]; then
+    log_to_file "编译失败，查看日志:"
+    tail -50 make.log >> "$buildlog" 2>&1
+    cd "$current_dir"
+    return 1
+  fi
+  
+  # 6. 安装
+  log_to_file "安装到 ${arch_prefix}..."
+  make install > install.log 2>&1
+  
+  if [ $? -ne 0 ]; then
+    log_to_file "安装失败，查看日志:"
+    tail -50 install.log >> "$buildlog" 2>&1
+    cd "$current_dir"
+    return 1
+  fi
+  
+  # 7. 验证
+  log_to_file "验证安装..."
+  if [ -f "${arch_prefix}/lib/libunistring.a" ]; then
+    log_to_file "✓ 成功安装: ${arch_prefix}/lib/libunistring.a"
+    # 显示库文件信息
+    file "${arch_prefix}/lib/libunistring.a" >> "$buildlog" 2>&1
+    # 返回原始目录
+    cd "$current_dir"
+    return 0
+  else
+    log_to_file "✗ 安装失败: 找不到libunistring.a"
+    cd "$current_dir"
+    return 1
+  fi
+}
+
+# 检查并编译libunistring
+check_and_compile_unistring() {
+  local arch=$1
+  local unistring_lib="${OHOS_SDK}/native/sysroot/usr/local/${arch}/lib/libunistring.a"
+  
+  # 保存当前目录
+  local current_dir=$(pwd)
+  
+  # 检查库是否存在且架构正确
+  if [ -f "${unistring_lib}" ]; then
+    log_to_file "检查libunistring库架构..."
+    local lib_info=$(file "${unistring_lib}")
+    
+    if [ "$arch" = "arm64-v8a" ] && echo "$lib_info" | grep -qi "aarch64"; then
+      log_to_file "✓ 架构匹配: aarch64"
+      return 0
+    elif [ "$arch" = "armeabi-v7a" ] && echo "$lib_info" | grep -qi "ARM"; then
+      log_to_file "✓ 架构匹配: ARM"
+      return 0
+    elif [ "$arch" = "x86_64" ] && echo "$lib_info" | grep -qi "x86-64\|x86_64"; then
+      log_to_file "✓ 架构匹配: x86_64"
+      return 0
+    else
+      log_to_file "警告: libunistring架构不匹配，重新编译..."
+      rm -f "${unistring_lib}"
+    fi
+  fi
+  
+  # 库不存在或架构不匹配，重新编译
+  log_to_file "编译libunistring for ${arch}..."
+  compile_libunistring "${arch}"
+  local result=$?
+  
+  # 确保返回原始目录
+  cd "$current_dir"
+  return $result
+}
+
+prepare() {
+  # 首先检查builddir是否存在（源码是否已解压）
+  if [ ! -d "$builddir" ]; then
+    log_to_file "错误: builddir不存在: $builddir"
+    log_to_file "请确保源码已正确解压"
+    return 1
+  fi
+  
+  # 创建构建目录
+  mkdir -p $builddir/$ARCH-build
+  
+  # 1. 首先检查并编译libunistring
+  log_to_file "步骤1: 检查libunistring库..."
+  if ! check_and_compile_unistring "$ARCH"; then
+    log_to_file "错误: libunistring准备失败"
+    return 1
+  fi
+  
+  # 设置libunistring路径
+  export UNISTRING_PREFIX="${OHOS_SDK}/native/sysroot/usr/local/${ARCH}"
+  export UNISTRING_LIB="${UNISTRING_PREFIX}/lib/libunistring.a"
+  export UNISTRING_INCLUDE="${UNISTRING_PREFIX}/include"
+  
+  # 2. 添加operator-=运算符重载
+  log_to_file "步骤2: 添加operator-=运算符重载..."
+  
+  # 进入builddir目录
+  cd $builddir || {
+    log_to_file "错误: 无法进入目录 $builddir"
+    return 1
+  }
+  
+  # 直接使用sed命令添加operator-=运算符重载
+  log_to_file "在libsentences/standard_tokenizer.rr.cpp中添加operator-="
+  
+  # 首先检查是否已有operator-=
+  if grep -q "operator-=" libsentences/standard_tokenizer.rr.cpp; then
+    log_to_file "✓ operator-=定义已存在，跳过添加"
+  else
+    log_to_file "添加operator-=定义..."
+    sed -i '/utf8_remapper &operator--() {/,/^[[:space:]]*}/ {
+      /^[[:space:]]*}/a\
+    utf8_remapper &operator-=(int x) {\
+        if (x != 1) {\
+            throw;\
+        }\
+        --i;\
+        return *this;\
+    }
+    }' libsentences/standard_tokenizer.rr.cpp
+    
+    # 验证是否添加成功
+    if grep -q "operator-=" libsentences/standard_tokenizer.rr.cpp; then
+      log_to_file "✓ 成功添加operator-=运算符重载"
+    else
+      log_to_file "✗ 添加operator-=失败，尝试备用方案..."
+      
+      # 备用方案：使用更简单的sed命令
+      sed -i 's/utf8_remapper &operator--() {[^}]*}/&\n\n    utf8_remapper &operator-=(int x) {\n        if (x != 1) {\n            throw;\n        }\n        --i;\n        return *this;\n    }/' libsentences/standard_tokenizer.rr.cpp
+      
+      if grep -q "operator-=" libsentences/standard_tokenizer.rr.cpp; then
+        log_to_file "✓ 备用方案成功添加operator-="
+      else
+        log_to_file "✗ 无法添加operator-=，编译可能失败"
+      fi
+    fi
+  fi
+  
+  # 3. 自动检测Boost版本
+  if [ -n "${BOOST_ROOT}" ] && [ -d "${BOOST_ROOT}" ]; then
+    # 使用用户环境变量指定的Boost路径
+    log_to_file "使用用户指定的BOOST_ROOT: ${BOOST_ROOT}"
+  elif [ -d "${OHOS_SDK}/Boost" ]; then
+    # 自动查找SDK中可用的Boost版本
+    local boost_versions=($(ls -d ${OHOS_SDK}/Boost/boost_* 2>/dev/null | sort -V))
+    if [ ${#boost_versions[@]} -gt 0 ]; then
+      # 选择最新的版本
+      export BOOST_ROOT="${boost_versions[-1]}"
+      log_to_file "自动选择Boost版本: $(basename ${BOOST_ROOT})"
+    else
+      log_to_file "警告: 在${OHOS_SDK}/Boost下未找到Boost库"
+      return 1
+    fi
+  else
+    log_to_file "错误: 未找到Boost库，请确保已安装OHOS SDK或设置BOOST_ROOT环境变量"
+    return 1
+  fi
+  
+  # 验证Boost目录
+  if [ ! -d "${BOOST_ROOT}" ]; then
+    log_to_file "错误: Boost目录不存在: ${BOOST_ROOT}"
+    return 1
+  fi
+  export Boost_INCLUDE_DIR="${BOOST_ROOT}"
+  # 返回上级目录
+  cd ..
+  
+  return 0
+}
+
+build() {
+  # 检查builddir是否存在
+  if [ ! -d "$builddir" ]; then
+    log_to_file "错误: builddir不存在: $builddir"
+    return 1
+  fi
+  
+  cd $builddir || {
+    log_to_file "错误: 无法进入目录 $builddir"
+    return 1
+  }
+  
+  # 设置CMake参数
+  local cmake_args=(
+    "-DBOOST_ROOT=${BOOST_ROOT}"
+    "-DBoost_INCLUDE_DIR=${Boost_INCLUDE_DIR}"
+    "-DBoost_NO_SYSTEM_PATHS=ON"
+    "-DBoost_USE_STATIC_LIBS=OFF"
+  )
+  
+  # 如果UNISTRING_LIB存在，添加到CMake参数
+  if [ -n "${UNISTRING_LIB}" ] && [ -f "${UNISTRING_LIB}" ]; then
+    cmake_args+=(
+      "-DUNISTRING_INCLUDE_DIR=${UNISTRING_INCLUDE}"
+      "-DUNISTRING_LIBRARY=${UNISTRING_LIB}"
+    )
+    log_to_file "使用libunistring: ${UNISTRING_LIB}"
+  else
+    log_to_file "警告: UNISTRING_LIB未设置或不存在，可能影响编译"
+  fi
+  
+  log_to_file "CMake参数: ${cmake_args[@]}"
+  
+  # 运行CMake配置
+  log_to_file "运行CMake配置..."
+  ${OHOS_SDK}/native/build-tools/cmake/bin/cmake \
+    "${cmake_args[@]}" \
+    "$@" \
+    -B$ARCH-build -S./ > $buildlog 2>&1
+    
+  local cmake_result=$?
+  
+  if [ $cmake_result -ne 0 ]; then
+    log_to_file "CMake配置失败，日志:"
+    tail -100 $buildlog >> "$buildlog" 2>&1
+    log_to_file "尝试备用CMake配置..."
+    
+    # 备用配置：简化参数
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake \
+      "-DBOOST_ROOT=${BOOST_ROOT}" \
+      "-DBoost_INCLUDE_DIR=${Boost_INCLUDE_DIR}" \
+      "-DBoost_NO_SYSTEM_PATHS=ON" \
+      -B$ARCH-build -S./ > $buildlog 2>&1
+      
+    cmake_result=$?
+    
+    if [ $cmake_result -ne 0 ]; then
+      log_to_file "CMake配置完全失败"
+      cd $OLDPWD
+      return 1
+    fi
+  fi
+  
+  # 编译
+  log_to_file "开始编译..."
+  $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
+  ret=$?
+  
+  if [ $ret -ne 0 ]; then
+    log_to_file "编译失败，错误日志:"
+    tail -100 $buildlog >> "$buildlog" 2>&1
+    
+    # 检查是否因为libunistring链接问题
+    if grep -q "incompatible with aarch64linux\|libunistring" $buildlog; then
+      log_to_file "检测到libunistring链接问题，尝试修复..."
+      
+      # 修改链接命令，移除libunistring
+      for target in sbd_util sentence_splitter eval_sbd; do
+        if [ -f "$ARCH-build/CMakeFiles/${target}.dir/link.txt" ]; then
+          log_to_file "修复${target}的链接参数..."
+          sed -i 's|/home/mfwangs/ohos-sdk/linux/native/sysroot/usr/local/lib/libunistring.a||g' \
+            "$ARCH-build/CMakeFiles/${target}.dir/link.txt"
+          sed -i 's|-lunistring||g' \
+            "$ARCH-build/CMakeFiles/${target}.dir/link.txt"
+        fi
+      done
+      
+      # 重新编译
+      log_to_file "重新编译..."
+      $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
+      ret=$?
+    fi
+  fi
+  
+  if [ $ret -eq 0 ]; then
+    log_to_file "✓ 编译成功完成"
+    log_to_file "编译产物:"
+    ls -lh $ARCH-build/libsentences.a $ARCH-build/sbd_util $ARCH-build/sentence_splitter $ARCH-build/eval_sbd 2>/dev/null | tee -a "$buildlog" 2>&1 || true
+  else
+    log_to_file "✗ 编译失败"
+  fi
+  
+  cd $OLDPWD
+  return $ret
+}
+
+package() {
+  # 检查builddir是否存在
+  if [ ! -d "$builddir" ]; then
+    log_to_file "错误: builddir不存在: $builddir"
+    return 1
+  fi
+  
+  # 由于CMake没有定义install目标，手动复制文件
+  local install_dir="$LYCIUM_ROOT/usr/$pkgname/$ARCH"
+  mkdir -p $install_dir/lib
+  mkdir -p $install_dir/bin
+  mkdir -p $install_dir/include
+  
+  log_to_file "安装目录: $install_dir"
+  
+  # 复制库文件
+  if [ -f "$builddir/$ARCH-build/libsentences.a" ]; then
+    cp "$builddir/$ARCH-build/libsentences.a" "$install_dir/lib/"
+    log_to_file "✓ 已安装库文件: $install_dir/lib/libsentences.a"
+  else
+    log_to_file "警告: 找不到libsentences.a"
+  fi
+  
+  # 复制可执行文件
+  for binary in sbd_util sentence_splitter eval_sbd; do
+    if [ -f "$builddir/$ARCH-build/$binary" ]; then
+      cp "$builddir/$ARCH-build/$binary" "$install_dir/bin/"
+      log_to_file "✓ 已安装可执行文件: $install_dir/bin/$binary"
+    fi
+  done
+  
+  # 复制头文件
+  if [ -d "$builddir/libsentences" ]; then
+    find "$builddir/libsentences" -name "*.h" -exec cp --parents {} "$install_dir/include/" \; 2>/dev/null
+    log_to_file "✓ 已安装头文件到: $install_dir/include/"
+  fi
+  
+  return 0
+}
+
+check() {
+  # 复制对应的C++运行时库
+  case $ARCH in
+    "armeabi-v7a")
+      cp ${OHOS_SDK}/native/llvm/lib/arm-linux-ohos/libc++_shared.so $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/ 2>/dev/null || true
+      log_to_file "已复制arm-linux-ohos libc++_shared.so"
+      ;;
+    "arm64-v8a")
+      cp ${OHOS_SDK}/native/llvm/lib/aarch64-linux-ohos/libc++_shared.so $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/ 2>/dev/null || true
+      log_to_file "已复制aarch64-linux-ohos libc++_shared.so"
+      ;;
+    "x86_64")
+      cp ${OHOS_SDK}/native/llvm/lib/x86_64-linux-ohos/libc++_shared.so $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/ 2>/dev/null || true
+      log_to_file "已复制x86_64-linux-ohos libc++_shared.so"
+      ;;
+    *)
+      log_to_file "${ARCH} not support"
+      return 1
+      ;;
+  esac
+  
+  # 验证安装
+  if [ -f "$LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/libsentences.a" ]; then
+    log_to_file "✓ 验证通过: libsentences库已安装"
+    log_to_file "库文件位置: $LYCIUM_ROOT/usr/$pkgname/$ARCH/lib/libsentences.a"
+    log_to_file "头文件位置: $LYCIUM_ROOT/usr/$pkgname/$ARCH/include/"
+    log_to_file "测试需要在OpenHarmony设备上进行！"
+    return 0
+  else
+    log_to_file "✗ 验证失败: 未找到libsentences.a"
+    return 1
+  fi
+}
+
+cleanbuild() {
+  rm -rf ${PWD}/$builddir
+  
+  if [ -d "/tmp/libunistring-1.4" ]; then
+    rm -rf /tmp/libunistring-1.4*
+  fi
+}
