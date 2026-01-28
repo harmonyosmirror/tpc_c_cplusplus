@@ -30,12 +30,13 @@ buildtools="configure"
 builddir=$pkgname-${pkgver}
 packagename=$builddir.tar.gz
 cloneflag=true
-url="https://github.com/aurelihein/exosip.git"
+url="https://https.git.savannah.gnu.org/git/exosip.git"
+
 source envset.sh
 host=
 prepare() {
     if [ $cloneflag == true ];then
-        git clone $url $builddir
+        git clone --depth 1 --branch $pkgver $url $builddir
     fi
     cp -arf $builddir $builddir-$ARCH-build
     if [ $ARCH == "armeabi-v7a" ]; then
