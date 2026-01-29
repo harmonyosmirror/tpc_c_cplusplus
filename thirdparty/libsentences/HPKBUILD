@@ -209,6 +209,91 @@ check_and_compile_unistring() {
   return $result
 }
 
+# 下载和解压Boost库
+download_and_extract_boost() {
+  local boost_version="1.90.0"
+  local boost_file="boost_1_90_0.tar.gz"
+  local boost_dir="boost_1_90_0"
+  local boost_download_url="https://archives.boost.io/release/${boost_version}/source/${boost_file}"
+  local sdk_boost_dir="${OHOS_SDK}/Boost"
+  
+  log_to_file "检查Boost库..."
+  local current_dir=$(pwd)
+  
+  # 检查是否已经存在解压后的Boost目录
+  if [ -d "${sdk_boost_dir}/${boost_dir}" ]; then
+    log_to_file "✓ Boost库已存在于: ${sdk_boost_dir}/${boost_dir}"
+    export BOOST_ROOT="${sdk_boost_dir}/${boost_dir}"
+    export Boost_INCLUDE_DIR="${BOOST_ROOT}"
+    return 0
+  fi
+  
+  # 创建Boost目录
+  mkdir -p "${sdk_boost_dir}"
+  cd "${sdk_boost_dir}" || {
+    log_to_file "错误: 无法进入目录 ${sdk_boost_dir}"
+    return 1
+  }
+  
+  # 下载Boost压缩包
+  log_to_file "从 ${boost_download_url} 下载Boost库..."
+  if ! wget -q --timeout=60 --tries=3 "${boost_download_url}"; then
+    log_to_file "错误: 下载Boost失败，请检查网络连接"
+    log_to_file "备用方案: 请手动下载 ${boost_file} 并放置到 ${sdk_boost_dir}/ 目录"
+    return 1
+  fi
+  
+  # 检查文件是否下载成功
+  if [ ! -f "${boost_file}" ]; then
+    log_to_file "错误: 下载文件不存在"
+    return 1
+  fi
+  
+  # 检查文件大小
+  local file_size=$(stat -c%s "${boost_file}" 2>/dev/null || stat -f%z "${boost_file}" 2>/dev/null)
+  if [ "$file_size" -lt 10000000 ]; then  # 小于10MB说明下载有问题
+    log_to_file "警告: 下载的文件大小异常 (${file_size} 字节)，可能下载失败"
+    rm -f "${boost_file}"
+    return 1
+  fi
+  
+  log_to_file "下载完成，文件大小: ${file_size} 字节"
+  
+  # 解压Boost压缩包
+  log_to_file "解压 ${boost_file}..."
+  if ! tar -xzf "${boost_file}"; then
+    log_to_file "错误: 解压失败，文件可能已损坏"
+    rm -f "${boost_file}"
+    return 1
+  fi
+  
+  # 验证解压结果
+  if [ ! -d "${boost_dir}" ]; then
+    log_to_file "错误: 解压后未找到 ${boost_dir} 目录"
+    return 1
+  fi
+  
+  # 删除压缩包
+  log_to_file "删除压缩包 ${boost_file}..."
+  rm -f "${boost_file}"
+  
+  # 设置环境变量
+  export BOOST_ROOT="${sdk_boost_dir}/${boost_dir}"
+  export Boost_INCLUDE_DIR="${BOOST_ROOT}"
+  
+  log_to_file "✓ Boost库已成功下载并解压到: ${BOOST_ROOT}"
+  
+  # 验证Boost头文件
+  if [ -f "${BOOST_ROOT}/boost/version.hpp" ]; then
+    local version_line=$(grep -m1 "BOOST_LIB_VERSION" "${BOOST_ROOT}/boost/version.hpp" 2>/dev/null || echo "")
+    if [ -n "$version_line" ]; then
+      log_to_file "Boost版本: ${version_line}"
+    fi
+  fi
+  cd "$current_dir"
+  return 0
+}
+
 prepare() {
   # 首先检查builddir是否存在（源码是否已解压）
   if [ ! -d "$builddir" ]; then
@@ -277,24 +362,42 @@ prepare() {
     fi
   fi
   
-  # 3. 自动检测Boost版本
+  # 3. 自动检测Boost版本或下载
+  log_to_file "步骤3: 检查Boost库..."
+  
+  # 首先检查用户环境变量
   if [ -n "${BOOST_ROOT}" ] && [ -d "${BOOST_ROOT}" ]; then
     # 使用用户环境变量指定的Boost路径
     log_to_file "使用用户指定的BOOST_ROOT: ${BOOST_ROOT}"
-  elif [ -d "${OHOS_SDK}/Boost" ]; then
-    # 自动查找SDK中可用的Boost版本
-    local boost_versions=($(ls -d ${OHOS_SDK}/Boost/boost_* 2>/dev/null | sort -V))
-    if [ ${#boost_versions[@]} -gt 0 ]; then
-      # 选择最新的版本
-      export BOOST_ROOT="${boost_versions[-1]}"
-      log_to_file "自动选择Boost版本: $(basename ${BOOST_ROOT})"
-    else
-      log_to_file "警告: 在${OHOS_SDK}/Boost下未找到Boost库"
-      return 1
-    fi
+    export Boost_INCLUDE_DIR="${BOOST_ROOT}"
   else
-    log_to_file "错误: 未找到Boost库，请确保已安装OHOS SDK或设置BOOST_ROOT环境变量"
-    return 1
+    # 检查SDK中是否已有Boost
+    local sdk_boost_dir="${OHOS_SDK}/Boost"
+    
+    if [ -d "${sdk_boost_dir}" ]; then
+      # 查找SDK中可用的Boost版本
+      local boost_versions=($(ls -d ${sdk_boost_dir}/boost_* 2>/dev/null | sort -V))
+      if [ ${#boost_versions[@]} -gt 0 ]; then
+        # 选择最新的版本
+        export BOOST_ROOT="${boost_versions[-1]}"
+        export Boost_INCLUDE_DIR="${BOOST_ROOT}"
+        log_to_file "自动选择Boost版本: $(basename ${BOOST_ROOT})"
+      else
+        # SDK中有Boost目录但没有boost库，尝试下载
+        log_to_file "${sdk_boost_dir} 目录存在但未找到Boost库，尝试下载..."
+        if ! download_and_extract_boost; then
+          log_to_file "错误: 下载Boost库失败"
+          return 1
+        fi
+      fi
+    else
+      # SDK中没有Boost目录，尝试下载
+      log_to_file "未找到Boost库，尝试从官方源下载..."
+      if ! download_and_extract_boost; then
+        log_to_file "错误: 下载Boost库失败"
+        return 1
+      fi
+    fi
   fi
   
   # 验证Boost目录
@@ -302,7 +405,21 @@ prepare() {
     log_to_file "错误: Boost目录不存在: ${BOOST_ROOT}"
     return 1
   fi
-  export Boost_INCLUDE_DIR="${BOOST_ROOT}"
+  
+  # 验证Boost头文件
+  if [ ! -f "${BOOST_ROOT}/boost/version.hpp" ]; then
+    log_to_file "警告: 找不到boost/version.hpp，Boost安装可能不完整"
+    # 检查是否是头文件库（header-only）
+    if [ -f "${BOOST_ROOT}/boost.hpp" ]; then
+      log_to_file "找到boost.hpp，这可能是头文件库"
+    else
+      log_to_file "错误: Boost目录不包含有效的头文件"
+      return 1
+    fi
+  fi
+  
+  log_to_file "✓ Boost库准备完成: ${BOOST_ROOT}"
+  
   # 返回上级目录
   cd ..
   
@@ -495,4 +612,6 @@ cleanbuild() {
   if [ -d "/tmp/libunistring-1.4" ]; then
     rm -rf /tmp/libunistring-1.4*
   fi
+  
+  # 注意：这里不清理Boost，因为Boost已经安装在SDK目录中，可以在多个构建之间共享
 }
