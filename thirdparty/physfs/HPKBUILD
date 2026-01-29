@@ -38,6 +38,7 @@ prepare() {
   mkdir -p $builddir/$ARCH-build
   if $patchflag; then
     cd $builddir
+	#本patch为了防止在鸿蒙化后原库初始化加载默认路径导致的失败问题
     patch -p1 < `pwd`/../physfs_platform_posix_test.patch
     patchflag=false
   fi

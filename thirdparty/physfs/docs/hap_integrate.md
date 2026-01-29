@@ -16,13 +16,13 @@
 - 三方库目录结构
 
   ```shell
-  tpc_c_cplusplus/thirdparty/physfs     #三方库bcunit的目录结构如下
+  tpc_c_cplusplus/thirdparty/physfs     #三方库physfs的目录结构如下
   ├── docs                              #三方库相关文档的文件夹
   ├── HPKBUILD                          #构建脚本
   ├── HPKCHECK                          #自动化测试脚本
   ├── SHA512SUM                         #三方库校验文件
   ├── README.OpenSource                 #说明三方库源码的下载地址，版本，license等信息
-  ├── bcunit_oh_pkg.patch               #补丁文件
+  ├── physfs_platform_posix_test.patch  #补丁文件
   ├── README_zh.md   
   ```
 
@@ -31,7 +31,7 @@
 
   ```
   cd lycium
-  ./build.sh physfs
+  ./test.sh physfs
   ```
 
 
