@@ -19,7 +19,7 @@ pkgver=v1.0.12
 pkgrel=0
 pkgdesc="The Free Implementation of the Unicode Bidirectional Algorithm."
 url="https://github.com/fribidi/fribidi"
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("LGPL-2.1-only")
 depends=()
 makedepends=("unzip" "yacc" "flex")
@@ -69,6 +69,11 @@ prepare() {
         setarm64ENV
         host=aarch64-linux
     fi
+    if [ $ARCH == "x86_64" ]
+    then
+        setx86_64ENV
+        host=x86_64-linux
+    fi
 
     if $autogenflag
     then
@@ -107,6 +112,10 @@ check() {
     if [ $ARCH == "arm64-v8a" ]
     then
         unsetarm64ENV
+    fi
+    if [ $ARCH == "x86_64" ]
+    then
+        unsetx86_64ENV
     fi
     # sed是为了避免在ohos设备测试时去编译可执行文件，导致测试失败
     sed 's/check-TESTS: $(check_PROGRAMS)/check-TESTS: #$(check_PROGRAMS)/1' test/unicode-conformance/Makefile > test/unicode-conformance/tmp_Makefile
