@@ -1,4 +1,4 @@
-# glm三方库说明
+# ggml三方库说明
 ## 功能简介
 Georgi Gerganov's Machine Learning 一个为机器学习优化的张量库，专注于高性能和最小依赖。
 
