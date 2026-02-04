@@ -15,4 +15,4 @@ Georgi Gerganov's Machine Learning 一个为机器学习优化的张量库，专
 - [IDE和SDK版本](../../docs/constraint.md)
 
 ## 集成方式
-+ [应用hap包集成](docs/hap_ingtegrate.md)
++ [应用hap包集成](docs/hap_integrate.md)
