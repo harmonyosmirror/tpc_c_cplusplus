@@ -19,7 +19,8 @@ pkgver=1.8.0
 pkgrel=0
 pkgdesc="A free and open source speech synthesizer"
 url="https://github.com/RHVoice/RHVoice"
-archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+archs=("x86_64" "armeabi-v7a" "arm64-v8a" )
+
 license=("GPL-3.0")
 depends=("portaudio")
 makedepends=("gcc" "pkg-config")
@@ -36,6 +37,7 @@ patchflag=true
 
 prepare() {
     cd $builddir
+
     if [ $patchflag == true ]
     then
         local patch_file="rhvoice_1.8.0_oh_pkg.patch"
@@ -55,7 +57,10 @@ build() {
         -DOHOS_ARCH=$ARCH \
         -DPORTAUDIO_LIB_DIR=${PORTAUDIO_LIB_DIR} \
         -DPORTAUDIO_INCLUDE_DIR=${PORTAUDIO_INCLUDE_DIR} \
-        -B$ARCH-build -S./ -L
+        -B$ARCH-build -S./ -L \
+        -DWITH_PORTAUDIO=ON \
+        -DWITH_LIBAO=OFF \
+        -DWITH_PULSE=OFF \
 
     $MAKE -C $ARCH-build  >> $buildlog 2>&1
 

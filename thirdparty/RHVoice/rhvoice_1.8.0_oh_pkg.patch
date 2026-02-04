@@ -55,174 +55,6 @@ index eade587..47a90a9 100644
  cpack_add_component_group("data"
  	DISPLAY_NAME "Data files"
  	DESCRIPTION "Various data required for synthesis"
-diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 55aaccc..7c69572 100644
---- a/src/CMakeLists.txt
-+++ b/src/CMakeLists.txt
-@@ -1,17 +1,14 @@
--pkg_check_modules(DBUS dbus)
--pkg_check_modules(LIBGIOMM giomm-2.4)
--pkg_check_modules(SPEECHD speech-dispatcher)
--
--set(BUILD_CLIENT "${DBUS_FOUND}" CACHE BOOL "Build standalone RHVoice-client application")
-+set(BUILD_CLIENT OFF)
- set(BUILD_UTILS ON CACHE BOOL "Build some useful utils")
- set(BUILD_TESTS ON CACHE BOOL "Build test applications")
--set(BUILD_SERVICE "${LIBGIOMM_FOUND}" CACHE BOOL "Build RHVoice server application")
--set(BUILD_SPEECHDISPATCHER_MODULE "${SPEECHD_FOUND}" CACHE BOOL "Build SpeechDispatcher module")
-+set(BUILD_SERVICE OFF)
-+set(BUILD_SPEECHDISPATCHER_MODULE OFF)
- 
- set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
- configure_file("${INCLUDE_DIR}/core/config.h.in" "${INCLUDE_DIR}/core/config.h")
- 
- set(UTF8_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party/utf8")
-+set(RAPIDXML_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party/rapidxml")
- 
- cpack_add_component_group("libraries"
- 	DISPLAY_NAME "libraries"
-diff --git a/src/audio/CMakeLists.txt b/src/audio/CMakeLists.txt
-index 8087b3d..dd924d3 100644
---- a/src/audio/CMakeLists.txt
-+++ b/src/audio/CMakeLists.txt
-@@ -13,48 +13,39 @@
- 
- # You should have received a copy of the GNU General Public License
- # along with this program.  If not, see <https://www.gnu.org/licenses/>.
--
- set(SOURCES "audio.cpp;file_playback_stream_impl.cpp;playback_stream.cpp")
- 
--set(audio_libs "libao;pulse;portaudio")
--
--pkg_check_modules(LIBAO "ao")
--pkg_check_modules(LIBPORTAUDIO "portaudio-2.0")
--pkg_check_modules(LIBPULSESIMPLE "libpulse-simple")
--option(WITH_LIBAO "Support libao" "${LIBAO_FOUND}")
--option(WITH_PULSE "Support pulseaudio" "${LIBPULSESIMPLE_FOUND}")
--option(WITH_PORTAUDIO "Support portaudio" "${LIBPORTAUDIO_FOUND}")
-+set(WITH_PORTAUDIO ON)
- 
--if(WITH_LIBAO)
--	list(APPEND SOURCES "libao.cpp")
--endif()
--if(WITH_PULSE)
--	list(APPEND SOURCES "pulse.cpp")
--endif()
- if(WITH_PORTAUDIO)
- 	list(APPEND SOURCES "portaudio.cpp")
- endif()
- 
- add_library(RHVoice_audio SHARED "${SOURCES}")
--set_target_properties(RHVoice_audio PROPERTIES VERSION "${RHVOICE_VERSION}" SOVERSION "${RHVOICE_VERSION_MAJOR}")
-+set_target_properties(RHVoice_audio PROPERTIES OUTPUT_NAME "RHVoice_audio" CLEAN_DIRECT_OUTPUT 1)
- harden("RHVoice_audio")
- add_sanitizers("RHVoice_audio")
- target_include_directories(RHVoice_audio PRIVATE "${INCLUDE_DIR}")
- 
--if(WITH_LIBAO)
--	target_link_libraries(RHVoice_audio "${LIBAO_LIBRARIES}")
--	message(STATUS "${LIBAO_INCLUDE_DIRS}")
--	target_include_directories(RHVoice_audio PRIVATE "${LIBAO_INCLUDE_DIRS}")
--endif()
--if(WITH_PULSE)
--	target_compile_definitions(RHVoice_audio PUBLIC WITH_PULSE)
--	target_link_libraries(RHVoice_audio "${LIBPULSESIMPLE_LIBRARIES}")
--	target_include_directories(RHVoice_audio PRIVATE "${LIBPULSESIMPLE_INCLUDE_DIRS}")
-+if(TARGET RHVoice_core)
-+    target_link_libraries(RHVoice_audio PRIVATE RHVoice_core)
-+    message(STATUS "Linking RHVoice_audio with RHVoice_core")
-+else()
-+    message(WARNING "RHVoice_core target not found")
- endif()
-+
- if(WITH_PORTAUDIO)
--	target_compile_definitions(RHVoice_audio PUBLIC WITH_PORTAUDIO)
--	target_link_libraries(RHVoice_audio "${LIBPORTAUDIO_LIBRARIES}")
--	target_include_directories(RHVoice_audio PRIVATE "${LIBPORTAUDIO_INCLUDE_DIRS}")
-+    target_compile_definitions(RHVoice_audio PUBLIC WITH_PORTAUDIO)
-+    set(PORTAUDIO_LIB_DIR "${CMAKE_SOURCE_DIR}/../../../lycium/usr/portaudio/${OHOS_ARCH}/lib")
-+    set(PORTAUDIO_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../../../lycium/usr/portaudio/${OHOS_ARCH}/include")
-+    
-+    if(EXISTS "${PORTAUDIO_LIB_DIR}/libportaudio.so")
-+        target_link_libraries(RHVoice_audio PRIVATE "${PORTAUDIO_LIB_DIR}/libportaudio.so")
-+        target_include_directories(RHVoice_audio PRIVATE "${PORTAUDIO_INCLUDE_DIR}")
-+        message(STATUS "Linking with PortAudio: ${PORTAUDIO_LIB_DIR}/libportaudio.so")
-+    else()
-+        message(WARNING "PortAudio library not found at ${PORTAUDIO_LIB_DIR}/libportaudio.so")
-+    endif()
- endif()
- 
- cpack_add_component(audio
-diff --git a/src/audio/pulse.cpp b/src/audio/pulse.cpp
-index 8ca954a..adc4ee4 100644
---- a/src/audio/pulse.cpp
-+++ b/src/audio/pulse.cpp
-@@ -13,7 +13,6 @@
- /* You should have received a copy of the GNU General Public License */
- /* along with this program.  If not, see <https://www.gnu.org/licenses/>. */
- 
--#include <pulse/simple.h>
- #include "pulse.hpp"
- #include "playback_stream_impl.hpp"
- 
-@@ -41,7 +40,7 @@ namespace RHVoice
-         std::string server;
-         std::string client_name;
-         unsigned int buffer_size;
--        pa_simple* connection;
-+        void* connection;
-       };
- 
-       pulse_playback_stream_impl::pulse_playback_stream_impl(const playback_params& params):
-@@ -57,19 +56,7 @@ namespace RHVoice
- 
-     void pulse_playback_stream_impl::open(uint32_t sample_rate)
-     {
--      pa_sample_spec sample_spec={PA_SAMPLE_S16NE,sample_rate,1};
--      pa_buffer_attr attr={default_value,default_value,default_value,default_value,default_value};
--      if(buffer_size!=0)
--        attr.tlength=static_cast<double>(buffer_size)/1000*sample_rate;
--      connection=pa_simple_new(server.empty()?0:server.c_str(),
--                               client_name.empty()?"RHVoice":client_name.c_str(),
--                               PA_STREAM_PLAYBACK,
--                               device.empty()?0:device.c_str(),
--                               "Speech",
--                               &sample_spec,
--                               0,
--                               &attr,
--                               0);
-+      connection=0;
-       if(connection==0)
-         throw opening_error();
-     }
-@@ -83,27 +70,20 @@ namespace RHVoice
-       {
-         if(connection)
-           {
--            pa_simple_free(connection);
-             connection=0;
-           }
-       }
- 
-       void pulse_playback_stream_impl::write(const short* samples,std::size_t count)
-       {
--        if(pa_simple_write(connection,samples,2*count,0)<0)
--          throw playback_error();
-       }
- 
-       void pulse_playback_stream_impl::drain()
-       {
--        if(pa_simple_drain(connection,0)<0)
--          throw playback_error();
-       }
- 
-       void pulse_playback_stream_impl::flush()
-       {
--        if(pa_simple_flush(connection,0)<0)
--          throw playback_error();
-       }
-     }
- 
 diff --git a/src/core/CMakeLists.txt b/src/core/CMakeLists.txt
 index a6447f8..c5183c9 100644
 --- a/src/core/CMakeLists.txt
@@ -276,25 +108,6 @@ index a8814de..2dcba8d 100644
      if(final_punctuation_start==prev_token.text.end())
        return false;
      if(prev_token.text.back()=='.')
-diff --git a/src/core/engine.cpp b/src/core/engine.cpp
-index 3bf8a07..a76301c 100644
---- a/src/core/engine.cpp
-+++ b/src/core/engine.cpp
-@@ -40,6 +40,14 @@ namespace RHVoice
-     if (config_path_env) config_path = config_path_env;
-   }
- 
-+  engine::init_params::init_params(const std::string& custom_data_path, const std::string& custom_config_path):
-+    data_path(custom_data_path.empty() ? DATA_PATH : custom_data_path),
-+    config_path(custom_config_path.empty() ? CONFIG_PATH : custom_config_path),
-+    logger(new event_logger)
-+  {
-+    // 直接使用传入的参数，不检查环境变量
-+  }
-+
-   std::vector<std::string> engine::init_params::get_resource_paths(const std::string& type) const
-   {
-     std::vector<std::string> result;
 diff --git a/src/core/userdict.cpp b/src/core/userdict.cpp
 index 56e9fea..e56496e 100644
 --- a/src/core/userdict.cpp
@@ -346,35 +159,6 @@ index 00a7976..f64466d 100644
            last=std::find_if(first,end,is_delimiter);
            value.assign(first.base(),last.base());
            return *this;
-diff --git a/src/lib/CMakeLists.txt b/src/lib/CMakeLists.txt
-index 1fda314..674f3ac 100644
---- a/src/lib/CMakeLists.txt
-+++ b/src/lib/CMakeLists.txt
-@@ -14,7 +14,7 @@
- # along with this program.  If not, see <https://www.gnu.org/licenses/>.
- 
- add_library(RHVoice SHARED "${CMAKE_CURRENT_SOURCE_DIR}/lib.cpp")
--set_target_properties(RHVoice PROPERTIES VERSION "${RHVOICE_VERSION}" SOVERSION "${RHVOICE_VERSION_MAJOR}")
-+set_target_properties(RHVoice PROPERTIES OUTPUT_NAME "RHVoice" CLEAN_DIRECT_OUTPUT 1)
- harden("RHVoice")
- add_sanitizers("RHVoice")
- target_include_directories(RHVoice PRIVATE "${INCLUDE_DIR}" "${HTS_LABELS_KIT_INCLUDES}")
-diff --git a/src/third-party/CMakeLists.txt b/src/third-party/CMakeLists.txt
-index 0a4cc84..c84f631 100644
---- a/src/third-party/CMakeLists.txt
-+++ b/src/third-party/CMakeLists.txt
-@@ -25,9 +25,8 @@ endif()
- 
- set(RAPIDXML_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/rapidxml" PARENT_SCOPE)
- 
--pkg_check_modules(TCLAP tclap)
--if("${TCLAP_FOUND}" AND NOT "${TCLAP_FORCE_COMPILATION}")
--	set(TCLAP_INCLUDE_DIR "${TCLAP_INCLUDEDIR}" PARENT_SCOPE)
-+if(0)  # 使用内置的TCLAP
-+	# 保留条件为false，使用下面的路径
- else()
- 	set(TCLAP_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tclap" PARENT_SCOPE)
- 	message(STATUS "Using internal copy of TCLAP")
 diff --git a/src/third-party/hts_engine/CMakeLists.txt b/src/third-party/hts_engine/CMakeLists.txt
 index cbb2476..7625bf2 100644
 --- a/src/third-party/hts_engine/CMakeLists.txt
@@ -418,3 +202,44 @@ index 9643d81..cbcec0a 100644
  harden(libmage)
  add_sanitizers(libmage)
  set_target_properties("libmage" PROPERTIES PREFIX "")
+diff --git a/src/audio/CMakeLists.txt b/src/audio/CMakeLists.txt
+index 8087b3d..405219a 100644
+--- a/src/audio/CMakeLists.txt
++++ b/src/audio/CMakeLists.txt
+@@ -24,6 +24,7 @@ pkg_check_modules(LIBPULSESIMPLE "libpulse-simple")
+ option(WITH_LIBAO "Support libao" "${LIBAO_FOUND}")
+ option(WITH_PULSE "Support pulseaudio" "${LIBPULSESIMPLE_FOUND}")
+ option(WITH_PORTAUDIO "Support portaudio" "${LIBPORTAUDIO_FOUND}")
++set(WITH_PORTAUDIO ON)
+ 
+ if(WITH_LIBAO)
+ 	list(APPEND SOURCES "libao.cpp")
+@@ -51,10 +52,25 @@ if(WITH_PULSE)
+ 	target_link_libraries(RHVoice_audio "${LIBPULSESIMPLE_LIBRARIES}")
+ 	target_include_directories(RHVoice_audio PRIVATE "${LIBPULSESIMPLE_INCLUDE_DIRS}")
+ endif()
++
++if(TARGET RHVoice_core)
++    target_link_libraries(RHVoice_audio PRIVATE RHVoice_core)
++    message(STATUS "Linking RHVoice_audio with RHVoice_core")
++else()
++    message(WARNING "RHVoice_core target not found")
++endif()
+ if(WITH_PORTAUDIO)
+-	target_compile_definitions(RHVoice_audio PUBLIC WITH_PORTAUDIO)
+-	target_link_libraries(RHVoice_audio "${LIBPORTAUDIO_LIBRARIES}")
+-	target_include_directories(RHVoice_audio PRIVATE "${LIBPORTAUDIO_INCLUDE_DIRS}")
++    target_compile_definitions(RHVoice_audio PUBLIC WITH_PORTAUDIO)
++    set(PORTAUDIO_LIB_DIR "${CMAKE_SOURCE_DIR}/../../../lycium/usr/portaudio/${OHOS_ARCH}/lib")
++    set(PORTAUDIO_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../../../lycium/usr/portaudio/${OHOS_ARCH}/include")
++    
++    if(EXISTS "${PORTAUDIO_LIB_DIR}/libportaudio.so")
++        target_link_libraries(RHVoice_audio PRIVATE "${PORTAUDIO_LIB_DIR}/libportaudio.so")
++        target_include_directories(RHVoice_audio PRIVATE "${PORTAUDIO_INCLUDE_DIR}")
++        message(STATUS "Linking with PortAudio: ${PORTAUDIO_LIB_DIR}/libportaudio.so")
++    else()
++        message(WARNING "PortAudio library not found at ${PORTAUDIO_LIB_DIR}/libportaudio.so")
++    endif()
+ endif()
+ 
+ cpack_add_component(audio
