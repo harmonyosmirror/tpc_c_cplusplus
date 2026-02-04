@@ -11,18 +11,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Contributor: zws <zhouwusong05@chinasoftinc.com>
-# Maintainer: zws <zhouwusong05@chinasoftinc.com>
-
-source HPKBUILD > /dev/null 2>&1
+source HPKBUILD > /dev/null 2>&1    # 导入HPKBUILD文件
 logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
 
+# 在OH环境执行测试的接口
 openharmonycheck() {
     res=0
-    cd ${builddir}/${ARCH}-build
-    ./wcdb_test > ${logfile} 2>&1 
-    res=$?
+    cd $LYCIUM_ROOT/usr/udt/$ARCH/bin
+    ./test > ${logfile} 2>&1
+    if [ $? -ne 0 ]
+    then
+        echo "test failed" >> ${logfile} 2>&1
+        res=1
+    fi
+
     cd $OLDPWD
-	
     return $res
 }
