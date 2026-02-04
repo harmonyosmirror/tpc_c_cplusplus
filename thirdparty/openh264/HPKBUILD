@@ -19,7 +19,7 @@ pkgver=v2.6.0
 pkgrel=0
 pkgdesc="Open Source H.264 Codec"
 url="http://www.openh264.org/"
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("BSD-2-Clause")
 depends=()
 makedepends=()
@@ -52,6 +52,10 @@ prepare() {
     then
         setarm64ENV
         arch=aarch64
+    elif [ $ARCH == "x86_64" ]
+    then
+        setx86_64ENV
+        arch=x86_64
     else
         echo "${ARCH} not support"
         return -1
@@ -105,6 +109,9 @@ check() {
     elif [ $ARCH == "arm64-v8a" ]
     then
         unsetarm64ENV
+    elif [ $ARCH == "x86_64" ]
+    then
+        unsetx86_64ENV    
     fi
     unset arch
     echo "The test must be on an OpenHarmony device!"
