@@ -68,7 +68,7 @@
 
 ```
 cd tpc_c_cplusplus/lycium
-./build.sh libsentences
+./test.sh libsentences
 ```
 （arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
 
