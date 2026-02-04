@@ -52,7 +52,7 @@
 ## 测试三方库
 三方库的测试使用原库自带的测试用例来做测试，[准备三方库测试环境](https://gitcode.com/openharmony-sig/tpc_c_cplusplus/tree/master/lycium)
 
-进入到构建目录执行ctest运行测试用例（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
+进入到构建目录执行./test运行测试用例（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
 
  ![输入图片说明](pic/udt_test.PNG)
 
