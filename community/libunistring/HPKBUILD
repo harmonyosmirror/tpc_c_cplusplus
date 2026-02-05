@@ -69,6 +69,9 @@ build() {
         --enable-shared \
         --disable-doc \
         >> ${buildlog} 2>&1
+    echo "###################"
+    aclocal  --version
+    echo "###################"
     #跳过测试编译,只编译库即可，由于GNU/Linux 特定的 pthread 扩展pthread_rwlockattr_setkind_np等接口在
     #OpenHarmony 的 musl libc 中可能不存在，故跳过测试编译
     ${MAKE} -C lib >> ${buildlog} 2>&1
