@@ -20,7 +20,7 @@ logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_
 openharmonycheck() {
     res=0
     cd ${builddir}/${ARCH}-build
-    ./wcdb_tests > ${logfile} 2>&1 
+    ./wcdb_test > ${logfile} 2>&1 
     res=$?
     cd $OLDPWD
 	
