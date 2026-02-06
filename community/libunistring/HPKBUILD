@@ -31,6 +31,7 @@ downloadpackage=true
 buildtools="configure"
 builddir=$pkgname-${pkgver}
 packagename=$builddir.tar.gz
+patchflag=true
 
 # 导入环境设置脚本
 source envset.sh
@@ -38,8 +39,8 @@ source envset.sh
 host=""
 
 prepare() {
-    build_target_dir="${builddir}-${ARCH}-build"
-    cp -rf "$builddir" "$build_target_dir"
+    mkdir -p $builddir/$ARCH-build
+    
     if [ ${ARCH} == armeabi-v7a ]
     then
         setarm32ENV
@@ -56,12 +57,16 @@ prepare() {
         echo "${ARCH} not support"
         return -1
     fi
+    if $patchflag; then
+        cd $builddir
+        patch -p1 < `pwd`/../configure_test.patch
+        patchflag=false
+    fi
+    return $?
 }
 
 build() {
-    build_target_dir="${builddir}-${ARCH}-build"
-
-    cd "$build_target_dir"
+    cd $builddir
 
     PKG_CONFIG_PATH="${pkgconfigpath}" ./configure "$@" \
         --host=$host \
@@ -69,11 +74,6 @@ build() {
         --enable-shared \
         --disable-doc \
         >> ${buildlog} 2>&1
-    echo "###################"
-    aclocal  --version
-    echo "###################"
-    #跳过测试编译,只编译库即可，由于GNU/Linux 特定的 pthread 扩展pthread_rwlockattr_setkind_np等接口在
-    #OpenHarmony 的 musl libc 中可能不存在，故跳过测试编译
     ${MAKE} -C lib >> ${buildlog} 2>&1
 
     ret=$?
@@ -82,7 +82,7 @@ build() {
 }
 
 package() {
-    cd ${builddir}-${ARCH}-build
+    cd $builddir
     ${MAKE} install >> ${buildlog} 2>&1
     case $ARCH in
         "armeabi-v7a")
