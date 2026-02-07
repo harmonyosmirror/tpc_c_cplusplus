@@ -26,20 +26,21 @@ makedepends=()
 
 source="https://ftp.gnu.org/gnu/libunistring/libunistring-${pkgver}.tar.gz"
 
-autounpack=true
+autounpack=false
 downloadpackage=true
 buildtools="configure"
+
 builddir=$pkgname-${pkgver}
 packagename=$builddir.tar.gz
 patchflag=true
 
-# 导入环境设置脚本
 source envset.sh
 
 host=""
 
 prepare() {
-    mkdir -p $builddir/$ARCH-build
+    mkdir -p $pkgname-$ARCH-build
+    tar -xzf $packagename -C $pkgname-$ARCH-build
     
     if [ ${ARCH} == armeabi-v7a ]
     then
@@ -57,51 +58,63 @@ prepare() {
         echo "${ARCH} not support"
         return -1
     fi
+
+    cd $pkgname-$ARCH-build/$builddir
+    
+    # 由于门禁环境无aclocal-1.18环境，故需要打patch降级aclocal工具至1.16版本
     if $patchflag; then
-        cd $builddir
-        patch -p1 < `pwd`/../configure_test.patch
+        patch -p1 < ../../configure_test.patch
         patchflag=false
     fi
+    cd $OLDPWD
     return $?
 }
 
 build() {
-    cd $builddir
-
-    PKG_CONFIG_PATH="${pkgconfigpath}" ./configure "$@" \
+    cd $pkgname-$ARCH-build/$builddir
+    
+    PKG_CONFIG_LIBDIR="${pkgconfigpath}" ./configure "$@" \
         --host=$host \
         --enable-static \
         --enable-shared \
         --disable-doc \
         >> ${buildlog} 2>&1
-    ${MAKE} -C lib >> ${buildlog} 2>&1
 
+    $MAKE -C lib >> ${buildlog} 2>&1
+    
     ret=$?
-    cd ${OLDPWD}
-    return ${ret}
+    cd $OLDPWD
+    return $ret
 }
 
 package() {
-    cd $builddir
+    cd $pkgname-$ARCH-build/$builddir
     ${MAKE} install >> ${buildlog} 2>&1
-    case $ARCH in
-        "armeabi-v7a")
-            unsetarm32ENV
-            ;;
-        "arm64-v8a")
-            unsetarm64ENV
-            ;;
-        "x86_64")
-            unsetx86_64ENV
-            ;;
-    esac
-    cd ${OLDPWD}
+    
+    cd $OLDPWD
+    
+    # 清理环境变量
+    if [ $ARCH == "armeabi-v7a" ]
+    then
+        unsetarm32ENV
+    elif [ $ARCH == "arm64-v8a" ]
+    then
+        unsetarm64ENV
+    elif [ $ARCH == "x86_64" ]
+    then
+        unsetx86_64ENV
+    fi
+    
+    unset host
 }
 
 check() {
     echo "The test must be on an OpenHarmony device!"
 }
 
-cleanbuild() {
-    rm -rf ${PWD}/$builddir #${PWD}/$packagename
+cleanbuild(){
+    rm -rf ${PWD}/$pkgname-armeabi-v7a-build 
+    rm -rf ${PWD}/$pkgname-arm64-v8a-build 
+    rm -rf ${PWD}/$pkgname-x86_64-build
+    rm -f ${PWD}/$packagename
 }
