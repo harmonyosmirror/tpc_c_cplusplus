@@ -1,0 +1,89 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: changxiaofeng <changxiaofeng3@h-partners.com>
+# Maintainer: changxiaofeng <changxiaofeng3@h-partners.com>
+
+source HPKBUILD > /dev/null 2>&1
+logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
+
+openharmonycheck() {
+    res=0
+    cd ${builddir}
+
+    # osgunittests 测试模块
+    test_modules=("matrix" "sizeof" "quat" "performance" "read-threads 4" "filenames" "thread" "polytope" "qt" "quat_scaled 1.0 1.0 1.0")
+
+    # 清空日志文件
+    > $logfile
+    
+    # 在文件开头添加环境信息
+    echo "OpenHarmony Test Environment Info:" >> $logfile
+    echo "Architecture: $ARCH" >> $logfile
+    echo "OHOS SDK Version: $OHOS_SDK_VER" >> $logfile
+    echo "Test Date: $(date)" >> $logfile
+    echo "==========================================" >> $logfile
+    echo "" >> $logfile
+
+    # 检查架构构建目录是否存在
+    if [ ! -d "${ARCH}-build" ]; then
+        echo "ERROR: ${ARCH}-build directory not found!" >> $logfile
+        res=1
+        cd $OLDPWD
+        return $res
+    fi
+
+    # 检查 bin 目录是否存在
+    if [ ! -d "${ARCH}-build/bin" ]; then
+        echo "ERROR: ${ARCH}-build/bin directory not found!" >> $logfile
+        res=1
+        cd $OLDPWD
+        return $res
+    fi
+
+    echo "Executing test commands..." >> $logfile
+    echo "" >> $logfile
+    
+    # osgunittests 测试
+    {
+        ./${ARCH}-build/bin/osgunittests matrix && \
+        ./${ARCH}-build/bin/osgunittests sizeof && \
+        ./${ARCH}-build/bin/osgunittests quat && \
+        ./${ARCH}-build/bin/osgunittests performance && \
+        ./${ARCH}-build/bin/osgunittests "read-threads 4" && \
+        ./${ARCH}-build/bin/osgunittests filenames && \
+        ./${ARCH}-build/bin/osgunittests thread && \
+        ./${ARCH}-build/bin/osgunittests polytope && \
+        ./${ARCH}-build/bin/osgunittests qt && \
+        ./${ARCH}-build/bin/osgunittests "quat_scaled 1.0 1.0 1.0"
+    } >> $logfile 2>&1
+
+    local overall_result=$?
+    
+    # 在文件末尾添加测试结果摘要
+    echo "" >> $logfile
+    echo "==========================================" >> $logfile
+    echo "Test Summary:" >> $logfile
+    echo "Exit Code: $overall_result" >> $logfile
+    echo "Completed at: $(date)" >> $logfile
+    
+    if [ $overall_result -ne 0 ]; then
+        res=1
+        mkdir -p ${LYCIUM_FAULT_PATH}/${pkgname}
+        echo "Test execution failed with exit code: $overall_result" > ${LYCIUM_FAULT_PATH}/${pkgname}/test_error.log
+        cp $logfile ${LYCIUM_FAULT_PATH}/${pkgname}/
+    fi
+
+    cd $OLDPWD
+    return $res
+}
