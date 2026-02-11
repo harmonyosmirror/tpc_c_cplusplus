@@ -32,7 +32,7 @@ buildtools="configure"
 
 builddir=$pkgname-${pkgver}
 packagename=${builddir}.zip
-patchflag=false
+patchflag=true
 cloneflag=true
 source envset.sh
 host=
@@ -54,6 +54,14 @@ prepare() {
         fi
         cd $OLDPWD
         cloneflag=false
+    fi
+    if [ "$patchflag" == true ]
+    then
+        cd $builddir
+        # 注释原库Error的用例和去掉重复killall命令
+        patch -p1 < ../cpp-libucd_ohos_test.patch > $buildlog 2>&1
+        cd $OLDPWD
+        patchflag=false
     fi
     cd $builddir
     touch README NEWS AUTHORS LICENSE config.h.in >> $buildlog 2>&1
