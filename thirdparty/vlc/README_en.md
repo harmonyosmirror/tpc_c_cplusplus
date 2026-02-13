@@ -9,6 +9,7 @@ VLC Media Player is a completely free, open-source, cross-platform multimedia pl
 - RTMP stream playback is supported: (Basic library functionalities include playback state control (start, pause, stop), volume adjustment, background logging, and adaptation for API level 17 and above)
 - Supports playback of MP4 video files
 - Supports playback of video files with subtitles
+- RTSP stream playback is supported
 
 ## Usage Constraints
 - [IDE and SDK Version](../../docs/constraint.md)
