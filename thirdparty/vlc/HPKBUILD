@@ -21,7 +21,7 @@ pkgdesc="VLC 是一款自由、开源的跨平台多媒体播放器及框架，�
 url="https://www.videolan.org/"
 archs=("arm64-v8a")
 license=("GNU General Public License v2.0")
-depends=("FFmpeg" "freetype2" "faad2" "libvorbis" "libvpx" "libdca" "flac" "speex" "libtheora" "aribb24" "speexdsp" "libkate" "libogg" "a52dec" "openssl" "live555" )
+depends=("FFmpeg" "freetype2" "faad2" "libvorbis" "libdca" "flac" "speex" "libtheora" "aribb24" "speexdsp" "libkate" "libogg" "a52dec" "openssl-3.4.0" "live555" )
 
 makedepends=("msgfmt")
 
@@ -75,8 +75,8 @@ prepare() {
 build() {
     mkdir -p $builddir/$ARCH-contrib/include
     mkdir -p $builddir/$ARCH-contrib/lib
-    cp -r $LYCIUM_ROOT/usr/openssl/$ARCH/include  $builddir/$ARCH-contrib
-    cp -r $LYCIUM_ROOT/usr/openssl/$ARCH/lib  $builddir/$ARCH-contrib
+    cp -r $LYCIUM_ROOT/usr/openssl-3.4.0/$ARCH/include  $builddir/$ARCH-contrib
+    cp -r $LYCIUM_ROOT/usr/openssl-3.4.0/$ARCH/lib  $builddir/$ARCH-contrib
     cp -r $LYCIUM_ROOT/usr/live555/$ARCH/include  $builddir/$ARCH-contrib
     cp -r $LYCIUM_ROOT/usr/live555/$ARCH/lib  $builddir/$ARCH-contrib
     cd $builddir/$ARCH-build
