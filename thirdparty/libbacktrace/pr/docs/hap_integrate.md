@@ -40,7 +40,6 @@
 - 在最外层（cpp目录下）CMakeLists.txt中添加如下语句
 ```shell
 # 将三方库加入工程中
-target_link_libraries(libbacktrace PUBLIC libhilog_ndk.z.so)
 target_link_libraries(libbacktrace PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libbacktrace/${OHOS_ARCH}/lib/libbacktrace.so.0)
 # 将三方库的头文件加入工程中
 target_include_directories(libbacktrace PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libbacktrace/${OHOS_ARCH}/include)
