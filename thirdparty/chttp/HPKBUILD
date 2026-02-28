@@ -21,7 +21,7 @@ pkgdesc="一个简单的http/https库,c语言实现,用到了 openssl库,支持 
 url="https://github.com/noxue/chttp"
 archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=(MIT)
-depends=("openssl")
+depends=("openssl-3.4.0")
 makedepends=()
 source="https://github.com/noxue/$pkgname.git"
 
