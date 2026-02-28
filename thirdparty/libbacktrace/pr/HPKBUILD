@@ -52,6 +52,13 @@ prepare() {
             return $ret
         fi
 
+        git submodule update --init --recursive
+        ret=$?
+        if [ $ret -ne 0 ]; then
+            echo "fail: git submodule update --init $ret"
+            return $ret
+        fi
+
         cd $OLDPWD
         cloneflag=false 
     fi
