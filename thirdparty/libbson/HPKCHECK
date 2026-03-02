@@ -22,8 +22,8 @@ checkprepare(){
 
 openharmonycheck() {
     res=0                               
-    cd ${builddir}/${ARCH}-build        
-    ctest -R bson -V > ${logfile} 2>&1  
+    cd ${builddir}       
+    ./${ARCH}-build/src/libmongoc/test-libmongoc -l '/bson/*' > ${logfile} 2>&1  
     res=$?
     if [ $res -ne 0 ]
     then

@@ -19,7 +19,7 @@ pkgver=debian/2.1.2-1
 pkgrel=0
 pkgdesc="libbson is a library providing useful routines related to building, parsing, and iterating BSON documents"
 url="https://github.com/mongodb/mongo-c-driver/tree/master/src/libbson"
-archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+archs=("arm64-v8a" "x86_64" "armeabi-v7a")
 license=("Apache-2.0 license")
 depends=() 
 makedepends=() 
@@ -32,20 +32,23 @@ buildtools=cmake
 builddir=mongo-c-driver-${pkgver//\//-} 
 packagename=$builddir.tar.gz 
 source envset.sh
+patchflag=true
 
 prepare() {
+    if $patchflag
+    then
+        cd $builddir
+        patch -p1 < $PKGBUILD_ROOT/libbson_ohos_pkg.patch > $publicbuildlog 2>&1
+        patchflag=false
+        cd $OLDPWD
+    fi
+
+    # 禁止编译时格式错误警告
     if [ $ARCH == "armeabi-v7a" ]
     then
-        setarm32ENV
-    elif [ $ARCH == "arm64-v8a" ]
-    then
-        setarm64ENV
-    elif [ $ARCH == "x86_64" ]
-    then
-        setx86_64ENV
-    else
-        echo "${ARCH} not support"
-        return -1
+        cd $builddir
+        sed -i '/-Werror=format/s/^/#/' build/cmake/MongoC-Warnings.cmake
+        cd $OLDPWD
     fi
 }
 
@@ -53,8 +56,13 @@ build() {
     cd $builddir
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH  \
     -DCMAKE_TOOLCHAIN_FILE=$OHOS_SDK/native/build/cmake/ohos.toolchain.cmake \
-    -B$ARCH-build -S./ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_MONGOC=OFF -DCMAKE_COMMAND=cmake -DENABLE_TESTS=ON -L
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake --build $ARCH-build --config RelWithDebInfo --parallel >> `pwd`/$ARCH-build/build.log 2>&1
+    -B$ARCH-build -S./ -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DENABLE_MONGOC=ON -DENABLE_TESTS=ON \
+    -DENABLE_SSL=OFF -DENABLE_SASL=OFF -DENABLE_SNAPPY=OFF -DENABLE_ZSTD=OFF \
+    -DENABLE_SHM_COUNTERS=OFF
+
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake --build $ARCH-build --config RelWithDebInfo --parallel \
+    --target bson_shared mongoc_shared test-libmongoc >> `pwd`/$ARCH-build/build.log 2>&1
     ret=$?
     cd $OLDPWD
     return $ret

@@ -16,6 +16,7 @@
     ├── docs                              #三方库相关文档的文件夹
     ├── HPKBUILD                          #构建脚本
     ├── HPKCHECK                          #测试脚本
+    ├── libbson_ohos_pkg.patch            #三方库libbson的patch文件
     ├── OAT.xml                           #扫描结果文件
     ├── SHA512SUM                         #三方库校验文件
     ├── README.OpenSource                 #说明三方库源码的下载地址，版本，license等信息
@@ -58,7 +59,11 @@
 ## 测试三方库
 三方库的测试使用原库自带的测试用例来做测试，[准备三方库测试环境](../../../lycium/README.md#3ci环境准备)
 
-进入到构建目录执行ctest -R bson -V 运行测试用例（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
+在源码根目录下执行测试（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
+```
+# 测试命令为./构建目录/src/libmongoc/test-libmongoc -l '/bson/*'
+  ./armeabi-v7a-build/src/libmongoc/test-libmongoc -l '/bson/*'
+```
 
 ![libbson_test](pic/libbson_test.png)
 
