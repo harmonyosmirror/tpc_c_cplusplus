@@ -24,7 +24,7 @@ checkprepare(){
 # 在OH环境执行测试的接口
 openharmonycheck() {
     res=0                  
-    cd ${builddir}/${ARCH}-build/tests    
+    cd ${builddir}/${ARCH}-build 
     ctest > ${logfile} 2>&1             
     res=$?      
     if [ $res -ne 0 ];then
