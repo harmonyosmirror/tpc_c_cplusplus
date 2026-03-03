@@ -15,13 +15,13 @@
 # Maintainer: <wangchen99@chinasoftinc.com>
 
 pkgname=themis
-pkgver=0.15.5
+pkgver=0.15.6
 pkgrel=0
 pkgdesc="Themis is a cross-platform high-level cryptographic library for mobile, web, and server platforms."
 url="https://github.com/cossacklabs/themis"
-archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+archs=("arm64-v8a" "armeabi-v7a" "x86_64")
 license=("Apache License 2.0")
-depends=("openssl")
+depends=("openssl-3.4.0")
 makedepends=()
 source="https://github.com/cossacklabs/themis/archive/refs/tags/$pkgver.tar.gz"
 
@@ -31,35 +31,39 @@ buildtools=cmake
 
 builddir=$pkgname-${pkgver}
 packagename=$builddir.tar.gz
+patchflag=true
 
 prepare() {
-    cp -rf $builddir  $builddir-$ARCH-build
-    cd $builddir-$ARCH-build
-    # 由于CMakeList中未包含编译需要的头文件和链接库，需要打patch添加
-    patch -p1 < ../themis_0.15.5_oh_pkg.patch >> $buildlog 2>&1
-    cd $OLDPWD
+    mkdir -p ${builddir}/${ARCH}-build
+    if ${patchflag}
+    then
+        cd ${builddir}
+        # 1. 指定c++17标准, 开启std::string_view测试项
+        # 2. 指定-O3编译优化选项
+        # 3. 添加find_package查找openssl
+        # 4. 添加cmake安装规则
+        # 5. 处理armeabi-v7a平台测试用例崩溃问题
+        patch -p1 < ../themis_0.15.6_oh_pkg.patch
+        echo "patching success"
+        patchflag=false
+        cd $OLDPWD
+    fi
 }
 
 build() {
-    cd $builddir-$ARCH-build
+    cd ${builddir}
+    
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
-        -DOHOS_ARCH=$ARCH \
-        -B$ARCH-build \
-        -S./ \
-        -DCMAKE_C_FLAGS="$CFLAGS -I${LYCIUM_ROOT}/usr/openssl/${ARCH}/include" \
-        -DCMAKE_CXX_FLAGS="$CXXFLAGS -I${LYCIUM_ROOT}/usr/openssl/${ARCH}/include" \
-        -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS -L${LYCIUM_ROOT}/usr/openssl/${ARCH}/lib -lcrypto" \
-        -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS -L${LYCIUM_ROOT}/usr/openssl/${ARCH}/lib -lcrypto" \
-        -L
-    $MAKE -C $ARCH-build >> $buildlog 2>&1
+        -DOHOS_ARCH=${ARCH} -B${ARCH}-build -S./ -L > $buildlog 2>&1
+    $MAKE -C ${ARCH}-build >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
     return $ret
 }
 
 package() {
-    cd $builddir-$ARCH-build
-    make install PREFIX=$LYCIUM_ROOT/usr/$pkgname/$ARCH >> $buildlog 2>&1
+    cd ${builddir}/${ARCH}-build
+    $MAKE install >> $buildlog 2>&1
     cd $OLDPWD
 }
 
@@ -68,5 +72,6 @@ check() {
 }
 
 cleanbuild() {
-    rm -rf ${PWD}/$builddir ${PWD}/$builddir-arm64-v8a-build ${PWD}/$builddir-armeabi-v7a-build ${PWD}/$builddir-x86_64-build #${PWD}/$packagename
+    rm -rf ${PWD}/${builddir}
+    return 0
 }
