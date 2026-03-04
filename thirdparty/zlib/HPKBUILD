@@ -22,7 +22,7 @@ archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=()
 depends=()
 makedepends=()
-source="https://$pkgname.net/$pkgname-$pkgver.tar.gz"
+source="https://$pkgname.net/fossils/$pkgname-$pkgver.tar.gz"
 
 autounpack=true
 downloadpackage=true
