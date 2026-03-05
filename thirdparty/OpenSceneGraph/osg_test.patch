@@ -120,7 +120,7 @@ index 0ef2edd33..a29119b07 100644
          SET(OPENGL_HEADER1 "#include \"TargetConditionals.h\"" CACHE STRING "#include<> line for OpenGL Header")
          SET(OPENGL_HEADER2 "#include <OpenGLES/ES3/gl.h>" CACHE STRING "#include<> line for additional OpenGL Headers if required")
      ELSE()
-@@ -656,6 +668,44 @@ IF(ANDROID)
+@@ -656,6 +668,36 @@ IF(ANDROID)
      ENDIF()
  ENDIF()
  
@@ -129,37 +129,29 @@ index 0ef2edd33..a29119b07 100644
 +        FIND_PATH(OPENGL_INCLUDE_DIR GLES/gl.h
 +              PATHS
 +              ${CMAKE_SYSROOT}/usr/include)
-+        message(STATUS "找到的 GLES/gl.h 路径: ${OPENGL_INCLUDE_DIR}")
 +        FIND_LIBRARY(OPENGL_gl_LIBRARY  GLESv1_CM
 +                 PATHS
 +                     ${CMAKE_SYSROOT}/usr/lib)
-+        message(STATUS "找到的 GLESv1_CM 库: ${OPENGL_gl_LIBRARY}")
 +    ELSEIF(OSG_GLES2_AVAILABLE)
-+        message(STATUS "配置 OHOS GLES2/gl2.h 库")
 +        FIND_PATH(OPENGL_INCLUDE_DIR GLES2/gl2.h
 +              PATHS
 +              ${CMAKE_SYSROOT}/usr/include)
-+        message(STATUS "实际找到的 GLES2/gl2.h 路径: ${OPENGL_INCLUDE_DIR}")
 +        FIND_LIBRARY(OPENGL_gl_LIBRARY  GLESv2
 +                 PATHS
 +                     ${CMAKE_SYSROOT}/usr/lib)
-+        message(STATUS "找到的 GLESv2 库: ${OPENGL_gl_LIBRARY}")
 +        SET(OPENGL_HEADER1 "#include <GLES2/gl2.h>" CACHE STRING "OpenGL Header for OHOS" FORCE)
 +        SET(OPENGL_HEADER2 "" CACHE STRING "Additional OpenGL Headers for OHOS" FORCE)
 +    ELSEIF(OSG_GLES3_AVAILABLE)
-+        message(STATUS "配置 OHOS GLES2/gl2.h 库")
 +        FIND_PATH(OPENGL_INCLUDE_DIR GLES3/gl3.h
 +              PATHS
 +              ${CMAKE_SYSROOT}/usr/include)
-+        message(STATUS "实际找到的 GLES3/gl3.h 路径: ${OPENGL_INCLUDE_DIR}")
 +        FIND_LIBRARY(OPENGL_gl_LIBRARY  GLESv3
 +                 PATHS
 +                     ${CMAKE_SYSROOT}/usr/lib)
-+        message(STATUS "找到的 GLESv3 库: ${OPENGL_gl_LIBRARY}")
 +        SET(OPENGL_HEADER1 "#include <GLES3/gl3.h>" CACHE STRING "OpenGL Header for OHOS" FORCE)
 +        SET(OPENGL_HEADER2 "" CACHE STRING "Additional OpenGL Headers for OHOS" FORCE)
 +    ELSE()
-+        message(WARNING "OHOS 没有可用的 OpenGL ES 版本!")
++        message(FATAL_ERROR "OHOS 没有可用的 OpenGL ES 版本!")
 +    ENDIF()
 +ENDIF()
  
@@ -381,14 +373,13 @@ diff --git a/src/osgPlugins/ffmpeg/FFmpegHeaders.hpp b/src/osgPlugins/ffmpeg/FFm
 index fd9bd2c92..a4d42f37d 100644
 --- a/src/osgPlugins/ffmpeg/FFmpegHeaders.hpp
 +++ b/src/osgPlugins/ffmpeg/FFmpegHeaders.hpp
-@@ -40,8 +40,10 @@ extern "C"
+@@ -40,8 +40,8 @@ extern "C"
  #endif
  
- #ifndef ANDROID
-+#ifndef OHOS
+-#ifndef ANDROID
++#if !defined(ANDROID) && !defined(OHOS)
  #include <libavdevice/avdevice.h>
  #endif
-+#endif
  
  #include <libavutil/mathematics.h>
  
@@ -396,13 +387,12 @@ diff --git a/src/osgPlugins/ffmpeg/FFmpegParameters.cpp b/src/osgPlugins/ffmpeg/
 index 5915ab850..a6ef76069 100644
 --- a/src/osgPlugins/ffmpeg/FFmpegParameters.cpp
 +++ b/src/osgPlugins/ffmpeg/FFmpegParameters.cpp
-@@ -50,7 +50,9 @@ void FFmpegParameters::parse(const std::string& name, const std::string& value)
+@@ -50,7 +50,7 @@ void FFmpegParameters::parse(const std::string& name, const std::string& value)
      if (name == "format")
      {
- #ifndef ANDROID
-+#ifndef OHOS
+-#ifndef ANDROID
++#if !defined(ANDROID) && !defined(OHOS)
          avdevice_register_all();
-+#endif
  #endif
          m_format = av_find_input_format(value.c_str());
          if (!m_format)
