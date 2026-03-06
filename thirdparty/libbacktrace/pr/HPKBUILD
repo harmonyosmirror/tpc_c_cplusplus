@@ -31,14 +31,15 @@ downloadpackage=false
 builddir=$pkgname-master
 packagename=
 buildtools="configure"
+host=
+cloneflag=true
 
 source envset.sh
-host=
 
-cloneflag=true
 prepare() {
-    if $cloneflag
+    if [ $cloneflag == true ]
     then
+        mkdir $builddir
         git clone $source $builddir
         ret=$?
         if [ $ret -ne 0 ]; then
