@@ -37,27 +37,10 @@ cloneflag=true
 source envset.sh
 
 prepare() {
-    if [ $cloneflag == true ]
-    then
-        git clone $source $builddir
-        ret=$?
-        if [ $ret -ne 0 ]; then
-            echo "fail: git clone $source $builddir $ret"
-            return $ret
-        fi
-
-        cd  $builddir
-        git checkout -b  $pkgver $pkgver
-        ret=$?
-        if [ $ret -ne 0 ]; then
-            echo "fail: git checkout $pkgver $ret"
-            return $ret
-        fi
-
-        cd $OLDPWD
-        cloneflag=false 
-    fi
-    
+    mkdir $builddir
+    git clone $source $builddir
+    cd  $builddir
+    git checkout -b b9e40069c0b47a722286b94eb5231f7f05c08713
     mkdir -p $builddir/$ARCH-build
     if [ $ARCH == "armeabi-v7a" ]
     then
