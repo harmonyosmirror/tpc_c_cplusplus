@@ -26,7 +26,7 @@ commitid=2c92a57ca04b83b2038ab2ab701d05a54be06a85
 autounpack=false
 downloadpackage=false 
 buildtools="make"
-depends=("openssl")
+depends=("openssl-3.4.0")
 
 builddir=$pkgname-${commitid}
 packagename=
