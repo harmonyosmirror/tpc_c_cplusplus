@@ -18,22 +18,23 @@ source HPKBUILD > /dev/null 2>&1
 logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
 
 openharmonycheck() {
-    cd $builddir-$ARCH-build
-    ./$ARCH-build/soter_test > ${logfile} 2>&1
+    cd ${builddir}/$ARCH-build
+    echo "Running tests for ${pkgname} on ${ARCH}..." > ${logfile} 2>&1
+    ./soter_test >> ${logfile} 2>&1
     res=$?
     if [ $res -ne 0 ]; then
         cd $OLDPWD
         return $res
     fi
 
-    ./$ARCH-build/themispp_test > ${logfile} 2>&1
+    ./themispp_test >> ${logfile} 2>&1
     res=$?
     if [ $res -ne 0 ]; then
         cd $OLDPWD
         return $res
     fi
 
-    ./$ARCH-build/themis_test > ${logfile} 2>&1
+    ./themis_test >> ${logfile} 2>&1
     res=$?
     if [ $res -ne 0 ]; then
         cd $OLDPWD
