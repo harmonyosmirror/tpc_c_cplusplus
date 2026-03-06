@@ -22,7 +22,9 @@ archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=()
 depends=()
 makedepends=()
-source="https://github.com/ianlancetaylor/libbacktrace.git"
+
+# 原仓地址：source="https://github.com/ianlancetaylor/libbacktrace.git",由于网络原因使用镜像
+source="https://gitee.com/openharmony-tpc-incubate/libbacktrace.git"
 
 autounpack=false
 downloadpackage=false
