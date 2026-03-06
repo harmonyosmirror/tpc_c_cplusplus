@@ -13,8 +13,8 @@
 
 # Contributor: Xiao YangHang <168643834@qq.com>
 
-pkgname=libbacktrace
-pkgver=1.0
+pkgname="libbacktrace"
+pkgver="b9e40069c0b47a722286b94eb5231f7f05c08713"
 pkgrel=0
 pkgdesc="A C library that may be linked into a C/C++ program to produce symbolic backtraces"
 url="https://github.com/ianlancetaylor/libbacktrace#"
@@ -47,7 +47,7 @@ prepare() {
         fi
 
         cd  $builddir
-        git checkout -b b9e40069c0b47a722286b94eb5231f7f05c08713 b9e40069c0b47a722286b94eb5231f7f05c08713
+        git checkout -b  $pkgver $pkgver
         ret=$?
         if [ $ret -ne 0 ]; then
             echo "fail: git checkout $pkgver $ret"
