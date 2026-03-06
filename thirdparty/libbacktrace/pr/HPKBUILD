@@ -14,7 +14,7 @@
 # Contributor: Xiao YangHang <168643834@qq.com>
 
 pkgname="libbacktrace"
-pkgver="b9e40069c0b47a722286b94eb5231f7f05c08713"
+pkgver=b9e40069c0b47a722286b94eb5231f7f05c08713
 pkgrel=0
 pkgdesc="A C library that may be linked into a C/C++ program to produce symbolic backtraces"
 url="https://github.com/ianlancetaylor/libbacktrace#"
@@ -39,7 +39,6 @@ source envset.sh
 prepare() {
     if [ $cloneflag == true ]
     then
-        mkdir $builddir
         git clone $source $builddir
         ret=$?
         if [ $ret -ne 0 ]; then
@@ -55,20 +54,11 @@ prepare() {
             return $ret
         fi
 
-        git submodule update --init --recursive
-        ret=$?
-        if [ $ret -ne 0 ]; then
-            echo "fail: git submodule update --init $ret"
-            return $ret
-        fi
-
         cd $OLDPWD
         cloneflag=false 
     fi
     
     mkdir -p $builddir/$ARCH-build
-    cp -rf $builddir $builddir-$ARCH-build
-    cd $builddir-$ARCH-build
     if [ $ARCH == "armeabi-v7a" ]
     then
         setarm32ENV
@@ -84,7 +74,6 @@ prepare() {
         setx86_64ENV
         host=x86_64-linux
     fi
-    cd $OLDPWD
 }
 
 build() {
