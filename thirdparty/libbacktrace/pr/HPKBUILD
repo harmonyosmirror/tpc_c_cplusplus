@@ -29,7 +29,7 @@ source="https://gitee.com/openharmony-tpc-incubate/libbacktrace.git"
 autounpack=false
 downloadpackage=false
 builddir=$pkgname-master
-packagename=$builddir.tar.gz
+packagename=
 buildtools="configure"
 
 source envset.sh
