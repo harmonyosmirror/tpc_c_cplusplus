@@ -67,6 +67,8 @@ prepare() {
     fi
     
     mkdir -p $builddir/$ARCH-build
+    cp -rf $builddir $builddir-$ARCH-build
+    cd $builddir-$ARCH-build
     if [ $ARCH == "armeabi-v7a" ]
     then
         setarm32ENV
@@ -82,6 +84,7 @@ prepare() {
         setx86_64ENV
         host=x86_64-linux
     fi
+    cd $OLDPWD
 }
 
 build() {
