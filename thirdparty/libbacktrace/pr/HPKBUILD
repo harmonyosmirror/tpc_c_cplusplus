@@ -13,13 +13,13 @@
 
 # Contributor: Xiao YangHang <168643834@qq.com>
 
-pkgname="libbacktrace"
-pkgver=b9e40069c0b47a722286b94eb5231f7f05c08713
+pkgname=libbacktrace
+pkgver=1.0
 pkgrel=0
 pkgdesc="A C library that may be linked into a C/C++ program to produce symbolic backtraces"
 url="https://github.com/ianlancetaylor/libbacktrace#"
 archs=("armeabi-v7a" "arm64-v8a" "x86_64")
-license=("Libbacktrace Licens")
+license=()
 depends=()
 makedepends=()
 
@@ -31,16 +31,40 @@ downloadpackage=false
 builddir=$pkgname-master
 packagename=
 buildtools="configure"
-host=
-cloneflag=true
 
 source envset.sh
+host=
 
+cloneflag=true
 prepare() {
-    mkdir $builddir
-    git clone $source $builddir
-    cd  $builddir
-    git checkout -b b9e40069c0b47a722286b94eb5231f7f05c08713
+    if $cloneflag
+    then
+        git clone $source $builddir
+        ret=$?
+        if [ $ret -ne 0 ]; then
+            echo "fail: git clone $source $builddir $ret"
+            return $ret
+        fi
+
+        cd  $builddir
+        git checkout -b b9e40069c0b47a722286b94eb5231f7f05c08713 b9e40069c0b47a722286b94eb5231f7f05c08713
+        ret=$?
+        if [ $ret -ne 0 ]; then
+            echo "fail: git checkout $pkgver $ret"
+            return $ret
+        fi
+
+        git submodule update --init --recursive
+        ret=$?
+        if [ $ret -ne 0 ]; then
+            echo "fail: git submodule update --init $ret"
+            return $ret
+        fi
+
+        cd $OLDPWD
+        cloneflag=false 
+    fi
+
     mkdir -p $builddir/$ARCH-build
     if [ $ARCH == "armeabi-v7a" ]
     then
