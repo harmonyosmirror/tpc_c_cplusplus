@@ -65,7 +65,7 @@ build() {
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" ../configure "$@"\
       --host=$host  --build=$build  --enable-static  --enable-shared \
       --disable-cpu-profiler  --disable-heap-profiler --disable-heap-checker \
-      --enable-debugalloc --enable-minimal >> $buildlog 2>&1
+      --disable-debugalloc --enable-minimal >> $buildlog 2>&1
 
     $MAKE V=1 >> $buildlog 2>&1
     ret=$?
