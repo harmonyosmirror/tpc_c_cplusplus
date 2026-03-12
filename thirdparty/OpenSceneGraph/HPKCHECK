@@ -53,6 +53,8 @@ openharmonycheck() {
 
     echo "Executing test commands..." >> $logfile
     echo "" >> $logfile
+
+    export LD_LIBRARY_PATH=${builddir}/${ARCH}-build/lib:$LD_LIBRARY_PATH
     
     # osgunittests 测试
     {
