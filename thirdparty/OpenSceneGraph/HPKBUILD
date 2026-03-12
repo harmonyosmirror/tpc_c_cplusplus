@@ -55,7 +55,7 @@ build() {
     -DBUILD_OSG_DEPRECATED_SERIALIZERS=ON \
     -DOSG_CPP_EXCEPTIONS_AVAILABLE=ON \
     -S./ -L > $buildlog 2>&1 
-    $MAKE -k VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1 
+    $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1 
     ret=$? 
     cd $OLDPWD 
     return $ret 
@@ -74,8 +74,6 @@ check() {
     # 在OpenHarmony开发板中执行用例
     # ctest
 }
-
-
 
 cleanbuild(){
     rm -rf ${PWD}/$builddir #${PWD}/$packagename
