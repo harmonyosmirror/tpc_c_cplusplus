@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Contributor: huangminzhong2 <huangminzhong2@huawei.com>
-# Maintainer: huangminzhong2 <huangminzhong2@huawei.com>
+# Contributor: changzhenjie4 <changzhenjie4@h-partners.com>
+# Maintainer: changzhenjie4 <changzhenjie4@h-partners.com>
 
 source HPKBUILD > /dev/null 2>&1
 logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
