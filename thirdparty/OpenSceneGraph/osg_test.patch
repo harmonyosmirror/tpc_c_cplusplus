@@ -365,7 +365,7 @@ index 4de143d22..812440b11 100644
          if (filename.compare(0, 5, "/dev/")==0)
          {
 -#ifdef ANDROID
-+#ifdef ANDROID || OHOS
++#if !defined(ANDROID) && !defined(OHOS)
              throw std::runtime_error("Device not supported on Android");
  #else
              avdevice_register_all();

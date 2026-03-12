@@ -40,7 +40,7 @@ prepare() {
     then
         cd $builddir
         #  OSG不同平台不同的编译选项，参考android配置ohso，需要合入此patch   
-        patch -p1 < ../osg_test.patch
+        patch -p1 < ../osg_test.patch || exit 1
         patchflag=false
         cd $OLDPWD
     fi
