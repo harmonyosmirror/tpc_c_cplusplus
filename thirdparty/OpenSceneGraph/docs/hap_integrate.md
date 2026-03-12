@@ -21,11 +21,10 @@
   ├── docs                              #三方库相关文档的文件夹
   ├── HPKBUILD                          #构建脚本
   ├── HPKCHECK                          #测试脚本
-  ├── OAT.xml                           #OAT配置文件
   ├── SHA512SUM                         #三方库校验文件
   ├── README.OpenSource                 #说明三方库源码的下载地址，版本，license等信息
   ├── README_zh.md                      #三方库简介
-  ├── osg_ohos.patch                    #用于OpenSceneGraph库编译的补丁
+  ├── osg_test.patch                    #用于OpenSceneGraph库编译的补丁
   ```
 
 - 在lycium目录下编译三方库
@@ -103,19 +102,6 @@ export LD_LIBRARY_PATH=../lib:$LD_LIBRARY_PATH
 ./osgunittests polytope && \
 ./osgunittests qt && \
 ./osgunittests "quat_scaled 1.0 1.0 1.0"
-
-# 运行具体测试模块
-./osgunittests matrix
-./osgunittests sizeof
-./osgunittests quat
-./osgunittests performance
-./osgunittests "read-threads 4"
-./osgunittests filenames
-./osgunittests thread
-./osgunittests polytope
-./osgunittests qt
-./osgunittests "quat_scaled 1.0 1.0 1.0"
-```
 
 &nbsp;![openscenegraph_test](pic/openscenegraph_test.png)
 
