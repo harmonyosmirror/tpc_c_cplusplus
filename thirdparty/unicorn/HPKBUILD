@@ -21,7 +21,7 @@ pkgdesc="Unicorn Engine - Lightweight multi-platform, multi-architecture CPU emu
 url="https://github.com/unicorn-engine/unicorn"
 archs=( "arm64-v8a"  "x86_64" "armeabi-v7a")
 license=("GPL-2.0")
-depends=("zlib")
+depends=("zlib_1_3_1")
 makedepends=()
 
 source="https://github.com/unicorn-engine/unicorn/archive/refs/tags/2.1.4.tar.gz"
@@ -37,7 +37,8 @@ build_dir=build
 source envset.sh
 
 prepare() {
-    cd $builddir
+    cp -r $builddir ${builddir}-${ARCH} >> $buildlog 2>&1
+    cd ${builddir}-${ARCH}
     if [ "$ARCH" = "armeabi-v7a" ]; then
         if [ -f ../unicorn_armv7a_fix.patch ]; then
             patch -p1 < ../unicorn_armv7a_fix.patch >> $buildlog 2>&1
@@ -50,7 +51,7 @@ prepare() {
 }
 
 build() {
-    cd $builddir
+    cd ${builddir}-${ARCH}
     if [ "$ARCH" = "armeabi-v7a" ]; then
         echo "Configuring Unicorn with CMake..."
         PKG_CONFIG_LIBDIR="${pkgconfigpath}" ${OHOS_SDK}/native/build-tools/cmake/bin/cmake  "$@"       \
@@ -64,11 +65,13 @@ build() {
                 -DUNICORN_BUILD_TESTS=OFF                                                               \
                 -DCMAKE_CXX_COMPILER_WORKS=ON                                                           \
                 -DCMAKE_C_COMPILER_WORKS=ON                                                             \
-                -DCMAKE_C_FLAGS=" -mfloat-abi=softfp -mfpu=neon -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"  \
-                -DCMAKE_CXX_FLAGS=" -mfloat-abi=softfp -mfpu=neon -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64" \
+                -DCMAKE_C_FLAGS=" -mfloat-abi=softfp -mfpu=neon -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -s"  \
+                -DCMAKE_CXX_FLAGS=" -mfloat-abi=softfp -mfpu=neon -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -s" \
                 -B$ARCH-build -S./ >> $buildlog 2>&1
     else 
-        ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L >> $buildlog 2>&1
+        ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH 		\
+			-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-s" -DCMAKE_CXX_FLAGS="-s"	\
+			-B$ARCH-build -S./ -L >> $buildlog 2>&1
     fi
     $MAKE -C $ARCH-build >> $buildlog 2>&1
     ret=$?
@@ -77,7 +80,7 @@ build() {
 }
 
 package() {
-    cd $builddir
+    cd ${builddir}-${ARCH}
     make -C $ARCH-build install >> $buildlog 2>&1
     cd $OLDPWD
 }
@@ -87,5 +90,5 @@ check() {
 }
 
 cleanbuild() {
-    rm -rf ${PWD}/$builddir/$ARCH-build
+    rm -rf ${PWD}/${builddir}-${ARCH}
 }
