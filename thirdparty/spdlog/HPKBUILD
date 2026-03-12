@@ -18,9 +18,9 @@ pkgver=v1.16.0
 pkgrel=0
 pkgdesc="Spdlog is a high-performance C++log library mainly used to record runtime information (such as debugging information, error logs, etc.) in C++programs"
 url="https://github.com/gabime/spdlog"
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a"  "x86_64")
 license=("MIT")
-depends=()
+depends=("fmt")
 makedepends=()
 
 source="https://github.com/gabime/$pkgname/archive/refs/tags/$pkgver.zip"
@@ -41,7 +41,7 @@ build() {
     cd $builddir-$ARCH-build
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
     -DSPDLOG_BUILD_TESTS=OFF \
-    -DSPDLOG_FMT_EXTERNAL_HO=OFF \
+    -DSPDLOG_FMT_EXTERNAL_HO=ON \
     -DCMAKE_BUILD_TYPE=Release \
     -DOHOS_ARCH=$ARCH \
     -B$ARCH-build -S./ > $buildlog 2>&1
@@ -66,4 +66,5 @@ cleanbuild() {
     rm -rf ${PWD}/$builddir 
     rm -rf ${PWD}/$builddir-arm64-v8a-build
     rm -rf ${PWD}/$builddir-armeabi-v7a-build
+    rm -rf ${PWD}/$builddir-x86_64-build
 }
