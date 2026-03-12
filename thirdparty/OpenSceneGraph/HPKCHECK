@@ -40,12 +40,17 @@ openharmonycheck() {
         return $res
     fi
     
+    local overall_result=0
     # osgunittests 测试
     for test_module in "${test_modules[@]}"; do
-        ./${ARCH}-build/bin/osgunittests $test_module
-    done > $logfile 2>&1
-
-    local overall_result=$?
+        ./${ARCH}-build/bin/osgunittests $test_module >> $logfile 2>&1
+        local test_result=$?
+        
+        if [ $test_result -ne 0 ]; then
+            overall_result=$test_result
+            break
+        fi
+    done
     
     if [ $overall_result -ne 0 ]; then
         res=1
