@@ -43,7 +43,7 @@ openharmonycheck() {
     local overall_result=0
     # osgunittests 测试
     for test_module in "${test_modules[@]}"; do
-        ./${ARCH}-build/bin/osgunittests $test_module >> $logfile 2>&1
+        ./${ARCH}-build/bin/osgunittests "$test_module" >> $logfile 2>&1
         local test_result=$?
         
         if [ $test_result -ne 0 ]; then
