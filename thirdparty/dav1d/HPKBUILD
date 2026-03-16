@@ -25,6 +25,9 @@ depends=()
 makedepends=("meson")
 source="https://code.videolan.org/videolan/$pkgname/-/archive/$pkgver/$pkgname-$pkgver.tar.gz"
 buildtools="meson"
+downloadpackage=true
+autounpack=true
+
 builddir=$pkgname-$pkgver
 packagename=$builddir".tar.gz"
 
