@@ -22,5 +22,5 @@ pkg_config_libdir = ''
 [built-in options]
 c_args = ['-fPIC', '-march=armv7a', '-mfloat-abi=softfp', '-mfpu=neon', '-D__MUSL__=1']
 cpp_args = ['-fPIC', '-march=armv7a', '-mfloat-abi=softfp', '-mfpu=neon', '-D__MUSL__=1']
-c_link_args = []
-cpp_link_args = []
+c_link_args = ['-s']
+cpp_link_args = ['-s']
