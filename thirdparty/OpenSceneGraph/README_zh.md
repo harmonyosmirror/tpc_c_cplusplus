@@ -12,4 +12,4 @@ OpenSceneGraph（OSG）是一个开源的高性能3D图形工具包，用于开�
 - [IDE和SDK版本](../../docs/constraint.md)
 
 ## 集成方式
-+ [应用hap包集成](docs/hap_ingtegrate.md)
++ [应用hap包集成](docs/hap_integrate.md)
