@@ -78,13 +78,20 @@ build() {
         echo "Error: libpng not found at $LIBPNG_DIR/lib/libpng.so"
         return 1
     fi
+    if [ ! -d "$LIBPNG_DIR/include" ]; then
+        echo "Error: libpng headers not found at $LIBPNG_DIR/include"
+        return 1
+    fi
     if [ ! -f "$ZLIB_DIR/lib/libz.so" ]; then
         echo "Error: zlib not found at $ZLIB_DIR/lib/libz.so"
         return 1
     fi
+    if [ ! -d "$ZLIB_DIR/include" ]; then
+        echo "Error: zlib headers not found at $ZLIB_DIR/include"
+        return 1
+    fi
     if [ ! -d "$BOOST_DIR/include" ]; then
-        echo "Error: boost not found at $BOOST_DIR"
-        echo "Please build boost library first: ./build.sh boost"
+        echo "Error: boost include directory not found at $BOOST_DIR/include"
         return 1
     fi
 
@@ -96,6 +103,8 @@ build() {
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_SKIP_RPATH=ON \
         -DCMAKE_SKIP_INSTALL_RPATH=ON \
+        -DCMAKE_SHARED_LINKER_FLAGS="-s" \
+        -DCMAKE_EXE_LINKER_FLAGS="-s" \
         -DCMAKE_TOOLCHAIN_FILE=${OHOS_SDK}/native/build/cmake/ohos.toolchain.cmake \
         -DCMAKE_INSTALL_PREFIX=${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/ \
         -DOHOS_ARCH=$ARCH \
