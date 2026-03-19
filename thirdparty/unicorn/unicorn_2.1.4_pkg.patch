@@ -1,15 +1,38 @@
-From 09b6f82b3c350fbd4cb6215e468884452aebb403 Mon Sep 17 00:00:00 2001
-From: Bjl <bianjianliang3@huawei-partners.com>
-Date: Mon, 29 Sep 2025 11:15:51 +0800
-Subject: [PATCH] This content only supports x86
-
----
- qemu/include/qemu/cpuid.h      |  2 ++
- qemu/tcg/i386/tcg-target.inc.c | 24 +++++++++++++++++++++++-
- 2 files changed, 25 insertions(+), 1 deletion(-)
-
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 033db096..d566a832 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -197,6 +197,17 @@ else()
+                 set(UNICORN_TARGET_ARCH "i386")
+             endif()
+         endif()
++    elseif(OHOS_ARCH)
++        if (${OHOS_ARCH} STREQUAL "arm64-v8a")
++            message(STATUS "compile ohos arm64-v8a...")
++            set(UNICORN_TARGET_ARCH "aarch64")
++        elseif (${OHOS_ARCH} STREQUAL "armeabi-v7a")
++            message(STATUS "compile ohos armeabi-v7a...")
++            set(UNICORN_TARGET_ARCH "arm")
++        elseif(${OHOS_ARCH} STREQUAL "x86_64")
++            message(STATUS "compile ohos x86_64...")
++            set(UNICORN_TARGET_ARCH "i386")
++        endif()
+     else()
+         execute_process(COMMAND ${CMAKE_C_COMPILER} -dM -E -
+             INPUT_FILE /dev/null
+@@ -320,6 +331,10 @@ else()
+         set(EXTRA_CFLAGS "${EXTRA_CFLAGS} --target=${CMAKE_C_COMPILER_TARGET}")
+         set(EXTRA_CFLAGS "${EXTRA_CFLAGS} --sysroot=${CMAKE_SYSROOT}")
+     endif()
++    if(OHOS_ARCH)
++        set(EXTRA_CFLAGS "${EXTRA_CFLAGS} --target=${CMAKE_C_COMPILER_TARGET}")
++        set(EXTRA_CFLAGS "${EXTRA_CFLAGS} --sysroot=${CMAKE_SYSROOT}")
++    endif()
+     if(UNICORN_FUZZ)
+         set(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${CMAKE_C_FLAGS}")
+     endif()
 diff --git a/qemu/include/qemu/cpuid.h b/qemu/include/qemu/cpuid.h
-index 9c09dd1..ae31887 100644
+index 9c09dd1b..ae318874 100644
 --- a/qemu/include/qemu/cpuid.h
 +++ b/qemu/include/qemu/cpuid.h
 @@ -14,8 +14,10 @@
@@ -24,7 +47,7 @@ index 9c09dd1..ae31887 100644
  /* Cover the uses that we have within qemu.  */
  /* ??? Irritating that we have the same information in target/i386/.  */
 diff --git a/qemu/tcg/i386/tcg-target.inc.c b/qemu/tcg/i386/tcg-target.inc.c
-index 15cc1c0..c8ec57a 100644
+index 15cc1c05..c8ec57ae 100644
 --- a/qemu/tcg/i386/tcg-target.inc.c
 +++ b/qemu/tcg/i386/tcg-target.inc.c
 @@ -3729,22 +3729,30 @@ static void tcg_target_init(TCGContext *s)
@@ -117,6 +140,3 @@ index 15cc1c0..c8ec57a 100644
  #endif
          /* LZCNT was introduced with AMD Barcelona and Intel Haswell CPUs.  */
          have_lzcnt = (c & bit_LZCNT) != 0;
--- 
-2.34.1
-
