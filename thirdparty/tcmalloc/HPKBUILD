@@ -29,25 +29,26 @@ downloadpackage=true
 autounpack=true
 packagename=gperftools-${pkgver}.tar.gz
 builddir=gperftools-${pkgver}
-
-
+patchflag=true
 source="https://github.com/gperftools/gperftools/releases/download/gperftools-${pkgver}/gperftools-${pkgver}.tar.gz"
 source envset.sh
 
 prepare() {
     mkdir -p $builddir/$ARCH-build
     cd $builddir
+    if [ $patchflag == true ];then
+        patch -p1 < ../tcmalloc_test.patch >> $buildlog 2>&1
+        #patch只需要打一次
+        patchflag=false
+    fi
     case "$ARCH" in
       armeabi-v7a)
         setarm32ENV
-        host=arm-linux
-        export LDFLAGS="${OHOS_SDK}/native/llvm/lib/clang/${CLANG_VERSION}/lib/arm-linux-ohos/a7_hard_neon-vfpv4/libclang_rt.builtins.a ${LDFLAGS}"
-        
+        host=arm-linux-ohos
         ;;
       arm64-v8a)
         setarm64ENV
-        host=aarch64-linux
-        export LDFLAGS="${OHOS_SDK}/native/llvm/lib/clang/${CLANG_VERSION}/lib/aarch64-linux-ohos/libclang_rt.builtins.a ${LDFLAGS}"
+        host=aarch64-linux-ohos
         ;;
       x86_64) 
         setx86_64ENV
@@ -61,12 +62,9 @@ prepare() {
 build() {
     cd $builddir/$ARCH-build
     # 禁用disable-cpu-profiler等提升运行效率、降低资源消耗(需要的时候可开启)
-    
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" ../configure "$@"\
-      --host=$host  --build=$build  --enable-static  --enable-shared \
-      --disable-cpu-profiler  --disable-heap-profiler --disable-heap-checker \
-      --disable-debugalloc --enable-minimal >> $buildlog 2>&1
-
+      --host=$host  --build=$build  --enable-static --disable-cpu-profiler  --disable-heap-profiler --disable-debugalloc --enable-minimal \
+      LDFLAGS="-Wl,--whole-archive -l:libclang_rt.builtins.a -Wl,--no-whole-archive" > $buildlog 2>&1
     $MAKE V=1 >> $buildlog 2>&1
     ret=$?
     
