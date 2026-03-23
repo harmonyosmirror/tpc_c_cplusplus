@@ -41,7 +41,10 @@ prepare() {
 build() {
     cd ${builddir}
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake \
+    -DCMAKE_C_FLAGS="-s" \
+ 	-DCMAKE_CXX_FLAGS="-s" \
+    "$@" \
     -B${ARCH}-build -S./ > ${buildlog} 2>&1 || return -1
     ${MAKE} -C${ARCH}-build VERBOSE=1 >> ${buildlog} 2>&1 || return -1
     cd ${OLDPWD}
