@@ -22,7 +22,7 @@ url="https://github.com/open-quantum-safe/liboqs"
 
 archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("MIT")
-depends=("openssl")
+depends=("openssl-3.4.0")
 makedepends=()
 
 source="https://github.jobcher.com/gh/https://github.com/open-quantum-safe/liboqs/archive/refs/tags/$pkgver.tar.gz"
@@ -51,6 +51,8 @@ build() {
         -DOQS_HAZARDOUS_EXPERIMENTAL_ENABLE_SIG_STFL_KEY_SIG_GEN=ON \
         -DOQS_ALGS_ENABLED=All \
         -DBUILD_TESTING=ON \
+        -DCMAKE_C_FLAGS_RELEASE="-s" \
+ 	    -DCMAKE_CXX_FLAGS_RELEASE="-s" \
         -B$ARCH-build \
         -S./ > $buildlog 2>&1
     
