@@ -15,91 +15,104 @@
 # Maintainer: diaomao <diaomao@diaomao.com>
 
 pkgname=libaim
-pkgver=master # 库版本
-pkgrel=0 # 发布号
+pkgver=0
+pkgrel=0
 pkgdesc="libaim is a library for C++ used to communicate with AOL's instant messaging service using the OSCAR protocol."
-url="https://gitee.com/tigerz001/libaim.git"
-archs=("armeabi-v7a" "arm64-v8a")
+url="https://sourceforge.net/projects/libaim/"
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=(LGPLv2)
-makedepends=("cvs") # 构建库时的依赖工具->需要用户安装的工具
-source="https://gitee.com/tigerz001/libaim/repository/archive/master.zip"
+depends=()
+makedepends=("cvs")
 
-
+source="https://sourceforge.net/code-snapshots/cvs/l/li/libaim.zip"
 downloadpackage=true
 autounpack=true
-buildtools=cmake
+buildtools="configure"
 
 builddir=${pkgname}
 packagename=${pkgname}.zip
 
-clonsrcflag=true
+patchflag=true
+
 source envset.sh
 
-TEST_EXEC="test_libaim_ohos" # 鸿蒙测试程序名
-TEST_DEST_DIR="data/local/tmp/libaim_test" # 设备上的测试目录
-
+host=
 prepare() {
-    if [ -e "$pkgname-$pkgver" ]; then
-        mv ${pkgname}-${pkgver} ${builddir}
-    fi
-
-    if [ $clonsrcflag == true ];then
-        mv ${builddir} ${builddir}-cvs
-        cvs -d ${PWD}/${builddir}-cvs co ${builddir}
-        if [ $? -ne 0 ];then
+    if $patchflag
+    then
+        mv ${pkgname} ${pkgname}-cvs
+        cvs -d ${PWD}/${pkgname}-cvs co ${pkgname}-ac
+        if [ $? -ne 0 ]
+        then
             return -1
         fi
-        if [ -e "patch_file" ]; then
-            rm -rf patch_file
-        fi
-        mkdir patch_file
-        patch -d patch_file -p3 < "libaim_ohos_test.patch"
-        cd ${builddir}
-        find . -type f \( -name "*.cpp" -o -name "*.h" \) -exec sed -i 's/byte/mybyte/g' {} \;
+        mv ${pkgname}-ac ${builddir}
+        cd ${builddir}/src
         sed -i '/#include <ctype.h>/a #include <string.h>' flap.cpp
         sed -i '/mask\[/,/]/{s/\b0x[0-9A-Fa-f]\+/\(char\)&/g}' aimsession.cpp
-        cp ../patch_file/* .
+        sed -i 's/if (bind (s,/if (::bind(s,/' server.cpp
+        sed -i 's/accept (s, (struct sockaddr \*)\&sin, \&(int)len);/accept (s, (struct sockaddr *)\&sin, \&len);/' server.cpp
+        sed -i '/AIMSession session;/a\		session.setServerHostname("127.0.0.1");' jaim.cpp
+        sed -i 's/if (password == "")/if (password == "") {/' jaim.cpp
+        sed -i 's/password = getpass("Password: ");/cout << "Password: ";\n\t\t\tcin >> password;/' jaim.cpp
+        sed -i '/cin >> password;/a\
+				}' jaim.cpp
         cd $OLDPWD
-        clonsrcflag=false
+        patchflag=false
     fi
-    mkdir -p ${builddir}/${ARCH}-build
+    cp -r ${builddir} ${builddir}-${ARCH}-build
 
     if [ ${ARCH} == "armeabi-v7a" ]
     then
         setarm32ENV
         host=arm-linux
-        support64=no
     elif [ ${ARCH} == "arm64-v8a" ]
     then
         setarm64ENV
         host=aarch64-linux
-        support64=yes
+    elif [ ${ARCH} == "x86_64" ]
+    then
+        setx86_64ENV
+        host=x86_64-linux
     else
         echo "${ARCH} not support"
         return -1
     fi
+    cd ${builddir}-${ARCH}-build
+    autoreconf -ifv > $buildlog 2>&1
+    cd $OLDPWD
 }
 
 build() {
-    cd ${builddir}
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=${ARCH} -DBUILD_OHOS_TEST=ON -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${ARCH}-build/bin -B${ARCH}-build -S./ -L > `pwd`/${ARCH}-build/build.log 2>&1
-    make -C ${ARCH}-build >> `pwd`/${ARCH}-build/build.log 2>&1
+    cd ${builddir}-${ARCH}-build
+    PKG_CONFIG_LIBDIR="${pkgconfigpath}" ./configure "$@" --host=$host >> $buildlog 2>&1
+    MAKE=make make -j1 -C src libaim.la >> $buildlog 2>&1
+    MAKE=make make -j1 >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
     return $ret
 }
 
 package() {
-    install_dir=${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}
-    mkdir -p ${install_dir}/lib
-    mkdir -p ${install_dir}/bin
-
-    cp -af ${builddir}/${ARCH}-build/libaim_static.a ${install_dir}/lib
-    cp -af ${builddir}/${ARCH}-build/libaim.so ${install_dir}/lib
-    cp -arf ${builddir}/include ${install_dir}/
-    cp -af ${builddir}/${ARCH}-build/bin/test_libaim_ohos ${install_dir}/bin
-    rm -rf ${install_dir}/include/CVS
-    rm -rf ${install_dir}/include/htmlparser.h
+    cd ${builddir}-${ARCH}-build
+    MAKE=make make -j1 install-strip >> $buildlog 2>&1
+    ret=$?
+    cd $OLDPWD
+    if [ ${ARCH} == "armeabi-v7a" ]
+    then
+        unsetarm32ENV
+    elif [ ${ARCH} == "arm64-v8a" ]
+    then
+        unsetarm64ENV
+    elif [ ${ARCH} == "x86_64" ]
+    then
+        unsetx86_64ENV
+    else
+        echo "${ARCH} not support"
+        return -2
+    fi
+    unset host
+    return $ret
 }
 
 check() {
@@ -108,9 +121,12 @@ check() {
 
 cleanbuild() {
     rm -rf ${PWD}/${packagename}
-    rm -rf ${PWD}/${pkgname}
+    rm -rf ${PWD}/${pkgname}-cvs
+    rm -rf ${PWD}/${pkgname}-ac
     rm -rf ${PWD}/${builddir}
-    rm -rf ${PWD}/${builddir}-cvs
+    rm -rf ${PWD}/${builddir}-armeabi-v7a-build
+    rm -rf ${PWD}/${builddir}-arm64-v8a-build
+    rm -rf ${PWD}/${builddir}-x86_64-build
     rm -rf ${PWD}/download.log
     rm -rf ${PWD}/last_error
 }

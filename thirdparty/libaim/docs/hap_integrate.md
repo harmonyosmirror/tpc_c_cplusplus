@@ -1,4 +1,4 @@
-# leveldb集成到应用hap
+# libaim集成测试
 
 本库是在RK3568开发板上基于OpenHarmony3.2 Release版本的镜像验证的，如果是从未使用过RK3568，可以先查看[润和RK3568开发板标准系统快速上手](https://gitee.com/openharmony-sig/knowledge_demo_temp/tree/master/docs/rk3568_helloworld)。
 
@@ -35,39 +35,99 @@
 
 - 三方库头文件及生成的库
 
-  在lycium目录下会生成usr目录，该目录下存在已编译完成的32位和64位三方库
+  在lycium目录下会生成usr目录
 
   ```shell
-  libaim/arm64-v8a   libaim/armeabi-v7a
+  usr
+  ├── hpk_build.csv
+  └── libaim
+      ├── arm64-v8a
+      │   ├── bin
+      │   │   ├── aimd				# autoconf编译
+      │   │   ├── jaim				# autoconf编译
+      │   │   ├── jaim-from-make		# make直接编译，未生成so文件。为编码的autoconf编译产生的jaim重名，编译结果重命名位jaim-from-make
+      │   │   └── server-from-make	# make直接编译，未生成so文件。编译结果重命名位server-from-make
+      │   ├── include
+      │   │   └── libaim
+      │   └── lib
+      │       ├── libaim.a
+      │       ├── libaim.la
+      │       ├── libaim.so -> libaim.so.0.0.0
+      │       ├── libaim.so.0 -> libaim.so.0.0.0
+      │       └── libaim.so.0.0.0
+      ├── armeabi-v7a
+      │   ├── bin
+      │   │   ├── aimd
+      │   │   ├── jaim
+      │   │   ├── jaim-from-make
+      │   │   └── server-from-make
+      │   ├── include
+      │   │   └── libaim
+      │   └── lib
+      │       ├── libaim.a
+      │       ├── libaim.la
+      │       ├── libaim.so -> libaim.so.0.0.0
+      │       ├── libaim.so.0 -> libaim.so.0.0.0
+      │       └── libaim.so.0.0.0
+      └── x86_64
+          ├── bin
+          │   ├── aimd
+          │   ├── jaim
+          │   ├── jaim-from-make
+          │   └── server-from-make
+          ├── include
+          │   └── libaim
+          └── lib
+              ├── libaim.a
+              ├── libaim.la
+              ├── libaim.so -> libaim.so.0.0.0
+              ├── libaim.so.0 -> libaim.so.0.0.0
+              └── libaim.so.0.0.0
   ```
   
 - [测试三方库](#测试三方库)
 
-## 应用中使用三方库
-
-- 在IDE的cpp目录下新增thirdparty目录，将编译生成的库拷贝到该目录下，如下图所示
-  &nbsp;
-
-  ![thirdparty_install_dir](pic/libaim_install_dir.png)
-
-- 在最外层（cpp目录下）CMakeLists.txt中添加如下语句
-
-  ```shell
-  #将三方库加入工程中
-  target_link_libraries(entry PRIVATE ${NATIVERENDER_ROOT_PATH}/../../../libs/${OHOS_ARCH}/libaim.so)
-  #将三方库的头文件加入工程中
-  target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libaim/${OHOS_ARCH}/include)
-  ```
-
 ## 测试三方库
 
-进入到构建目录执行（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
-```shell
-export TEST_TMPDIR=/data/local/tmp/     #设置有读写权限的目录作为测试目录
-ctest                                   #执行测试用例
-```
+- 测试程序
 
-&nbsp;![libaim_test](pic/libaim_test_1.png)
+  三方库自带测试用例，提供两对客户端和服务端测试程序
+
+  1. 服务端aimd和客户端jaim
+  2. 服务端server-from-make和客户端jaim-from-make
+
+- 测试步骤和结果
+
+  1. rk3568测试
+
+     ```shell
+     # 推送测试程序
+     hdc.exe file send ./usr/libaim/armeabi-v7a/lib/libaim.so /system/lib/
+     hdc.exe file send ./usr/libaim/armeabi-v7a/lib/libaim.so.0 /system/lib/
+     hdc.exe file send ./usr/libaim/armeabi-v7a/lib/libaim.so.0.0.0 /system/lib/
+     hdc.exe file send ./usr/libaim/armeabi-v7a/bin/aimd /data/data
+     hdc.exe file send ./usr/libaim/armeabi-v7a/bin/jaim /data/data
+     ```
+
+     ![img](./pic/rk3568-aimd-jaim-test.png)
+
+  2. 64位手机测试
+  
+     ```shell
+     # 推送测试程序
+     hdc.exe file send ./usr/libaim/arm64-v8a/lib/libaim.so /system/lib64/
+     hdc.exe file send ./usr/libaim/arm64-v8a/lib/libaim.so.0 /system/lib64/
+     hdc.exe file send ./usr/libaim/arm64-v8a/lib/libaim.so.0.0.0 /system/lib64/
+     hdc.exe file send ./usr/libaim/arm64-v8a/bin/aimd /data/data
+     hdc.exe file send ./usr/libaim/arm64-v8a/bin/jaim /data/data
+     ```
+  
+     ![img](./pic/phone64-aimd-jaim-test.png)
+
+说明：
+
+当前测试程序使用本机IP（127.0.0.1）和端口（5190）。当重复测试时，可能因端口被占用造成进程挂死问题。在测试前，需清理相关资源。
+
 
 ## 参考资料
 
