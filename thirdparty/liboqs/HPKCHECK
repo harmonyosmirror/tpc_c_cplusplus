@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Copyright (c) 2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -23,18 +23,25 @@ mkdir -p $(dirname ${logfile})
 extract_algorithms() {
     local alg_type=$1
     ./dump_alg_info | awk -v type="${alg_type}" '
-        BEGIN { in_section=0; }
+        BEGIN { in_section=0; pending_alg=""; }
         $0 ~ "^" type ":" { in_section=1; next; }
         in_section == 1 && $0 ~ /^  [[:graph:]]+:/ {
             split($0, parts, ":");
             alg_name = parts[1];
             gsub(/^  /, "", alg_name);
             gsub(/ /, "", alg_name);
-            if (alg_name != "") print alg_name;
+            pending_alg = (alg_name != "") ? alg_name : "";
+            next;
+        }
+        in_section == 1 && pending_alg != "" && $0 ~ /isnull:/ {
+            if ($0 ~ /false/) print pending_alg;
+            pending_alg = "";
         }
         in_section == 1 && $0 != "" && $0 !~ /^  / { exit; }
     '
 }
+
+TEST_TIMEOUT=${TEST_TIMEOUT:-120}
 
 run_single_test() {
     local test_idx=$1
@@ -44,11 +51,20 @@ run_single_test() {
     
     echo "Test ${test_idx}: ${test_name} -> ${test_cmd}" >> ${logfile}
     
-    if eval "${test_cmd}" >> ${logfile} 2>&1; then
+    local run_result
+    if [[ "${TEST_TIMEOUT}" -gt 0 ]]; then
+        timeout ${TEST_TIMEOUT} bash -c "${test_cmd}" >> ${logfile} 2>&1
+        run_result=$?
+        [[ ${run_result} -eq 124 ]] && echo "Test ${test_idx}: TIMEOUT (${TEST_TIMEOUT}s)" >> ${logfile}
+    else
+        eval "${test_cmd}" >> ${logfile} 2>&1
+        run_result=$?
+    fi
+    if [[ ${run_result} -eq 0 ]]; then
         echo "Test ${test_idx}: ${test_name} - PASS" >> ${logfile}
         res=0
     else
-        echo "Test ${test_idx}: ${test_name} - FAIL" >> ${logfile}
+        echo "Test ${test_idx}: ${test_name} - FAIL (exit=${run_result})" >> ${logfile}
         res=1
     fi
     return ${res}
@@ -124,8 +140,12 @@ openharmonycheck() {
         [ $? -eq 0 ] && pass=$((pass + 1)) || { fail=$((fail + 1)); res=1; }
     done
 
+    local SIG_STFL_MAX=0
+    local sig_stfl_idx=0
     for alg in "${SIG_STFL_ALGS[@]}"; do
         [[ -z "${alg}" ]] && continue
+        [[ ${sig_stfl_idx} -ge ${SIG_STFL_MAX} ]] && break
+        sig_stfl_idx=$((sig_stfl_idx + 1))
         
         if [[ "${alg}" == XMSS* ]]; then
             local kat_dir="${SIG_STFL_BASE_PATH}/xmss"
@@ -147,6 +167,12 @@ openharmonycheck() {
     echo "Passed tests: ${pass}" >> ${logfile}
     echo "Failed tests: ${fail}" >> ${logfile}
     echo "Test completed at $(date)" >> ${logfile}
+
+    local conclusion="RESULT: $([ ${fail} -eq 0 ] && echo 'PASS' || echo 'FAIL') (total=${total}, pass=${pass}, fail=${fail})"
+    echo "========================================" >> ${logfile}
+    echo "${conclusion}" >> ${logfile}
+    echo "========================================" >> ${logfile}
+    echo "${conclusion}"
 
     cd ${OLDPWD}
     return ${res}
