@@ -5,7 +5,7 @@ pkgver=n6.0
 pkgrel=0
 pkgdesc="FFmpeg is a collection of libraries and tools to process multimedia content such as audio, video, subtitles and related metadata."
 url="https://github.com/FFmpeg/FFmpeg/"
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("GPL2" "GPL3" "LGPL3" "MIT" "X11" "BSD-styl")
 depends=("rtmpdump" "openssl_1_0_2u")
 makedepends=()
@@ -65,6 +65,11 @@ prepare() {
         setarm64ENV
         arch=aarch64
         ldflags="-L${OHOS_SDK}/native/sysroot/usr/lib/aarch64-linux-ohos"
+    elif [ $ARCH == "x86_64" ]
+    then
+        setx86_64ENV
+        arch=x86_64
+        ldflags="-L${OHOS_SDK}/native/sysroot/usr/lib/x86_64-linux-ohos"
     else
         echo "${ARCH} not support"
         return -1
@@ -190,6 +195,9 @@ recoverpkgbuildenv() {
     elif [ $ARCH == "arm64-v8a" ]
     then
         unsetarm64ENV
+    elif [ $ARCH == "x86_64" ]
+    then
+        unsetx86_64ENV
     else
         echo "${ARCH} not support"
         return -1
@@ -198,5 +206,5 @@ recoverpkgbuildenv() {
 
 # 清理环境
 cleanbuild() {
-    rm -rf ${PWD}/${builddir} ${PWD}/$pkgname-arm64-v8a-build ${PWD}/$pkgname-armeabi-v7a-build #${PWD}/$packagename
+    rm -rf ${PWD}/${builddir} ${PWD}/$pkgname-arm64-v8a-build ${PWD}/$pkgname-armeabi-v7a-build ${PWD}/$pkgname-x86_64-build
 }
