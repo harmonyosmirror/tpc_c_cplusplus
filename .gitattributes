@@ -1,0 +1,1 @@
+thirdparty/xnn/model/caffe.params filter=lfs diff=lfs merge=lfs -text

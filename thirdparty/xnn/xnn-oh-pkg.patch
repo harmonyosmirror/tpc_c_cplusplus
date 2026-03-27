@@ -1,0 +1,213 @@
+diff -u a/Makefile b/Makefile
+--- a/Makefile	2018-03-07 11:07:49
++++ b/Makefile	2026-04-24 00:00:00
+@@ -1,29 +1,55 @@
+ .PHONY:	all install
+-CC=g++
+-CXX=g++
++CC ?= g++
++CXX ?= g++
+ CFLAGS += -O3 -g
+-CXXFLAGS += -Ijson11 -DUSE_CAFFE=1 -std=c++11 -O3 -fopenmp -g -I/usr/include/python2.7 -I/usr/local/cuda/include -DCPU_ONLY=1
++CXXFLAGS += -Ijson11 -DUSE_CAFFE=1 -std=c++17 -O3 -g -DCPU_ONLY=1
+ #CXXFLAGS += -DUSE_PYTHON=1
+-LDFLAGS += -fopenmp -L/usr/lib64 
++LDFLAGS +=
+ # add -lmxnet for mxnet
+ # add -lpython2.7 for python
+ # add those for Torch:  -lTH -lluaT -lluajit -llapack -lopenblas·
+-LDLIBS = libxnn.a -lcaffe -lpicpac $(shell pkg-config --libs opencv) \
+-	 -lboost_timer -lboost_chrono -lboost_thread -lboost_filesystem -lboost_system -lboost_program_options -lprotoc -lprotobuf -lglog #-lpython2.7
++LDLIBS = libxnn.a -lcaffe -lpicpac \
++	 -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_highgui -lopencv_videoio \
++	 -lboost_timer -lboost_chrono -lboost_thread -lboost_filesystem -lboost_system -lboost_program_options -lglog -ljson11 #-lpython2.7
+ 
+-COMMON = libxnn.a json11.o
++COMMON = libxnn.a atomic_shim.o
+ PROGS = predict xnn-roc #test_python # visualize predict #caffex-extract	caffex-predict batch-resize import-images
+ 
++# Optional backends (set by HPKBUILD): USE_MXNET=1 USE_TORCH=1
++USE_MXNET ?= 0
++USE_TORCH ?= 0
++
++# LuaJIT link name differs across installs. Override from environment if needed.
++LUAJIT_LD ?= -lluajit-5.1
++
++ifeq ($(USE_MXNET),1)
++CXXFLAGS += -DUSE_MXNET=1
++LDLIBS += -lmxnet
++endif
++
++ifeq ($(USE_TORCH),1)
++CXXFLAGS += -DUSE_TORCH=1
++LDLIBS += -lTH -lluaT $(LUAJIT_LD) -lopenblas
++endif
++
+ all:	$(COMMON) $(PROGS)
+ 
+-libxnn.a:	xnn.o caffe.o # python.o # mxnet.o python.o
++LIBXNN_OBJS = xnn.o caffe.o
++ifeq ($(USE_MXNET),1)
++LIBXNN_OBJS += mxnet.o
++endif
++ifeq ($(USE_TORCH),1)
++LIBXNN_OBJS += torch.o
++endif
++
++libxnn.a:	$(LIBXNN_OBJS)
+ 	ar rvs $@ $^
+ 
+-json11.o:	json11/json11.cpp
+-	$(CXX) $(CXXFLAGS) -o $@ -c $^
+-
++atomic_shim.o:	atomic_shim_alias.c
++	$(CC) $(CFLAGS) -fPIC -O2 -o $@ -c $^
+ 
+ $(PROGS):	%:	%.o $(COMMON) 
++	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+ 
+ clean:
+ 	rm $(PROGS) *.o
+
+diff -u a/atomic_shim_alias.c b/atomic_shim_alias.c
+--- a/atomic_shim_alias.c	1970-01-01 08:00:00
++++ b/atomic_shim_alias.c	2026-04-24 00:00:00
+@@ -0,0 +1,9 @@
++#include <stdint.h>
++
++unsigned char sync_val_compare_and_swap_1_shim(volatile unsigned char *p, unsigned char oldv, unsigned char newv) {
++    unsigned char expected = oldv;
++    __atomic_compare_exchange_n((unsigned char *)p, &expected, newv, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
++    return expected;
++}
++
++__asm__(".global __sync_val_compare_and_swap_1\n__sync_val_compare_and_swap_1 = sync_val_compare_and_swap_1_shim");
+
+diff -u a/mxnet.cpp b/mxnet.cpp
+--- a/mxnet.cpp	2018-03-07 11:07:49
++++ b/mxnet.cpp	2026-04-24 00:00:00
+@@ -66,7 +66,7 @@
+         shape[3] = width;
+ 
+         const mx_uint input_shape_indptr[2] = { 0, 4 };
+-        const mx_uint input_shape_data[4] = {batch,
++        const mx_uint input_shape_data[4] = { static_cast<mx_uint>(batch),
+                                         static_cast<mx_uint>(channels),
+                                         static_cast<mx_uint>(width),
+                                         static_cast<mx_uint>(height) };
+@@ -101,7 +101,7 @@
+             int bufsz = image_buffer_size(images[0]);
+             image_data.resize(bufsz * images.size());
+         }
+-        float *e = preprocess(images, &image_data[0], true);
++        float *e = preprocess(images, &image_data[0]);
+         CHECK(e - &image_data[0] == image_data.size());
+         //-- Set Input Image
+         MXPredSetInput(out, "data", image_data.data(), image_data.size());
+
+diff -u a/torch.cpp b/torch.cpp
+--- a/torch.cpp	2018-03-07 11:07:49
++++ b/torch.cpp	2026-04-24 00:00:00
+@@ -90,7 +90,7 @@
+         }
+         float *origin = THFloatTensor_data(itensor);
+         // pre-process images and load data to buffer
+-        float *e = preprocess(images, &origin);
++        float *e = preprocess(images, origin);
+ 
+         // call "apply" in lua
+         lua_getglobal(state, "apply");
+@@ -118,8 +118,9 @@
+     }
+ };
+ 
+-Model *create_torch (fs::path const &lua_config, int batch, int H, int W, int C) {
+-    return new TorchModel(lua_config, batch, H, W, C);
++Model *Model::create_torch (fs::path const &lua_config, fs::path const &model_path,
++                            int batch, int H, int W, int C) {
++    return new TorchModel(lua_config, model_path, batch, H, W, C);
+ }
+ 
+ }
+
+diff -u a/xnn-roc.cpp b/xnn-roc.cpp
+--- a/xnn-roc.cpp	2018-03-07 11:07:49
++++ b/xnn-roc.cpp	2026-04-24 00:00:00
+@@ -126,7 +126,7 @@
+     Model::set_mode(mode);
+     unique_ptr<Model> model(Model::create(model_dir, config.batch));
+-    picpac::ImageStream db(db_path, config);
++    picpac::ImageStream db(picpac::fs::path(db_path.string()), config);
+     if (config.annotate == "none") {
+         /*
+         int total = 0;
+
+diff -u a/xnn.h b/xnn.h
+--- a/xnn.h	2018-03-07 11:07:49
++++ b/xnn.h	2026-04-24 00:00:00
+@@ -44,20 +44,20 @@
+         int batch () const { return shape[0];}
+         int channels () const { return shape[1];}
+         static Model *create (fs::path const &, int = 1);
+-#ifdef USE_CAFFE
++#if USE_CAFFE
+         static Model *create_caffe (fs::path const &, int);
+         static Model *create_colorize_caffe (fs::path const &dir, int batch); 
+ #endif
+ #ifdef USE_MOVIDIUS
+         static Model *create_movidius (fs::path const &, int);
+ #endif
+-#ifdef USE_MXNET
++#if USE_MXNET
+         static Model *create_mxnet (fs::path const &, int);
+ #endif
+ #ifdef USE_PYTHON
+         static Model *create_python (fs::path const &, int);
+ #endif
+-#ifdef USE_TORCH
++#if USE_TORCH
+         static Model *create_torch (fs::path const &lua_config,
+ 									fs::path const &model,
+ 									int batch, int H, int W, int C);
+
+diff -u a/xnn.cpp b/xnn.cpp
+--- a/xnn.cpp	2018-03-07 11:07:49
++++ b/xnn.cpp	2026-04-24 00:00:00
+@@ -22,16 +22,16 @@
+     // convert color space
+     if (image.channels() != channels()) {
+         if (image.channels() == 3 && channels() == 1) {
+-            cv::cvtColor(image, tmp, CV_BGR2GRAY);
++            cv::cvtColor(image, tmp, cv::COLOR_BGR2GRAY);
+         }
+         else if (image.channels() == 4 && channels() == 1) {
+-            cv::cvtColor(image, tmp, CV_BGRA2GRAY);
++            cv::cvtColor(image, tmp, cv::COLOR_BGRA2GRAY);
+         }
+         else if (image.channels() == 4 && channels() == 3) {
+-            cv::cvtColor(image, tmp, CV_BGRA2BGR);
++            cv::cvtColor(image, tmp, cv::COLOR_BGRA2BGR);
+         }
+         else if (image.channels() == 1 && channels() == 3) {
+-            cv::cvtColor(image, tmp, CV_GRAY2BGR);
++            cv::cvtColor(image, tmp, cv::COLOR_GRAY2BGR);
+         }
+         else {
+             throw 0;
+@@ -94,13 +94,13 @@
+ 
+ 
+ Model *Model::create (fs::path const &dir, int batch) {
+-#ifdef USE_CAFFE
++#if USE_CAFFE
+     if (fs::exists(dir / "caffe.model")) return create_caffe(dir, batch);
+ #endif
+ #ifdef USE_PYTHON
+     if (fs::exists(dir / "model.py")) return create_python(dir, batch);
+ #endif
+-#ifdef USE_MXNET
++#if USE_MXNET
+     return create_mxnet(dir, batch);
+ #endif
+     return nullptr;
+ }
