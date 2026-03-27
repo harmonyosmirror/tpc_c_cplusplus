@@ -43,12 +43,12 @@
 - 在最外层（cpp目录下）CMakeLists.txt中添加如下语句
   ```
   
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama/${OHOS_ARCH}/lib/libggml.a)
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama/${OHOS_ARCH}/lib/libggml-base.a)
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama/${OHOS_ARCH}/lib/libggml-cpu.a)
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama/${OHOS_ARCH}/lib/libllama.a)
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama/${OHOS_ARCH}/lib/libmtmd.a)
-  target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama/${OHOS_ARCH}/include)
+  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama.cpp/${OHOS_ARCH}/lib/libggml.a)
+  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama.cpp/${OHOS_ARCH}/lib/libggml-base.a)
+  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama.cpp/${OHOS_ARCH}/lib/libggml-cpu.a)
+  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama.cpp/${OHOS_ARCH}/lib/libllama.a)
+  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama.cpp/${OHOS_ARCH}/lib/libmtmd.a)
+  target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama.cpp/${OHOS_ARCH}/include)
   
   ```
 ## 测试三方库
