@@ -44,20 +44,14 @@ builddir=$pkgname-${pkgver}
 packagename=$builddir.zip
 
 prepare() {
-    
-    mkdir -p $builddir/$ARCH-build
-    
-    if $patchflag
-    then
-        cd $builddir
-        
-        patch -p1 -l < `pwd`/../llama_oh_test.patch
-
-        
-        patchflag=false
-        
-        cd $OLDPWD
-    fi
+   
+   mkdir -p $builddir/$ARCH-build
+   
+   if [ ! -f "$builddir/.patched" ]; then
+       cd $builddir
+       patch -p1 -l < `pwd`/../llama_oh_test.patch && touch .patched
+       cd $OLDPWD
+fi
 }
 
 build() {
