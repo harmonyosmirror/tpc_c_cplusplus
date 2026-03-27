@@ -38,17 +38,21 @@ prepare() {
     then
         setarm64ENV
         host=aarch64-linux
+        export CFLAGS="$CFLAGS -O2"
     fi
     if [ $ARCH == "x86_64" ]
     then
         setx86_64ENV
         host=x86_64-linux
+        export CFLAGS="$CFLAGS -O2"
     fi
 }
 
 build() {
     cd $builddir/$ARCH-build
-    PKG_CONFIG_PATH="${pkgconfigpath}" ../configure "$@" --host=$host --with-tcl=$LYCIUM_ROOT/usr/tcl/$ARCH/lib TCLLIBDIR=$LYCIUM_ROOT/usr/tcl/$ARCH/lib > `pwd`/build.log 2>&1
+    PKG_CONFIG_PATH="${pkgconfigpath}" ../configure "$@" --host=$host \
+        --with-tcl=$LYCIUM_ROOT/usr/tcl/$ARCH/lib \
+        TCLLIBDIR=$LYCIUM_ROOT/usr/tcl/$ARCH/lib > `pwd`/build.log 2>&1
     make -j4 >> `pwd`/build.log 2>&1
     ret=$?
     cd $OLDPWD
