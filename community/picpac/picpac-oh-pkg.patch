@@ -1,0 +1,183 @@
+diff --git a/picpac-cv.cpp b/picpac-cv.cpp
+index 0673db8..aea830b 100644
+--- a/picpac-cv.cpp
++++ b/picpac-cv.cpp
+@@ -1,5 +1,6 @@
+ #include <iostream>
+ #include <sstream>
++#include <fstream>
+ #include <json11.hpp>
+ #include <boost/lexical_cast.hpp>
+ #include "picpac-cv.h"
+@@ -750,7 +751,7 @@ namespace picpac {
+         return to;
+     }
+ 
+-    void ImageLoader::load (RecordReader rr, PerturbVector const &p, Value *out,
++    void ImageLoader::load (RecordReader rr, bool perturb, PerturbVector const &p, Value *out,
+            CacheValue *cache, std::mutex *mutex) const {
+         Value cached;
+         do {
+diff --git a/picpac-cv.h b/picpac-cv.h
+index b72f7f1..25b1e15 100644
+--- a/picpac-cv.h
++++ b/picpac-cv.h
+@@ -3,9 +3,21 @@
+ #include <opencv2/opencv.hpp>
+ #include <glog/logging.h>
+ #include "picpac.h"
++#include <string_view>
+ 
+ #define PICPAC_CONFIG picpac::BatchImageStream::Config
+ 
++namespace picpac { using const_buffer = std::string_view; }
++
++// Compatibility shim: picpac-cv.cpp historically used boost::asio::buffer_size/buffer_cast.
++// In this OHOS build we avoid depending on Boost.Asio headers; instead we provide the
++// minimal API for our `picpac::const_buffer` (std::string_view).
++namespace boost { namespace asio {
++    inline std::size_t buffer_size(picpac::const_buffer b) { return b.size(); }
++    template <typename T>
++    inline T buffer_cast(picpac::const_buffer b) { return reinterpret_cast<T>(b.data()); }
++} }
++
+ #define PICPAC_CONFIG_UPDATE_ALL(C) \
+     PICPAC_CONFIG_UPDATE(C,seed);\
+     PICPAC_CONFIG_UPDATE(C,loop);\
+@@ -42,7 +54,7 @@
+     PICPAC_CONFIG_UPDATE(C,anno_color3); \
+     PICPAC_CONFIG_UPDATE(C,anno_thickness);\
+     PICPAC_CONFIG_UPDATE(C,anno_min_ratio); \
+-    PICPAC_CONFIG_UPDATE(C,perturb);\
++    PICPAC_CONFIG_UPDATE(static_cast<picpac::Stream::Config&>(C),perturb);\
+     PICPAC_CONFIG_UPDATE(C,pert_colorspace); \
+     PICPAC_CONFIG_UPDATE(C,pert_color1); \
+     PICPAC_CONFIG_UPDATE(C,pert_color2); \
+@@ -248,8 +258,8 @@ namespace picpac {
+         }
+ 
+         template <typename RNG>
+-        void sample (RNG &e, PerturbVector *p) {
+-            if (config.perturb) {
++        void sample (RNG &e, bool perturb, PerturbVector *p) {
++            if (perturb) {
+                 p->hflip = bool(e() % 2) && config.pert_hflip;
+                 p->vflip = bool(e() % 2) && config.pert_vflip;
+                 p->color[0] = delta_color1(e);
+@@ -279,7 +289,7 @@ namespace picpac {
+         cv::Mat load_image (const_buffer buffer, PerturbVector const &pv, LoadState *state) const;
+         cv::Mat load_annotation (const_buffer buffer, PerturbVector const &pv, LoadState *state) const;
+ 
+-        void load (RecordReader, PerturbVector const &, Value *,
++        void load (RecordReader, bool, PerturbVector const &, Value *,
+                 CacheValue *c = nullptr, std::mutex *m = nullptr) const;
+ 
+     protected:
+@@ -313,7 +323,7 @@ namespace picpac {
+             }
+         };
+ 
+-        void load (RecordReader reader, PerturbVector const &pv, Value *value,
++        void load (RecordReader reader, bool perturb, PerturbVector const &pv, Value *value,
+                 CacheValue *c = nullptr, std::mutex *m = nullptr) const {
+             CHECK(c == nullptr);
+             CHECK(m == nullptr);
+diff --git a/picpac.cpp b/picpac.cpp
+index 5deedee..cc4fc59 100644
+--- a/picpac.cpp
++++ b/picpac.cpp
+@@ -7,6 +7,7 @@
+ #include <unistd.h>
+ #include <set>
+ #include <boost/filesystem/fstream.hpp>
++#include <sstream>
+ #include "picpac.h"
+ 
+ namespace picpac {
+diff --git a/picpac.h b/picpac.h
+index 5827646..db51ced 100644
+--- a/picpac.h
++++ b/picpac.h
+@@ -16,7 +16,7 @@
+ #include <fmt/format.h>
+ #define SPDLOG_FMT_EXTERNAL
+ #include <spdlog/spdlog.h>
+-#define CHECK(x) do { if (!(x)) { logging::critical("{}:{} {} assertion failed: {}", __FILE__, __LINE__, __FUNCTION__,  #x); abort(); } } while(0)
++#include <glog/logging.h>
+ 
+ 
+ namespace picpac {
+@@ -33,5 +33,9 @@ namespace picpac {
+     typedef std::unique_lock<std::mutex> unique_lock;
+     typedef std::default_random_engine random_engine;
+ 
+-    namespace fs = std::filesystem;
++#if defined(__OHOS__)
++    namespace fs = std::__fs::filesystem;
++#else
++    namespace fs = std::filesystem;
++#endif
+     namespace logging = spdlog;
+diff --git a/picpac-util.cpp b/picpac-util.cpp
+--- a/picpac-util.cpp
++++ b/picpac-util.cpp
+@@ -43,2 +43,2 @@
+-    BOOST_STATIC_ASSERT(sizeof(unsigned char)*8 == 8);
+-    BOOST_STATIC_ASSERT(sizeof(unsigned int)*8 == 32);
++    static_assert(sizeof(unsigned char)*8 == 8);
++    static_assert(sizeof(unsigned int)*8 == 32);
+diff --git a/json11/json11.cpp b/json11/json11.cpp
+index 38fd4c8..37aba4a 100644
+--- a/json11/json11.cpp
++++ b/json11/json11.cpp
+@@ -136,6 +136,14 @@ void Json::dump(string &out) const {
+  * Value wrappers
+  */
+ 
++namespace json11_detail {
++template<typename U>
++static inline bool json_less(const U &a, const U &b) { return a < b; }
++
++// std::nullptr_t does not define operator< in some toolchains.
++static inline bool json_less(const std::nullptr_t &, const std::nullptr_t &) { return false; }
++} // namespace json11_detail
++
+ template <Json::Type tag, typename T>
+ class Value : public JsonValue {
+ protected:
+@@ -154,7 +162,7 @@ protected:
+         return m_value == static_cast<const Value<tag, T> *>(other)->m_value;
+     }
+     bool less(const JsonValue * other) const override {
+-        return m_value < static_cast<const Value<tag, T> *>(other)->m_value;
++        return json11_detail::json_less(m_value, static_cast<const Value<tag, T> *>(other)->m_value);
+     }
+ 
+     const T m_value;
+diff --git a/Makefile b/Makefile
+--- a/Makefile
++++ b/Makefile
+@@ @@
+ CC=g++
+ CXX=g++
+ BUILD_INFO=-DPP_VERSION=\"$(shell git describe --always)\" -DPP_BUILD_ID=\"$(BUILD_ID)\" -DPP_BUILD_NUMBER=\"$(BUILD_NUMBER)\" -DPP_BUILD_TIME=\"$(shell date +%Y-%m-%dT%H:%M:%S)\"
+ CFLAGS += -g -O3
+-CXXFLAGS += -fPIC -Ijson11 $(shell pkg-config --cflags opencv4) -I3rd/fmt/include -I3rd/spdlog/include -I3rd/json/single_include/nlohmann -ICatch/include -ISimple-Web-Server -ISimple-Web-Extra -Wall -Wno-sign-compare -std=c++17 -fopenmp -g -O3 -pthread -msse4.2 $(BUILD_INFO)
++CXXFLAGS += -fPIC -Ijson11 $(shell pkg-config --cflags opencv4) -I3rd/fmt/include -I3rd/spdlog/include -I3rd/json/single_include/nlohmann -ICatch/include -ISimple-Web-Server -ISimple-Web-Extra -Wall -Wno-sign-compare -std=c++17 -g -O3 -pthread $(BUILD_INFO)
+ #CXXFLAGS += -fPIC -Ijson11 $(shell pkg-config --cflags opencv4) -ICatch/include -ISimple-Web-Server -ISimple-Web-Extra -Wall -Wno-sign-compare -std=c++17 -fopenmp -g -O3 -pthread -msse4.2 $(BUILD_INFO)
+ #CXXFLAGS += -DSUPPORT_AUDIO_SPECTROGRAM=1
+-LDFLAGS += -fopenmp -std=c++17
++LDFLAGS += -std=c++17
+diff --git a/Makefile.static b/Makefile.static
+--- a/Makefile.static
++++ b/Makefile.static
+@@ @@
+ CC=g++
+ CXX=g++
+ BUILD_INFO=-DPP_VERSION=\"$(shell git describe --always)\" -DPP_BUILD_ID=\"$(BUILD_ID)\" -DPP_BUILD_NUMBER=\"$(BUILD_NUMBER)\" -DPP_BUILD_TIME=\"$(shell date +%Y-%m-%dT%H:%M:%S)\"
+ CFLAGS += -g -O3
+-CXXFLAGS += -fPIC -Ijson11 -ICatch/include -ISimple-Web-Server -ISimple-Web-Extra -Wall -Wno-sign-compare -std=c++1y -fopenmp -g -O3 -pthread -msse4.2 $(BUILD_INFO)
++CXXFLAGS += -fPIC -Ijson11 -ICatch/include -ISimple-Web-Server -ISimple-Web-Extra -Wall -Wno-sign-compare -std=c++1y -g -O3 -pthread $(BUILD_INFO)
+ #CXXFLAGS += -DSUPPORT_AUDIO_SPECTROGRAM=1
+-LDFLAGS += -fopenmp -static
++LDFLAGS += -static

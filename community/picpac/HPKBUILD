@@ -1,0 +1,138 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: handong056@chinasoftinc.com
+# Maintainer: handong056@chinasoftinc.com
+
+pkgname=picpac
+pkgver=28de073b2b0c471b5d75946b322d8aaec69d219d   # 修改此行
+pkgrel=0
+pkgdesc="PicPac: An image database for deep learning (libpicpac build)"
+url="https://github.com/aaalgo/picpac"
+
+# 不支持x86,因为依赖库glog不支持x86
+archs=("armeabi-v7a" "arm64-v8a")
+license=("BSD-2-Clause")
+
+depends=("opencv" "boost" "glog" "gflags" "fmt" "spdlog")
+makedepends=()
+
+source="${url}"
+downloadpackage=false
+autounpack=false
+buildtools=make
+patchflag=true
+
+builddir=${pkgname}-${pkgver}
+packagename=$builddir.tar.gz
+picpac_patch="picpac-oh-pkg.patch"
+
+prepare() {
+    if [ ! -d "${builddir}" ]; then
+        echo ">>> Cloning source code..."
+        git clone --recurse-submodules "${url}.git" "${builddir}" > "${publicbuildlog}" 2>&1 || {
+            return -1
+        }
+
+        git -C "${builddir}" submodule update --init --recursive >> "${publicbuildlog}" 2>&1 || {
+            return -1
+        }
+
+        patch -d "${builddir}" -p1 --batch --forward < "./${picpac_patch}" >> "${publicbuildlog}" 2>&1 || {
+            return -1
+        }
+    fi
+
+    local archbuilddir="${builddir}-${ARCH}-build"
+    cp -rf "${builddir}" "${archbuilddir}"
+
+    if [ "${ARCH}" = "armeabi-v7a" ]; then
+        export CC="${OHOS_SDK}/native/llvm/bin/arm-linux-ohos-clang"
+        export CXX="${OHOS_SDK}/native/llvm/bin/arm-linux-ohos-clang++"
+    elif [ "${ARCH}" = "arm64-v8a" ]; then
+        export CC="${OHOS_SDK}/native/llvm/bin/aarch64-linux-ohos-clang"
+        export CXX="${OHOS_SDK}/native/llvm/bin/aarch64-linux-ohos-clang++"
+    else
+        echo "${ARCH} not support"
+        return -1
+    fi
+    return 0
+}
+
+build() {
+    oldpwd="$(pwd)"
+    cd "${builddir}-${ARCH}-build"
+
+    boost_lib="-L${LYCIUM_ROOT}/usr/boost/${ARCH}/lib"
+    glog_inc="-I${LYCIUM_ROOT}/usr/glog/${ARCH}/include"
+    glog_lib="-L${LYCIUM_ROOT}/usr/glog/${ARCH}/lib"
+    gflags_inc="-I${LYCIUM_ROOT}/usr/gflags/${ARCH}/include"
+    gflags_lib="-L${LYCIUM_ROOT}/usr/gflags/${ARCH}/lib"
+    fmt_inc="-I${LYCIUM_ROOT}/usr/fmt/${ARCH}/include"
+    spdlog_inc="-I${LYCIUM_ROOT}/usr/spdlog/${ARCH}/include"
+
+    $MAKE -f Makefile.static CC="${CC}" CXX="${CXX}" \
+        CXXFLAGS="--sysroot=${OHOS_SDK}/native/sysroot -std=c++17 \
+            -D_LIBCPP_ENABLE_CXX17_REMOVED_FEATURES \
+            -D_LIBCPP_HAS_FILESYSTEM \
+            -B${OHOS_SDK}/native/sysroot/usr/lib/ \
+            -Ijson11 \
+            -I${LYCIUM_ROOT}/usr/opencv/${ARCH}/include \
+            -I${LYCIUM_ROOT}/usr/opencv/${ARCH}/include/opencv4 \
+            -I${LYCIUM_ROOT}/usr/boost/${ARCH}/include \
+            ${glog_inc} ${gflags_inc} ${fmt_inc} ${spdlog_inc} \
+            -include boost/throw_exception.hpp" \
+        LDFLAGS="--sysroot=${OHOS_SDK}/native/sysroot -std=c++17 -lc++fs \
+            -B${OHOS_SDK}/native/sysroot/usr/lib/ \
+            ${boost_lib} ${glog_lib} ${gflags_lib}" \
+        libpicpac.a > $buildlog 2>&1
+
+    ret=$?
+    cd "${oldpwd}"
+    return $ret
+}
+
+package() {
+    local out_dir="${LYCIUM_ROOT}/usr/picpac/${ARCH}"
+    mkdir -p "${out_dir}/include" "${out_dir}/lib"
+
+    cd "${builddir}-${ARCH}-build"
+
+    if [ ! -f "libpicpac.a" ]; then
+        echo "ERROR: libpicpac.a not found in ${builddir}-${ARCH}-build"
+        cd ${OLDPWD}
+        return 1
+    fi
+
+    cp -f "libpicpac.a" "${out_dir}/lib/"
+
+    # picpac Makefile 里定义的头文件
+    for h in picpac.h picpac-cv.h picpac-util.h picpac-image.h; do
+        if [ -f "$h" ]; then
+            cp -f "$h" "${out_dir}/include/"
+        fi
+    done
+
+    cd ${OLDPWD}
+    return 0
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+    return 0
+}
+
+cleanbuild() {
+    rm -rf "${PWD}/${builddir}" "${PWD}/${builddir}-"*"-build" 2>/dev/null || true
+    return 0
+}
