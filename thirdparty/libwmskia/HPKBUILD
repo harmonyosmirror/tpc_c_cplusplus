@@ -10,66 +10,77 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Contributor: zhushuaiyu05@chinasoftinc.com
+# Maintainer:  zhushuaiyu05@chinasoftinc.com
 
-# Contributor: huangminzhong <huangminzhong2@huawei.com>, jinfeihan@foxmail.com
-# Maintainer:  huangminzhong <huangminzhong2@huawei.com>
 pkgname=skia
 pkgver="canvaskit/0.37.0"
 pkgrel=0
 pkgdesc=""
-url=""
-archs=("armeabi-v7a" "arm64-v8a")
+url="https://gitcode.com/gh_mirrors/skia1/skia"
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("BSD 3-Clause License")
 depends=()
-makedepends=("python3")
-
-# 默认走 Google 源；公司/直连可用。若本机只有浏览器能翻、终端超时，任选其一：
-#   1) 终端走代理（Clash 等常见 HTTP 端口 7890）： export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890
-#   2) 换镜像： export SKIA_GIT_URL=https://github.com/google/skia.git
-# prepare 里还有 python3 tools/git-sync-deps，同样需要上述代理或网络。
-source="${SKIA_GIT_URL:-https://skia.googlesource.com/skia.git}"
-
+makedepends=("python3" "git")
+# 指定源码地址（GitCode raw，用户要求；不用 GitHub）
+source="https://raw.gitcode.com/gh_mirrors/skia1/skia/archive/refs/heads/canvaskit/0.37.0.tar.gz"
+# 与 source 同一 gh_mirrors/skia1/skia 仓库；raw 直链自动化下载常非 gzip，prepare 用 git clone 拉等价分支
+gitcode_repo="https://gitcode.com/gh_mirrors/skia1/skia.git"
 autounpack=false
 downloadpackage=false
-downloadflag=true
-
 builddir=${pkgname}-${pkgver//\//-}
-
+packagename=
+cloneflag=true
+depsyncflag=true
 prepare() {
-    # 源库在 Google；终端需能访问 $source（可设 SKIA_GIT_URL / https_proxy，见文件头部注释）
-    # 如果下载失败，修正网络后重新运行 ./build.sh skia
-    if [ $downloadflag == true ];then
-        git clone $source -b $pkgver --depth=1 $builddir > $publicbuildlog 2>&1
-        res=$?
-        if [ $res -ne 0 ]
-        then
+    if [ "$cloneflag" == true ]; then
+        git clone -b "$pkgver" --depth=1 "$gitcode_repo" "$builddir" > $publicbuildlog 2>&1
+        if [ $? -ne 0 ]; then
+            echo "$pkgname: git clone $gitcode_repo -b $pkgver failed (source ref: $source)"
+            rm -rf "$builddir"
             return -1
         fi
+        cloneflag=false
+    fi
+    # 拉取 Skia 第三方依赖（与 zlib/tensorflow-lite 等流程一致）
+    if [ "$depsyncflag" == true ]; then
         cd $builddir
         python3 tools/git-sync-deps > $publicbuildlog 2>&1
         respy=$?
-        if [ $respy -ne 0 ]
-        then
+        cd $OLDPWD
+        if [ $respy -ne 0 ]; then
             return -2
         fi
-        resnj=$?
-        if [ $resnj -ne 0 ]
-        then
-            return -3
-        fi
-        cd $OLDPWD
-        downloadflag=false
+        depsyncflag=false
     fi
+
+     cd $builddir
+
+    common_args='target_os="linux" skia_use_egl=true skia_gl_standard="gles" skia_use_gl=true skia_enable_vulkan_debug_layers=false skia_use_x11=false skia_use_fontconfig=false skia_use_dng_sdk=false skia_enable_tools=false is_official_build=true is_debug=false is_component_build=false skia_use_system_freetype2=false skia_use_system_libwebp=false skia_use_system_libpng=false skia_use_system_libjpeg_turbo=false skia_use_system_harfbuzz=false skia_use_system_expat=false skia_use_system_zlib=false skia_use_system_icu=false'
+
+    case "$ARCH" in
+        armeabi-v7a)
+            target_cpu="arm"
+            extra_cflags=' extra_cflags=["-mfloat-abi=softfp"]'
+            ;;
+        arm64-v8a)
+            target_cpu="arm64"
+            extra_cflags=""
+            ;;
+        x86_64)
+            target_cpu="x64"
+            extra_cflags=""
+            ;;
+        *)
+            echo "Unsupported ARCH: $ARCH" >&2
+            return 1
+            ;;
+    esac
 }
 
 build() {
-    cd $builddir
-    if [ "$ARCH" == "armeabi-v7a" ];then    # 部分tools依赖opengl和x11，系统目前不支持，fontconfig,dng_sdk依赖sdk不支持api，这部分能力裁剪掉,freetype使用库自带的，不使用系统的
-        bin/gn gen $ARCH-build --ide=json --json-ide-script=../../gn/gn_to_cmake.py --args='target_os="linux" target_cpu="arm"         skia_use_egl=true  skia_gl_standard="gles" skia_use_gl=true skia_enable_vulkan_debug_layers=false skia_use_x11=false         skia_use_fontconfig=false skia_use_dng_sdk=false skia_enable_tools=false is_official_build=true is_debug=false         is_component_build=false skia_use_system_freetype2=false skia_use_system_libwebp=false skia_use_system_libpng=false         skia_use_system_libjpeg_turbo=false skia_use_system_harfbuzz=false skia_use_system_expat=false skia_use_system_zlib=false         skia_use_system_icu=false extra_cflags=["-mfloat-abi=softfp"]' > $PKGBUILD_ROOT/skia_$ARCH-build.log 2>&1
-    fi
-    if [ "$ARCH" == "arm64-v8a" ];then
-        bin/gn gen $ARCH-build --ide=json --json-ide-script=../../gn/gn_to_cmake.py --args='target_os="linux" target_cpu="arm64"         skia_use_egl=true  skia_gl_standard="gles" skia_use_gl=true skia_enable_vulkan_debug_layers=false skia_use_x11=false         skia_use_fontconfig=false skia_use_dng_sdk=false skia_enable_tools=false is_official_build=true is_debug=false         is_component_build=false skia_use_system_freetype2=false skia_use_system_libwebp=false skia_use_system_libpng=false         skia_use_system_libjpeg_turbo=false skia_use_system_harfbuzz=false skia_use_system_expat=false skia_use_system_zlib=false         skia_use_system_icu=false' > $PKGBUILD_ROOT/skia_$ARCH-build.log 2>&1
-    fi
+    gn_args="target_cpu=\"$target_cpu\" $common_args$extra_cflags"
+    bin/gn gen $ARCH-build --ide=json --json-ide-script=../../gn/gn_to_cmake.py --args="$gn_args" > $PKGBUILD_ROOT/skia_$ARCH-build.log 2>&1
     cd $OLDPWD
     cd $builddir/$ARCH-build
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -B./ -S./ >> $PKGBUILD_ROOT/skia_$ARCH-build.log 2>&1
@@ -97,6 +108,6 @@ check() {
 
 # 清理环境
 cleanbuild() {
-    # rm -rf ${PWD}/$builddir/armeabi-v7a-build ${PWD}/$builddir/arm64-v8a-build
-    # 该库不清理代码，下载后多达4G多，而且因为网络问题可能下载容易出问题
+    # 该库代码，下载后多达4G多，而且因为网络问题可能下载容易出问题
+    rm -rf ${PWD}/$builddir/armeabi-v7a-build ${PWD}/$builddir/arm64-v8a-build ${PWD}/$builddir/x86_64-build
 }

@@ -44,17 +44,13 @@
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
   #将三方库加入工程中
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio/${OHOS_ARCH}/lib/libportaudio.so)
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/RHVoice/${OHOS_ARCH}/lib/libRHVoice.so)
-  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/RHVoice/${OHOS_ARCH}/lib/libRHVoice_audio.so)
+  target_link_libraries(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libwmskia/${OHOS_ARCH}/lib/libskia.a)
 
   #将三方库的头文件加入工程中
-  target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio/${OHOS_ARCH}/include)
-  target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/RHVoice/${OHOS_ARCH}/include)
+  target_include_directories(entry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libwmskia/${OHOS_ARCH}/include)
   ```
 ## 测试三方库
-提供demo
-
+    提供demo:https://gitcode.com/openharmony-tpc/openharmony_tpc_samples
 ![test-pass](./pic/skia_demo.png)
 
 
