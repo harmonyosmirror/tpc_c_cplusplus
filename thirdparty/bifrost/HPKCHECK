@@ -23,11 +23,22 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 logfile=${SCRIPT_DIR}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
 
+detect_architecture() {
+    local arch=$(uname -m)
+    case "$arch" in
+        aarch64|arm64) echo "arm64-v8a" ;;
+        x86_64|amd64) echo "x86_64" ;;
+        *) echo "$arch" ;;
+    esac
+}
+
+ARCHITECTURE=$(detect_architecture)
+
 openharmonycheck() {
     
-    BIFROST_BIN="$SCRIPT_DIR/bifrost-1.3.5-arm64-v8a-build/arm64-v8a-build/src/Bifrost"
-    TEST_DIR="$SCRIPT_DIR/bifrost-1.3.5-arm64-v8a-build/arm64-v8a-build/src"
-    BIFROST_LIB="$SCRIPT_DIR/bifrost-1.3.5-arm64-v8a-build/arm64-v8a-build/src/libbifrost.so"
+    BIFROST_BIN="$SCRIPT_DIR/bifrost-1.3.5-${ARCHITECTURE}-build/${ARCHITECTURE}-build/src/Bifrost"
+    TEST_DIR="$SCRIPT_DIR/bifrost-1.3.5-${ARCHITECTURE}-build/${ARCHITECTURE}-build/src"
+    BIFROST_LIB="$SCRIPT_DIR/bifrost-1.3.5-${ARCHITECTURE}-build/${ARCHITECTURE}-build/src/libbifrost.so"
     
     echo "可执行文件: $BIFROST_BIN" >> "$logfile"
     echo "库文件: $BIFROST_LIB" >> "$logfile"
