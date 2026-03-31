@@ -40,9 +40,10 @@ prepare() {
 
 build() {
     cd $builddir-$ARCH-build
-    # 编译选项说明：
-    # -DCOMPILATION_ARCH=OFF: OHOS_ARCH 已经提供了架构信息，无需 COMPILATION_ARCH 再次指定
-    # -DENABLE_AVX2=OFF: 提高设备适配范围，确保在不支持 AVX2 的设备上也能正常运行，减少因硬件差异导致的构建问题
+    #DCOMPILATION_ARCH=OFF原因：该库源代码CMakeLists.txt中默认情况下 COMPILATION_ARCH 被设置为 "native"，这会在编译时
+    #添加 -march=native 选项，在交叉编译环境中， -march=native 是不支持的，因为它会尝试使用主机的架构特性，而不是目标架构的特
+    #性，导致编译失败
+    #DENABLE_AVX2=OFF原因：ARM64架构（包括arm64-v8a）使用的是不同的SIMD指令集（如NEON），不支持AVX2指令
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
     -DCOMPILATION_ARCH=OFF \
     -DENABLE_AVX2=OFF \

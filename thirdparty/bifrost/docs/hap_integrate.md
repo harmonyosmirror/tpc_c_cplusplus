@@ -29,6 +29,8 @@
   ```
 - 三方库头文件及生成的库
   在lycium目录下会生成usr目录，该目录下存在已编译完成的64位，及x86\_64三方库库文件
+- armeabi-v7a：不支持。此库源码大量使用 `__uint128_t` 类型，armeabi-v7a是32位位架构，无法支持`__uint128_t`，此库不支持armeabi-v7a，
+  并无计支持armeabi-v7a的计划。
   ```
   bifrost/arm64-v8a   bifrost/x86_64
   ```
