@@ -31,14 +31,20 @@ buildtools=cmake
 
 builddir=libproxy-0.4.18
 packagename=$builddir.tar.gz
+clonesrcflag=true
 
 prepare() {
-    :
+    if ${clonesrcflag}
+    then
+        cd $builddir
+        patch -p1 < ../libproxy.patch
+        clonesrcflag=false
+    fi
 }
 
 build() {
     cd $builddir
-    
+
     # 禁用 GNOME3 和 Python 绑定，避免交叉编译时依赖主机系统库，
     # 只保留 OpenHarmony 所需的核心 C/C++ 库功能，减少构建干扰。
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
@@ -52,6 +58,8 @@ build() {
         -DWITH_GNOME3=OFF \
         -DWITH_PYTHON2=OFF \
         -DWITH_PYTHON3=OFF \
+        -DCMAKE_C_FLAGS="-s" \
+        -DCMAKE_CXX_FLAGS="-s" \
         -L
     make -j4 -C $ARCH-build
     make -j4 -C $ARCH-build help 2>/dev/null | grep -i test || echo "没有找到测试目标"
