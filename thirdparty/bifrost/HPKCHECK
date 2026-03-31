@@ -16,61 +16,18 @@
 
 source HPKBUILD > /dev/null 2>&1
 
-if [ -z "$pkgname" ]; then
-    pkgname="bifrost"
-fi
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 logfile=${SCRIPT_DIR}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
 
-detect_architecture() {
-    local arch=$(uname -m)
-    case "$arch" in
-        aarch64|arm64) echo "arm64-v8a" ;;
-        x86_64|amd64) echo "x86_64" ;;
-        *) echo "$arch" ;;
-    esac
-}
-
-ARCHITECTURE=$(detect_architecture)
-
 openharmonycheck() {
     
-    BIFROST_BIN="$SCRIPT_DIR/bifrost-1.3.5-${ARCHITECTURE}-build/${ARCHITECTURE}-build/src/Bifrost"
-    TEST_DIR="$SCRIPT_DIR/bifrost-1.3.5-${ARCHITECTURE}-build/${ARCHITECTURE}-build/src"
-    BIFROST_LIB="$SCRIPT_DIR/bifrost-1.3.5-${ARCHITECTURE}-build/${ARCHITECTURE}-build/src/libbifrost.so"
-    
-    echo "可执行文件: $BIFROST_BIN" >> "$logfile"
-    echo "库文件: $BIFROST_LIB" >> "$logfile"
-    echo "测试目录: $TEST_DIR" >> "$logfile"
-    
-    if [ ! -f "$BIFROST_BIN" ]; then
-        echo "错误: Bifrost 可执行文件不存在" >> "$logfile"
-        echo "测试结果: 失败" >> "$logfile"
-        return 1
-    fi
-    
-    if [ ! -f "$BIFROST_LIB" ]; then
-        echo "错误: Bifrost 库文件不存在" >> "$logfile"
-        echo "测试结果: 失败" >> "$logfile"
-        return 1
-    fi
-    
-    chmod 777 "$BIFROST_BIN"
-    
-    if [ ! -d "$TEST_DIR" ]; then
-        echo "错误: 测试目录不存在: $TEST_DIR" >> "$logfile"
-        echo "测试结果: 失败" >> "$logfile"
-        return 1
-    fi
-    
-    cd "$TEST_DIR" || {
-        echo "错误: 无法切换到测试目录: $TEST_DIR" >> "$logfile"
+    cd "$SCRIPT_DIR/bifrost-1.3.5-${ARCH}-build/${ARCH}-build/src" || {
+        echo "错误: 无法切换到测试目录: $SCRIPT_DIR/bifrost-1.3.5-${ARCH}-build/${ARCH}-build/src" >> "$logfile"
         echo "测试结果: 失败" >> "$logfile"
         return 1
     }
-    
-    export LD_LIBRARY_PATH="$TEST_DIR":$LD_LIBRARY_PATH
+
+    chmod 777 Bifrost
 
     cat > test_reads.fasta << 'EOF'
 >read1
@@ -87,7 +44,7 @@ EOF
         return 1
     fi
 
-    LD_LIBRARY_PATH="$TEST_DIR" ./Bifrost build -t 4 -k 21 -r test_reads.fasta -o test_graph_new -v >> "$logfile" 2>&1
+    ./Bifrost build -t 4 -k 21 -r test_reads.fasta -o test_graph_new -v >> "$logfile" 2>&1
     
     if [ ! -f "test_graph_new.gfa.gz" ] || [ ! -f "test_graph_new.bfi" ]; then
         echo "错误: 图构建失败" >> "$logfile"
@@ -109,7 +66,7 @@ EOF
     fi
 
     mkdir -p output
-    LD_LIBRARY_PATH="$TEST_DIR" ./Bifrost query -g test_graph_new.gfa.gz -I test_graph_new.bfi -q queries.fasta -o output/results -v >> "$logfile" 2>&1
+    ./Bifrost query -g test_graph_new.gfa.gz -I test_graph_new.bfi -q queries.fasta -o output/results -v >> "$logfile" 2>&1
 
     if [ ! -f "output/results.tsv" ]; then
         echo "错误: 结果文件不存在" >> "$logfile"
