@@ -15,14 +15,16 @@
 # Maintainer: zhangdongyang <zdywww@163.com>
 
 source HPKBUILD > /dev/null 2>&1    # 导入HPKBUILD文件
-logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
+logfiledecoder=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_decodertest.log
+logfileencoder=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_encodertest.log
 
 # 在OH环境执行测试的接口
 openharmonycheck() {
     res=0
+    chmod 777 "${builddir}/${ARCH}-build"/{encoder,decoder,signalcompare}
     cd ${builddir}/${ARCH}-build/test_vectors 
-    sh test_decoder.sh
-    sh test_encoder.sh
+    sh test_decoder.sh > ${logfiledecoder} 2>&1
+    sh test_encoder.sh > ${logfileencoder} 2>&1
     res=$?
     cd $OLDPWD
     return $res

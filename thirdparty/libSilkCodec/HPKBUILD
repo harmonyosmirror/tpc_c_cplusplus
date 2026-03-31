@@ -48,29 +48,75 @@ prepare() {
     return 0
 }
 
-# 执行编译构建的命令
 build() {
     cd ${builddir}
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L
     make -j4 VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
-    if [$ret -ne 0]
+    if [ $ret -ne 0 ]
     then
         return $ret
     fi
+
     # 编译测试用例
-    cd ${builddir}/silk/src/SILK_SDK_SRC_ARM_v1.0.9/
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L
-    make lib -j4 VERBOSE=1
-    make -j4 VERBOSE=1
+    SILK_SDK_DIR="${builddir}/silk/src/SILK_SDK_SRC_ARM_v1.0.9"
+    cd ${SILK_SDK_DIR}
+
+    find . -name "*_arm.S" -type f -delete
+    find . -name "*_arm.c" -type f -delete
+    cp Makefile Makefile.bak
+    if [ "$ARCH" == "arm64-v8a" ]; then
+        export CC="${OHOS_SDK}/native/llvm/bin/clang -target aarch64-linux-ohos --sysroot=${OHOS_SDK}/native/sysroot -mlittle-endian"
+        export CXX="${OHOS_SDK}/native/llvm/bin/clang++ -target aarch64-linux-ohos --sysroot=${OHOS_SDK}/native/sysroot -mlittle-endian"
+    else
+        export CC="${OHOS_SDK}/native/llvm/bin/clang -target x86_64-linux-ohos --sysroot=${OHOS_SDK}/native/sysroot"
+        export CXX="${OHOS_SDK}/native/llvm/bin/clang++ -target x86_64-linux-ohos --sysroot=${OHOS_SDK}/native/sysroot"
+    fi
+
+    export AR="${OHOS_SDK}/native/llvm/bin/llvm-ar"
+    export RANLIB="${OHOS_SDK}/native/llvm/bin/llvm-ranlib"
+    export ADDED_CFLAGS="-Wno-constant-conversion -Wno-shift-negative-value -Wno-unused-command-line-argument"
+
+    sed -i 's|^CC *=.*|CC = '"${CC}"'|' Makefile
+    sed -i 's|^CXX *=.*|CXX = '"${CXX}"'|' Makefile
+    sed -i 's|^AR *=.*|AR = '"${AR}"'|' Makefile
+    sed -i 's|^RANLIB *=.*|RANLIB = '"${RANLIB}"'|' Makefile
+    sed -i 's|^ADDED_DEFINES *=.*|ADDED_DEFINES = NO_ASM|' Makefile
+    sed -i 's|^ADDED_CFLAGS *=.*|ADDED_CFLAGS = '"${ADDED_CFLAGS}"'|' Makefile
+
+    if ! grep -q "\$(ADDED_CFLAGS)" Makefile; then
+        sed -i '/^CFLAGS +=/ s/$/ $(ADDED_CFLAGS) $(ADDED_DEFINES)/' Makefile
+        sed -i '/^CFLAGS =/ s/$/ $(ADDED_CFLAGS) $(ADDED_DEFINES)/' Makefile
+    fi
+
+    make clean >> $buildlog 2>&1
+    make lib VERBOSE=1 >> $buildlog 2>&1
+
+    if [ $? -ne 0 ]; then
+        tail -100 $buildlog
+        mv Makefile.bak Makefile
+        cd $OLDPWD
+        return 1
+    fi
+
+    if [ ! -f "libSKP_SILK_SDK.a" ]; then
+        mv Makefile.bak Makefile
+        cd $OLDPWD
+        return 1
+    fi
+
+    make encoder decoder signalcompare VERBOSE=1 >> $buildlog 2>&1
     chmod +x encoder decoder signalcompare
-    cp -rf encoder decoder signalcompare test_vectors ${OLDPWD}/$builddir/$ARCH-build/  >> $buildlog  2>&1
+
+    local target_dir="${OLDPWD}/${builddir}/${ARCH}-build/"
+    mkdir -p "${target_dir}"
+    cp -rf encoder decoder signalcompare test_vectors "${target_dir}/" >> $buildlog 2>&1
+    mv Makefile.bak Makefile
     cd $OLDPWD
     return $ret
 }
 
-# 打包安装
 package() {
     cd $builddir
     mkdir -p ${LYCIUM_ROOT}/usr/$pkgname/$ARCH/include
@@ -82,12 +128,10 @@ package() {
     return $ret
 }
 
-# 进行测试的准备和说明
 check() {
     echo "The test must be on an OpenHarmony device!"
 }
 
-# 清理环境
 cleanbuild() {
     rm -rf ${PWD}/${builddir}
     return 0
