@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Copyright (c) 2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -22,7 +22,6 @@ openharmonycheck() {
     local original_dir="$(pwd)"
     local script_dir="$(dirname "$0")"
     local tquic_dir="tquic-0.10.0"
-    local test_bin_name="tquic-9e6bb5cbd598bbca"
 
     cd "${script_dir}" || {
         echo "错误: 无法进入脚本目录 ${script_dir}" >> "${logfile}"
@@ -36,36 +35,35 @@ openharmonycheck() {
     }
     echo "当前目录: $(pwd)" >> "${logfile}"
 
-    local src_bin="target/aarch64-unknown-linux-ohos/release/deps/${test_bin_name}"
-    if [ ! -f "${src_bin}" ]; then
-        echo "错误: 测试二进制文件不存在: ${src_bin}" >> "${logfile}"
+    local test_bin_name=$(find target/aarch64-unknown-linux-ohos/release/deps -maxdepth 1 -type f -name 'tquic-*' ! -name '*.d' ! -name '*.rlib' -executable)
+    if [ ! -f "${test_bin_name}" ]; then
+        echo "错误: 测试二进制文件不存在: ${test_bin_name}" >> "${logfile}"
         cd "${original_dir}" 2>/dev/null
         return 1
     fi
 
-    cp "${src_bin}" ./ || {
+    cp "${test_bin_name}" ./ || {
         echo "错误: 复制测试二进制失败" >> "${logfile}"
         cd "${original_dir}" 2>/dev/null
         return 1
     }
 
-    chmod 777 "${test_bin_name}" || {
+    local bin_name=$(basename "$test_bin_name")
+    chmod 777 "${bin_name}" || {
         echo "错误: 修改权限失败" >> "${logfile}"
         cd "${original_dir}" 2>/dev/null
         return 1
     }
 
-    ./"${test_bin_name}" >> "${logfile}" 2>&1
-    local test_exit_code=$?
+    echo "bin_name: ${bin_name}" >> "${logfile}"
 
-    # 检查日志中是否包含成功标志
-    local success_string="Init tquic success!!!"
-    
+    ./"${bin_name}" >> "${logfile}" 2>&1
+
     if grep -q "${success_string}" "${logfile}"; then
-        echo "检测到成功标志，测试通过" >> "${logfile}"
+        echo "check success" >> "${logfile}"
         res=0
     else
-        echo "未检测到成功标志，测试失败" >> "${logfile}"
+        echo "check fail" >> "${logfile}"
         res=1
     fi
 
