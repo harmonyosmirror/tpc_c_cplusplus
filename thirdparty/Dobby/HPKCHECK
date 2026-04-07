@@ -23,6 +23,8 @@ checkprepare() {
 }
 
 openharmonycheck() {
+    
+    export LD_LIBRARY_PATH="$LYCIUM_ROOT/usr/unicorn/arm64-v8a/lib:$LYCIUM_ROOT/usr/capstone/arm64-v8a/lib64:$LD_LIBRARY_PATH"
     cd ${builddir}/${ARCH}-build/tests
     if [ $ARCH == "arm64-v8a" ];then
         ./test_insn_relo_arm64 > ${logfile} 2>&1 || return -1
