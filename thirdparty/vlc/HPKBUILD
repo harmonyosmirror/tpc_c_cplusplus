@@ -52,7 +52,7 @@ prepare() {
         cd $OLDPWD
         cloneflag=false
     fi
-
+    # chmod +x $builddir/configure
     mkdir -p $builddir/$ARCH-build
     if [ $ARCH == "arm64-v8a" ]
     then
@@ -87,9 +87,12 @@ build() {
 	GLES2_LIBS="-L${OHOS_SDK}/native/sysroot/usr/lib/ -lGLESv2" \
 	BUILDCC=gcc ../configure "$@" --host=$host --enable-live555 --enable-openssl --disable-lua --disable-a52 --disable-rpath \
         --disable-xcb --disable-appdata --enable-gles2 --disable-alsa --disable-vlc --disable-v4l2 \
-        --enable-freetype ac_cv_func_open_memstream=no --with-contrib="../$ARCH-contrib" > $buildlog 2>&1
+        --enable-freetype ac_cv_func_open_memstream=no --disable-silent-rules --with-contrib="../$ARCH-contrib" > $buildlog 2>&1
     sed -i 's/-lgroupsock -lBasicUsageEnvironment -lUsageEnvironment/-lgroupsock -lBasicUsageEnvironment -lUsageEnvironment -lssl -lcrypto/g'   config.status
     sed -i 's/-lgroupsock_pic -lBasicUsageEnvironment_pic -lUsageEnvironment_pic/-lgroupsock_pic -lBasicUsageEnvironment_pic -lUsageEnvironment_pic -lssl -lcrypto/g' config.status
+    sed -i "s|hardcode_libdir_flag_spec='\$wl-rpath \$wl\$libdir'|hardcode_libdir_flag_spec='\$wl'|" config.status
+    sed -i "s|hardcode_libdir_flag_spec_CXX='\$wl-rpath \$wl\$libdir'|hardcode_libdir_flag_spec_CXX='\$wl'|" config.status
+
     $MAKE >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
@@ -115,5 +118,6 @@ check() {
 }
 
 cleanbuild() {
+    echo "The test must be on an OpenHarmony device!"
     rm -rf ${PWD}/$builddir #${PWD}/$packagename
 }
