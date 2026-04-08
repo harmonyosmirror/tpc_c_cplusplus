@@ -1,0 +1,104 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: handong056@chinasoftinc.com
+# Maintainer: handong056@chinasoftinc.com
+
+pkgname=luaT
+pkgver=master
+pkgrel=0
+pkgdesc="Torch luaT: Lua/C Torch class API (libluaT) from torch7, cross-built for OpenHarmony"
+url="https://github.com/torch/torch7"
+archs=("armeabi-v7a" "arm64-v8a")
+license=("BSD-3-Clause")
+depends=(LuaJIT)
+makedepends=()
+
+source="https://github.com/torch/torch7.git"
+commitid="814ea4afd6beb110705d2456de03876841fcf1fd"
+downloadpackage=false
+autounpack=false
+builddir=torch7-master
+packagename=""
+buildtools="cmake"
+patchflag=true
+cloneflag=true
+
+prepare() {
+    _root="${PKGBUILD_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}"
+    if [ "$cloneflag" == "true" ]; then
+        if [ -d "$builddir" ]; then
+            rm -rf "$builddir"
+        fi
+        git clone "$source" "$builddir"
+        cd "$builddir"
+        git checkout "$commitid"
+        cd "${OLDPWD}" > /dev/null
+        cloneflag=false
+    fi
+
+    if ${patchflag}; then
+        cd "${builddir}"
+        patch -p1 < "${_root}/luat_oh_pkg.patch" >> "${publicbuildlog:-${buildlog:-/dev/null}}" 2>&1
+        patchflag=false
+        cd "${OLDPWD}"
+    fi
+    mkdir -p "${builddir}/${ARCH}-build"
+}
+
+build() {
+    cd "${builddir}"
+    _lj="${LYCIUM_ROOT}/usr/LuaJIT/${ARCH}"
+    if [ ! -d "${_lj}/lib" ]; then
+        _lj="${LYCIUM_ROOT}/usr/luajit/${ARCH}"
+    fi
+    _inc="${_lj}/include/luajit-2.1"
+    if [ ! -f "${_inc}/lua.h" ]; then
+        _inc="${_lj}/include"
+    fi
+    if [ ! -f "${_inc}/lua.h" ]; then
+        echo "luaT build: Lua headers not found under ${_lj}/include (install LuaJIT first)" >> "${buildlog}"
+        cd "${OLDPWD}" || true
+    fi
+    PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
+        "${OHOS_SDK}/native/build-tools/cmake/bin/cmake" "$@" \
+        -B"${ARCH}-build" -S"lib/luaT" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--strip-all" \
+        -DLUA_INCDIR="${_inc}" \
+        -DLUA_LIBDIR="${_lj}/lib" \
+        -DLUALIB=luajit-5.1 \
+        >> "${buildlog}" 2>&1 || {
+            cd "${OLDPWD}" || true
+        }
+    $MAKE VERBOSE=1 -C "${ARCH}-build" >> "${buildlog}" 2>&1
+    ret=$?
+    cd "${OLDPWD}"
+    return "${ret}"
+}
+
+package() {
+    cd "${builddir}"
+    $MAKE VERBOSE=1 -C "${ARCH}-build" install >> "${buildlog}" 2>&1
+    ret=$?
+    cd "${OLDPWD}"
+    return "${ret}"
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+}
+
+cleanbuild() {
+    rm -rf "${PWD:?}/${builddir}"
+}
