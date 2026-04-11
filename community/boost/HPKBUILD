@@ -67,7 +67,10 @@ prepare() {
 
 build() {
     cd $builddir-$ARCH-build
-    ./b2 cxxflags=$compileflags" -fPIC" cflags=$compileflags" -fPIC" variant=release >> $buildlog 2>&1
+    ./b2 cxxflags="$compileflags -fPIC -fstack-protector-strong" \
+          cflags="$compileflags -fPIC -fstack-protector-strong" \
+          linkflags="-s" \
+          variant=release >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
     return $ret
