@@ -40,7 +40,7 @@ prepare() {
 
 build() {
     cd $builddir/$ARCH-build
-    PKG_CONFIG_LIBDIR="${pkgconfigpath}" ../configure "$@" \
+    PKG_CONFIG_LIBDIR="${pkgconfigpath}" CFLAGS="-fstack-protector-strong" LDFLAGS="-Wl,-s" ../configure "$@" \
     --host=$host --enable-shared --enable-static > $buildlog 2>&1
     # 修改导致测试失败的字符串
     find . -name Makefile -exec sed -i 's#mawk#awk#' {} +
