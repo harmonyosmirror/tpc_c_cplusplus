@@ -39,7 +39,8 @@ prepare() {
 
 build() {
     cd $builddir
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DBUILD_SHARED_LIBS=ON -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
+    local extra_link_flags="-Wl,--strip-all"
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DBUILD_SHARED_LIBS=ON -DOHOS_ARCH=$ARCH -DCMAKE_SHARED_LINKER_FLAGS="$extra_link_flags" -B$ARCH-build -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
     make -j4 -C $ARCH-build >> `pwd`/$ARCH-build/build.log 2>&1
     ret=$?
     cd $OLDPWD
