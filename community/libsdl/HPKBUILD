@@ -35,27 +35,35 @@ prepare() {
 }
 
 build() {
-    cd $builddir
+    local LOCAL_CFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_CXXFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    cd "$builddir"
 
     sed -i 's/pthread_setcanceltype/\/\/pthread_setcanceltype/g' src/thread/pthread/SDL_systhread.c
-    
+
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
-        -DOHOS_ARCH=$ARCH \
+        -DOHOS_ARCH="$ARCH" \
         -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_C_FLAGS="${LOCAL_CFLAGS}" \
+        -DCMAKE_CXX_FLAGS="${LOCAL_CXXFLAGS}" \
+        -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG" \
+        -DCMAKE_CXX_FLAGS_RELEASE="-O3 -DNDEBUG" \
+        -DCMAKE_SHARED_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_EXE_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
         -DCMAKE_SKIP_RPATH=TRUE \
         -DCMAKE_SKIP_INSTALL_RPATH=ON \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-        -DCMAKE_C_FLAGS="-fPIC -fstack-protector-strong -s -O3" \
-        -DCMAKE_CXX_FLAGS="-fPIC -fstack-protector-strong -s -O3" \
         -DPKG_CONFIG_EXECUTABLE="" \
         -DHAVE_PTHREADS=TRUE \
         -DSDL_ALSA=OFF \
         -DSDL_TESTS=ON \
-        -Bbuild/$ARCH-build -S./ -L \ > `pwd`/build/$ARCH-build/make.log 2>&1
-    
-    make -j4 -C build/$ARCH-build >> `pwd`/build/$ARCH-build/build.log 2>&1
-    ret=$?
-    cd $OLDPWD
+        -B"build/$ARCH-build" -S./ -L > "$PWD/build/$ARCH-build/make.log" 2>&1
+
+    make -j4 -C "build/$ARCH-build" >> "$PWD/build/$ARCH-build/build.log" 2>&1
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
