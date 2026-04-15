@@ -12,9 +12,15 @@ index 886691a0..533a7f0c 100644
                      --out-dir=${PROJECT_BINARY_DIR}/sql/share/
                      --header_file=${PROJECT_BINARY_DIR}/include/mysqld_error.h 
 diff --git a/mysql-test/mysql-test-run.pl b/mysql-test/mysql-test-run.pl
-index d6000907..46b44cfb 100755
+index d6000907..839f8a05 100644
 --- a/mysql-test/mysql-test-run.pl
 +++ b/mysql-test/mysql-test-run.pl
+@@ -1,4 +1,4 @@
+-#!/usr/bin/perl
++#!/bin/perl
+ # -*- cperl -*-
+
+ # Copyright (c) 2004, 2016, Oracle and/or its affiliates. All rights reserved.
 @@ -29,6 +29,64 @@
  #
  ##############################################################################
@@ -175,10 +181,20 @@ index 1223fff3..e5a35a88 100644
  show variables like "system_time_zone";
  Variable_name	Value
 -system_time_zone	MET
-+system_time_zone	CET
++system_time_zone	CEST
  select @a:=FROM_UNIXTIME(1);
  @a:=FROM_UNIXTIME(1)
  1970-01-01 01:00:01
+diff --git a/mysql-test/std_data/checkDBI_DBD-mysql.pl b/mysql-test/std_data/checkDBI_DBD-mysql.pl
+index f001e471..c4b75af5 100644
+--- a/mysql-test/std_data/checkDBI_DBD-mysql.pl
++++ b/mysql-test/std_data/checkDBI_DBD-mysql.pl
+@@ -1,4 +1,4 @@
+-#!/usr/bin/perl
++#!/bin/perl
+
+ # Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ #
 diff --git a/mysql-test/t/mysql.test b/mysql-test/t/mysql.test
 index 40a01a2b..d6eb1494 100644
 --- a/mysql-test/t/mysql.test
