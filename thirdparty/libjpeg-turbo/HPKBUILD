@@ -41,7 +41,7 @@ prepare() {
 build() {
     cd ${builddir}
      # -DCMAKE_C_FLAGS="-ffp-contract=off" 禁用 floating-point expression contraction.否则会因为浮点精度问题造成测试用例失败。
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DCMAKE_C_FLAGS="-ffp-contract=off" -B${ARCH}-build -S./ >> $buildlog 2>&1
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DCMAKE_C_FLAGS="-ffp-contract=off" -DCMAKE_SHARED_LINKER_FLAGS="-s" -DCMAKE_EXE_LINKER_FLAGS="-s" -B${ARCH}-build -S./ >> $buildlog 2>&1
     $MAKE VERBOSE=1 -C ${ARCH}-build >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
