@@ -35,14 +35,20 @@ prepare() {
 }
 
 build() {
-    cd $builddir
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -B$ARCH-build -S./ \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--strip-all" \
-    > $buildlog 2>&1
-    $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
-    ret=$?
-    cd $OLDPWD
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    cd "$builddir"
+
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
+        -DCMAKE_SHARED_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_EXE_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_C_FLAGS_RELEASE="-O3 -fstack-protector-strong -fPIC -DNDEBUG" \
+        -DCMAKE_CXX_FLAGS_RELEASE="-O3 -fstack-protector-strong -fPIC -DNDEBUG" \
+        -B"$ARCH-build" -S./ > "$buildlog" 2>&1
+
+    $MAKE VERBOSE=1 -C "$ARCH-build" >> "$buildlog" 2>&1
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
