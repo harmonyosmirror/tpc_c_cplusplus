@@ -50,7 +50,7 @@ prepare() {
 
 build() {
     cd $builddir
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH -B$ARCH-build -DBUILD_TESTING=ON -S./ -L > $ARCH-build/build.log 2>&1
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH -B$ARCH-build -DBUILD_TESTING=ON -DCMAKE_SHARED_LINKER_FLAGS="-s" -DCMAKE_EXE_LINKER_FLAGS="-s" -S./ -L > $ARCH-build/build.log 2>&1
     make -j4 -C $ARCH-build VERBOSE=1 >> `pwd`/$ARCH-build/build.log 2>&1
     ret=$?
     cd $OLDPWD
