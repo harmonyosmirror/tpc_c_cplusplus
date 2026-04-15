@@ -26,6 +26,7 @@ build() {
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
     -DOHOS_ARCH=$ARCH -B$ARCH-build -DBUILD_TESTING=ON \
+    -DCMAKE_C_FLAGS="-s" -DCMAKE_CXX_FLAGS="-s" \
     -DHAVE_DEFAULT_SOURCE_RUN="advanced" -DHAVE_DEFAULT_SOURCE_RUN__TRYRUN_OUTPUT="advanced" \
     -DTEST_LFS_WORKS_RUN="advanced" -DTEST_LFS_WORKS_RUN__TRYRUN_OUTPUT="advanced" -S./ -L > $buildlog 2>&1
     $MAKE -C $ARCH-build VERBOSE=1 >> $buildlog 2>&1
