@@ -5,7 +5,7 @@ pkgver=0.9.9.8
 pkgrel=0
 pkgdesc="OpenGL Mathematics (GLM) is a header only C++ mathematics library for graphics software based on the OpenGL Shading Language (GLSL) specifications."
 url="https://github.com/g-truc/glm"
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("The Happy Buny License(Modified MIT License)" "MIT")
 depends=()
 makedepends=()
@@ -31,13 +31,24 @@ prepare() {
 }
 
 build() {
-    cd $builddir
+    local LOCAL_CFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_CXXFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    cd "$builddir"
+
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
-        -DOHOS_ARCH=$ARCH -DBUILD_SHARED_LIBS=ON \
-        -DBUILD_STATIC_LIBS=ON -B$ARCH-build -S./ -L > $buildlog 2>&1
-    $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
-    ret=$?
-    cd $OLDPWD
+        -DBUILD_SHARED_LIBS=ON \
+        -DBUILD_STATIC_LIBS=ON \
+        -DCMAKE_C_FLAGS="${LOCAL_CFLAGS}" \
+        -DCMAKE_CXX_FLAGS="${LOCAL_CXXFLAGS}" \
+        -DCMAKE_SHARED_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_EXE_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -B"$ARCH-build" -S./ -L > "$buildlog" 2>&1
+
+    $MAKE VERBOSE=1 -C "$ARCH-build" >> "$buildlog" 2>&1
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
