@@ -69,14 +69,23 @@ prepare() {
 
 #参数1
 build() {
-    cd $builddir/$ARCH-build
-    export CFLAGS="$CFLAGS -O3"
-    export CXXFLAGS="$CXXFLAGS -O3"
-    ../Configure "$@" $host zlib > $buildlog 2>&1
+    local LOCAL_CFLAGS="${CFLAGS} -O3 -fstack-protector-strong -fPIC"
+    local LOCAL_CXXFLAGS="${CXXFLAGS} -O3 -fstack-protector-strong -fPIC"
+    local LOCAL_LDFLAGS="${LDFLAGS} -Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    cd "$builddir/$ARCH-build"
+
+    CFLAGS="${LOCAL_CFLAGS}" \
+    CXXFLAGS="${LOCAL_CXXFLAGS}" \
+    LDFLAGS="${LOCAL_LDFLAGS}" \
+    ../Configure "$@" "$host" zlib no-engine > "$buildlog" 2>&1
+
+    # 修复 Makefile 中的引号问题（原有修复保留）
     sed -i.bak 's/"\$(MAKE)"/$(MAKE)/g' ./Makefile
-    $MAKE VERBOSE=1 >> $buildlog 2>&1
-    ret=$?
-    cd $OLDPWD
+
+    $MAKE VERBOSE=1 >> "$buildlog" 2>&1
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
