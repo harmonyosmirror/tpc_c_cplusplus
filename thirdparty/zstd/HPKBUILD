@@ -39,13 +39,26 @@ prepare() {
 }
 
 build() {
-    cd $builddir
+    local LOCAL_CFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_CXXFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -s"
+
+    cd "$builddir"
+
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
-    $OHOS_SDK/native/build-tools/cmake/bin/cmake "$@" -B$ARCH-build -S./build/cmake \
-    -DZSTD_BUILD_TESTS=ON > $buildlog 2>&1
-    $MAKE -C $ARCH-build VERBOSE=1 >> $buildlog 2>&1
-    ret=$?
-    cd $OLDPWD
+    $OHOS_SDK/native/build-tools/cmake/bin/cmake "$@" \
+        -DZSTD_BUILD_TESTS=ON \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_C_FLAGS="${LOCAL_CFLAGS}" \
+        -DCMAKE_CXX_FLAGS="${LOCAL_CXXFLAGS}" \
+        -DCMAKE_SHARED_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_EXE_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_SKIP_RPATH=TRUE \
+        -B"$ARCH-build" -S./build/cmake > "$buildlog" 2>&1
+
+    $MAKE -C "$ARCH-build" VERBOSE=1 >> "$buildlog" 2>&1
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
