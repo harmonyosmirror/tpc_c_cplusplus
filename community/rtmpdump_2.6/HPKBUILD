@@ -65,11 +65,20 @@ prepare() {
 }
 
 build() {
-    cd $builddir-$ARCH-build
-    $MAKE SHARED=no CC=${cc} LD=${ld} XCFLAGS="-D__MUSL__=1 -I$LYCIUM_ROOT/usr/$opensslver/$ARCH/include" \
-        XLDFLAGS="-L$LYCIUM_ROOT/usr/$opensslver/$ARCH/$libdir" > $buildlog 2>&1
-    ret=$?
-    cd $OLDPWD
+    local LOCAL_CFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    cd "$builddir-$ARCH-build"
+
+    $MAKE SHARED=no \
+        CC="${cc}" \
+        LD="${ld}" \
+        XCFLAGS="-D__MUSL__=1 -I$LYCIUM_ROOT/usr/$opensslver/$ARCH/include ${LOCAL_CFLAGS}" \
+        XLDFLAGS="-L$LYCIUM_ROOT/usr/$opensslver/$ARCH/$libdir ${LOCAL_LDFLAGS}" \
+        > "$buildlog" 2>&1
+
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
