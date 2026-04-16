@@ -5,7 +5,7 @@ pkgver=v1.9.2
 pkgrel=0
 pkgdesc=""
 url=""
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license="BSD"
 depends=("xz" "zstd" "openssl" "bzip2")
 makedepends=()
@@ -32,11 +32,25 @@ prepare() {
 }
 
 build() {
-    cd $builddir
-    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
-    make -j4 -C $ARCH-build >> `pwd`/$ARCH-build/build.log 2>&1
-    ret=$?
-    cd $OLDPWD
+    local LOCAL_CFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_CXXFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    cd "$builddir"
+
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
+        -DOHOS_ARCH="$ARCH" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_C_FLAGS="${LOCAL_CFLAGS}" \
+        -DCMAKE_CXX_FLAGS="${LOCAL_CXXFLAGS}" \
+        -DCMAKE_SHARED_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_EXE_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_SKIP_RPATH=TRUE \
+        -B"$ARCH-build" -S./ -L > `pwd`/"$ARCH-build"/build.log 2>&1
+
+    make -j4 -C "$ARCH-build" >> `pwd`/"$ARCH-build"/build.log 2>&1
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
