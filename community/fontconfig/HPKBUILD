@@ -50,17 +50,37 @@ prepare() {
 }
 
 build() {
-    cd $builddir/$ARCH-build
-    FREETYPE_CFLAGS="-I${LYCIUM_ROOT}/usr/freetype2/$ARCH/include/freetype2 ${LYCIUM_ROOT}/usr/bzip2/$ARCH/lib/libbz2.a \
-    ${LYCIUM_ROOT}/usr/libpng/$ARCH/lib/libpng.a ${LYCIUM_ROOT}/usr/brotli/$ARCH/lib/libbrotlicommon.so \
-    ${LYCIUM_ROOT}/usr/brotli/$ARCH/lib/libbrotlienc.so ${LYCIUM_ROOT}/usr/brotli/$ARCH/lib/libbrotlidec.so -lz" \
-    FREETYPE_LIBS="${LYCIUM_ROOT}/usr/freetype2/$ARCH/lib/libfreetype.a" CFLAGS="$FREETYPE_CFLAGS $FREETYPE_LIBS" \
-    PKG_CONFIG_PATH="${pkgconfigpath}" ../configure "$@" --host=$host --enable-libxml2 --enable-static \
-    --enable-shared --disable-silent-rules > `pwd`/build.log 2>&1 # --sysconfdir="/etc" --localstatedir="/var" --datarootdir="/share" 
-    make -j4 >> `pwd`/build.log 2>&1
-    # 对最关键一步的退出码进行判断
-    ret=$?
-    cd $OLDPWD
+    local LOCAL_CFLAGS="${CFLAGS} -O3 -fstack-protector-strong -fPIC"
+    local LOCAL_CXXFLAGS="${CXXFLAGS} -O3 -fstack-protector-strong -fPIC"
+    local LOCAL_LDFLAGS="${LDFLAGS} -Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    cd "$builddir/$ARCH-build"
+
+    FREETYPE_CFLAGS="-I${LYCIUM_ROOT}/usr/freetype2/$ARCH/include/freetype2"
+    FREETYPE_LIBS="${LYCIUM_ROOT}/usr/freetype2/$ARCH/lib/libfreetype.a \
+    ${LYCIUM_ROOT}/usr/bzip2/$ARCH/lib/libbz2.a \
+    ${LYCIUM_ROOT}/usr/libpng/$ARCH/lib/libpng.a \
+    ${LYCIUM_ROOT}/usr/brotli/$ARCH/lib/libbrotlicommon.so \
+    ${LYCIUM_ROOT}/usr/brotli/$ARCH/lib/libbrotlienc.so \
+    ${LYCIUM_ROOT}/usr/brotli/$ARCH/lib/libbrotlidec.so -lz"
+
+    CFLAGS="${FREETYPE_CFLAGS} ${LOCAL_CFLAGS}" \
+    CXXFLAGS="${LOCAL_CXXFLAGS}" \
+    LDFLAGS="${LOCAL_LDFLAGS}" \
+    LIBS="${FREETYPE_LIBS}" \
+    PKG_CONFIG_PATH="${pkgconfigpath}" \
+    ../configure "$@" \
+        --host="$host" \
+        --enable-libxml2 \
+        --enable-static \
+        --enable-shared \
+        --disable-silent-rules \
+        --disable-rpath \
+        > "$PWD/build.log" 2>&1
+
+    make -j4 >> "$PWD/build.log" 2>&1
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
