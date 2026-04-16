@@ -65,16 +65,27 @@ prepare() {
 }
 
 build() {
-    cd $builddir/$ARCH-build
-    export CFLAGS="-O3 -DNDEBUG -flto $CFLAGS"
-    export CXXFLAGS="-O3 -DNDEBUG -flto $CXXFLAGS"
-    export LDFLAGS="-flto -Wl,--strip-all $LDFLAGS"
+    local LOCAL_CFLAGS="${CFLAGS} -O3 -fstack-protector-strong -fPIC"
+    local LOCAL_CXXFLAGS="${CXXFLAGS} -O3 -fstack-protector-strong -fPIC"
+    local LOCAL_LDFLAGS="${LDFLAGS} -Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    cd "$builddir/$ARCH-build"
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
-    ../configure "$@" --host=$host --disable-xzdec --disable-lzmadec \
-    --disable-xz  --disable-lzmainfo > $buildlog 2>&1
-    $MAKE VERBOSE=1 >> $buildlog 2>&1
-    ret=$?
-    cd $OLDPWD
+    CFLAGS="${LOCAL_CFLAGS}" \
+    CXXFLAGS="${LOCAL_CXXFLAGS}" \
+    LDFLAGS="${LOCAL_LDFLAGS}" \
+    ../configure "$@" \
+        --host="$host" \
+        --disable-xzdec \
+        --disable-lzmadec \
+        --disable-xz \
+        --disable-lzmainfo \
+        --disable-rpath \
+        > "$buildlog" 2>&1
+
+    $MAKE VERBOSE=1 >> "$buildlog" 2>&1
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
