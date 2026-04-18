@@ -74,10 +74,23 @@ prepare() {
 }
 
 build() {
-    cd $builddir-$ARCH-build
-    $MAKE VERBOSE=1 CC=${cc} AR=${ar} RANLIB=${ranlib} libbz2.a bzip2 bzip2recover > $buildlog 2>&1
-    ret=$?
-    cd $OLDPWD
+    local LOCAL_CFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_CXXFLAGS="-O3 -fstack-protector-strong -fPIC"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -s"
+
+    cd "$builddir-$ARCH-build"
+
+    $MAKE VERBOSE=1 \
+        CC="${cc}" \
+        AR="${ar}" \
+        RANLIB="${ranlib}" \
+        CFLAGS="${LOCAL_CFLAGS}" \
+        CXXFLAGS="${LOCAL_CXXFLAGS}" \
+        LDFLAGS="${LOCAL_LDFLAGS}" \
+        libbz2.a bzip2 bzip2recover > "$buildlog" 2>&1
+
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
