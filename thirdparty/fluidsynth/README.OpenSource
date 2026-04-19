@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "FluidSynth",
+    "License": "LGPL-2.1-or-later",
+    "License File": "https://github.com/FluidSynth/fluidsynth/blob/v2.5.3/LICENSE",
+    "Version Number": "v2.5.3",
+    "Owner": "panjinling@huawei.com",
+    "Upstream URL": "https://github.com/FluidSynth/fluidsynth.git",
+    "Description": "FluidSynth is a real-time software synthesizer based on the SoundFont 2 specifications and can render MIDI streams to audio output."
+  }
+]

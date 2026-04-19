@@ -1,0 +1,127 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: panjinling@huawei.com
+# Maintainer: panjinling@huawei.com
+
+pkgname=fluidsynth
+pkgver=ohos_2.5.3
+pkgrel=0
+pkgdesc="Software synthesizer based on the SoundFont 2 specifications."
+archs=("armeabi-v7a" "arm64-v8a")
+license=("LGPL-2.1-or-later")
+depends=()
+makedepends=()
+
+downloadpackage=false
+autounpack=false
+buildtools="cmake"
+
+builddir=${pkgname}-git
+packagename=
+source="https://gitcode.com/CPF-ApplicationTPC/ohos_fluidsynth.git"
+gitbranch="ohos-v2.5.3"
+
+prepare() {
+    if [ ! -d "$builddir/.git" ]
+    then
+        rm -rf "$builddir"
+        git clone --depth 1 -b "$gitbranch" "$source" "$builddir" >"$publicbuildlog" 2>&1
+        if [ $? -ne 0 ]; then
+            return 1
+        fi
+    else
+        echo "INFO: $builddir already exists, skip git clone." >> "$publicbuildlog"
+    fi
+    mkdir -p "$builddir/$ARCH-build"
+}
+
+build() {
+    cd $builddir
+    # Link compiler-rt builtins statically to avoid __emutls_get_address
+    # missing on older device runtimes
+    if [ "$ARCH" = "arm64-v8a" ]; then
+        BUILTINS_LIB="${OHOS_SDK}/native/llvm/lib/clang/${CLANG_VERSION}/lib/aarch64-linux-ohos/libclang_rt.builtins.a"
+    else
+        BUILTINS_LIB="${OHOS_SDK}/native/llvm/lib/clang/${CLANG_VERSION}/lib/arm-linux-ohos/libclang_rt.builtins.a"
+    fi
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" -DFLUID_TEST_DATA_DIR=. -DFLUID_TEST_OUTPUT_DIR=./test -DFLUID_TEST_WORKING_DIRECTORY=./test -DOHOS_ARCH=$ARCH  -DBUILD_SHARED_LIBS=ON -DCMAKE_SHARED_LINKER_FLAGS="${BUILTINS_LIB}" -DCMAKE_EXE_LINKER_FLAGS="${BUILTINS_LIB}" -B$ARCH-build -S./ > $buildlog 2>&1
+    $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        cd "$OLDPWD" || return 1
+        return $ret
+    fi
+    $MAKE VERBOSE=1 -C $ARCH-build check >> $buildlog 2>&1
+    check_ret=$?
+    if [ $check_ret -ne 0 ]; then
+        echo "WARN: make check failed($check_ret), ignored." >> $buildlog
+    fi
+    if [ -f "test/test_oh.sh" ]; then
+        mkdir -p "$ARCH-build/test"
+        cp -f "test/test_oh.sh" "$ARCH-build/test/" >> $buildlog 2>&1 || \
+            echo "WARN: copy test/test_oh.sh to $ARCH-build/test failed, ignored." >> $buildlog
+    else
+        echo "WARN: test/test_oh.sh not found, skip copy." >> $buildlog
+    fi
+    midi_found=false
+    for midi_file in test/*.mid; do
+        if [ -f "$midi_file" ]; then
+            midi_found=true
+            mkdir -p "$ARCH-build/test/test"
+            cp -f "$midi_file" "$ARCH-build/test/test/" >> $buildlog 2>&1 || \
+                echo "WARN: copy $midi_file to $ARCH-build/test/test failed, ignored." >> $buildlog
+        fi
+    done
+    if ! $midi_found; then
+        echo "WARN: no test/*.mid found, skip copy." >> $buildlog
+    fi
+    if [ -d "sf2" ]; then
+        for link in sf2/*; do
+            if [ -L "$link" ]; then
+                target=$(readlink "$link")
+                real="sf2/$target"
+                if [ -f "$real" ]; then
+                    rm -f "$link"
+                    cp -f "$real" "$link"
+                fi
+            fi
+        done
+        mkdir -p "$ARCH-build/test"
+        rm -rf "$ARCH-build/test/sf2"
+        cp -rfL "sf2" "$ARCH-build/test/" >> $buildlog 2>&1 || \
+            echo "WARN: copy sf2 to $ARCH-build/test failed, ignored." >> $buildlog
+    else
+        echo "WARN: sf2 directory not found, skip copy." >> $buildlog
+    fi
+    
+    cd "$OLDPWD" || return 1
+    return $ret
+}
+
+package() {
+    cd "$builddir" || return 1
+    $MAKE -C "$ARCH-build" install >>"$buildlog" 2>&1
+    ret=$?
+    cd "$OLDPWD" || return 1
+    return $ret
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+}
+
+cleanbuild(){
+     rm -rf ${PWD}/$builddir/armeabi-v7a-build ${PWD}/$builddir/arm64-v8a-build
+}
+
