@@ -19,7 +19,7 @@ pkgver=2.10
 pkgrel=0
 pkgdesc="LZO is a real-time data compression library, it is particularly suitable for the need for rapid compression and decompression of the occasion."
 url="http://www.oberhumer.com/opensource/lzo/"
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a"  "x86_64")
 license=("GNU GENERAL PUBLIC LICENSE V2.0")
 depends=()
 makedepends=()
@@ -39,11 +39,17 @@ prepare() {
     then
         setarm32ENV
         host=arm-linux
-    fi
-    if [ $ARCH == "arm64-v8a" ]
+    elif [ $ARCH == "arm64-v8a" ]
     then
         setarm64ENV
         host=aarch64-linux
+    elif [ $ARCH == "x86_64" ]
+    then
+        setx86_64ENV
+        host=x86_64-linux
+    else
+        echo "${ARCH} not support"
+        return -1
     fi
     return 0
 }
@@ -65,10 +71,12 @@ package() {
     if [ $ARCH == "armeabi-v7a" ]
     then
         unsetarm32ENV
-    fi
-    if [ $ARCH == "arm64-v8a" ]
+    elif [ $ARCH == "arm64-v8a" ]
     then
         unsetarm64ENV
+    elif [ $ARCH == "x86_64" ]
+    then
+        unsetx86_64ENV
     fi
     unset host
     return $ret
@@ -79,5 +87,5 @@ check() {
 }
 
 cleanbuild() {
-    rm -rf ${PWD}/$builddir $builddir-armeabi-v7a-build  $builddir-arm64-v8a-build #${PWD}/$packagename
+    rm -rf ${PWD}/$builddir $builddir-armeabi-v7a-build  $builddir-arm64-v8a-build $builddir-x86_64-build #${PWD}/$packagename
 }
