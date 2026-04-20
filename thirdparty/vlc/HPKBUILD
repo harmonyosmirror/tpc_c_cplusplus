@@ -21,7 +21,7 @@ pkgdesc="VLC 是一款自由、开源的跨平台多媒体播放器及框架，�
 url="https://www.videolan.org/"
 archs=("arm64-v8a")
 license=("GNU General Public License v2.0")
-depends=("FFmpeg" "freetype2" "faad2" "libvorbis" "libdca" "flac" "speex" "libtheora" "aribb24" "speexdsp" "libkate" "libogg" "a52dec" "openssl-3.4.0" "live555" )
+depends=("FFmpeg-surface-dev" "freetype2" "faad2" "libvorbis" "libdca" "flac" "speex" "libtheora" "aribb24" "speexdsp" "libkate" "libogg" "a52dec" "openssl-3.4.0" "live555" )
 
 makedepends=("msgfmt")
 
@@ -57,7 +57,8 @@ prepare() {
     if [ $ARCH == "arm64-v8a" ]
     then
         setarm64ENV
-        CFLAGS="-Wl,-L$LYCIUM_ROOT/usr/libogg/arm64-v8a/lib/ -Wl,-logg -I$LYCIUM_ROOT/usr/libogg/arm64-v8a/include -Wl,-L$LYCIUM_ROOT/usr/a52dec/arm64-v8a/lib/ -Wl,-la52 -I$LYCIUM_ROOT/usr/a52dec/arm64-v8a/include $CFLAGS"
+        CFLAGS="-Wl,-L$LYCIUM_ROOT/usr/libogg/arm64-v8a/lib/ -Wl,-logg -I$LYCIUM_ROOT/usr/libogg/arm64-v8a/include -Wl,-L$LYCIUM_ROOT/usr/a52dec/arm64-v8a/lib/ -Wl,-la52 -I$LYCIUM_ROOT/usr/a52dec/arm64-v8a/include -I$LYCIUM_ROOT//usr/FFmpeg/arm64-v8a/include -DHAVE_OHOS=1 $CFLAGS"
+	    CXXFLAGS="-DHAVE_OHOS=1 $CXXFLAGS"
         host=aarch64-linux
     else
         echo "${ARCH} not support"
@@ -79,8 +80,13 @@ build() {
     cp -r $LYCIUM_ROOT/usr/openssl-3.4.0/$ARCH/lib  $builddir/$ARCH-contrib
     cp -r $LYCIUM_ROOT/usr/live555/$ARCH/include  $builddir/$ARCH-contrib
     cp -r $LYCIUM_ROOT/usr/live555/$ARCH/lib  $builddir/$ARCH-contrib
+    local ffmpeg_prefix="$LYCIUM_ROOT/usr/FFmpeg/arm64-v8a"
+    export PKG_CONFIG_LIBDIR="${pkgconfigpath}:${ffmpeg_prefix}/lib/pkgconfig"
+    export CFLAGS="-I${ffmpeg_prefix}/include $CFLAGS"
+    export LDFLAGS="-L${ffmpeg_prefix}/lib $LDFLAGS"
+    
     cd $builddir/$ARCH-build
-    PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
+
 	EGL_CFLAGS="-I${OHOS_SDK}/native/sysroot/usr/include" \
 	EGL_LIBS="-L${OHOS_SDK}/native/sysroot/usr/lib/ -lEGL" \
 	GLES2_CFLAGS="-I${OHOS_SDK}/native/sysroot/usr/include" \
@@ -118,6 +124,5 @@ check() {
 }
 
 cleanbuild() {
-    echo "The test must be on an OpenHarmony device!"
     rm -rf ${PWD}/$builddir #${PWD}/$packagename
 }
