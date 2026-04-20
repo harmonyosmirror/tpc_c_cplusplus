@@ -19,7 +19,7 @@ pkgver=8562cb1b951e7bd807af6b43d85c71cedd7b10d7
 pkgrel=0
 pkgdesc="Linux-PAM offers flexible and scalable authentication solutions for Linux, allowing admins to configure authentication policies across apps via config files."
 url="https://github.com/linux-pam"
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("BSD-3-Clause")
 depends=()
 makedepends=()
@@ -76,6 +76,10 @@ prepare() {
     then
         setarm64ENV
         host=aarch64-linux
+	elif [ $ARCH == "x86_64" ]
+    then
+        setx86_64ENV
+        host=x86_64-linux
     else
         echo "${ARCH} not support"
         return -1
@@ -104,6 +108,11 @@ package() {
     cd $builddir-$ARCH-build
     $MAKE install >> $buildlog 2>&1
     ret=$?
+    # 创建 security 目录并移动头文件
+    if [ $ret -eq 0 ]; then
+        mkdir -p ${LYCIUM_ROOT}/usr/linux-pam/${ARCH}/include/security
+        mv ${LYCIUM_ROOT}/usr/linux-pam/${ARCH}/include/*.h ${LYCIUM_ROOT}/usr/linux-pam/${ARCH}/include/security/
+    fi
     cd $OLDPWD
     return $ret
 }
@@ -130,6 +139,9 @@ recoverpkgbuildenv() {
     elif [ $ARCH == "arm64-v8a" ]
     then
         unsetarm64ENV
+	elif [ $ARCH == "x86_64" ]
+    then
+        unsetx86_64ENV
     else
         echo "${ARCH} not support"
         return -1
@@ -138,7 +150,7 @@ recoverpkgbuildenv() {
 
 # 清理环境
 cleanbuild(){
-    rm -rf $builddir $builddir-armeabi-v7a-build $builddir-arm64-v8a-build
+    rm -rf $builddir $builddir-armeabi-v7a-build $builddir-arm64-v8a-build $builddir-x86_64-build
 }
 
 
