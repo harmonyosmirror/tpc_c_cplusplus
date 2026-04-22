@@ -24,15 +24,35 @@ prepare() {
 }
 
 build() {
-    cd $builddir
+    local LOCAL_CFLAGS="-O3 -fstack-protector-strong -fPIC -D_FORTIFY_SOURCE=2"
+    local LOCAL_CXXFLAGS="-O3 -fstack-protector-strong -fPIC -D_FORTIFY_SOURCE=2"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -s"
+
+    cd "$builddir"
+
     # cmake 需要高版本(同zstd),cmake版本不一致导致lzma无法被自动find 关闭python
-    cmake "$@" -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L -DCMAKE_C_FLAGS="-munaligned-access" \
-    -DLIBLZMA_LIBRARY=${LYCIUM_ROOT}/usr/xz/$ARCH/lib/liblzma.so \
-    -DLIBLZMA_INCLUDE_DIR=${LYCIUM_ROOT}/usr/xz/$ARCH/include -DZLIB_INCLUDE_DIR=${LYCIUM_ROOT}/usr/zlib_1_3_1/$ARCH/include \
-    -DLIBXML2_WITH_ICONV=OFF -DLIBXML2_WITH_PYTHON=OFF > `pwd`/$ARCH-build/build.log 2>&1
-    make VERBOSE=1 -j4 -C $ARCH-build >> `pwd`/$ARCH-build/build.log 2>&1
-    ret=$?
-    cd $OLDPWD
+    # 合并原有 CFLAGS（-munaligned-access）与安全选项
+    cmake "$@" \
+        -DOHOS_ARCH="$ARCH" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -B"$ARCH-build" -S./ -L \
+        -DCMAKE_C_FLAGS="${LOCAL_CFLAGS} -munaligned-access" \
+        -DCMAKE_CXX_FLAGS="${LOCAL_CXXFLAGS}" \
+        -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG" \
+        -DCMAKE_CXX_FLAGS_RELEASE="-O3 -DNDEBUG" \
+        -DCMAKE_SHARED_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_EXE_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_SKIP_RPATH=TRUE \
+        -DLIBLZMA_LIBRARY="${LYCIUM_ROOT}/usr/xz/$ARCH/lib/liblzma.so" \
+        -DLIBLZMA_INCLUDE_DIR="${LYCIUM_ROOT}/usr/xz/$ARCH/include" \
+        -DZLIB_INCLUDE_DIR="${LYCIUM_ROOT}/usr/zlib_1_3_1/$ARCH/include" \
+        -DLIBXML2_WITH_ICONV=OFF \
+        -DLIBXML2_WITH_PYTHON=OFF \
+        > "$PWD/$ARCH-build/build.log" 2>&1
+
+    make VERBOSE=1 -j4 -C "$ARCH-build" >> "$PWD/$ARCH-build/build.log" 2>&1
+    local ret=$?
+    cd "$OLDPWD"
     return $ret
 }
 
