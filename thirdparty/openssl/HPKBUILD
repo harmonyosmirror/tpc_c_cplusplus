@@ -69,11 +69,17 @@ prepare() {
 
 #参数1
 build() {
-    cd $builddir/$ARCH-build
-    export CFLAGS="$CFLAGS -O3"
-    export CXXFLAGS="$CXXFLAGS -O3"
+    local LOCAL_CFLAGS="${CFLAGS} -O3 -fstack-protector-strong -fPIC"
+    local LOCAL_CXXFLAGS="${CXXFLAGS} -O3 -fstack-protector-strong -fPIC"
+    local LOCAL_LDFLAGS="${LDFLAGS} -Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    cd "$builddir/$ARCH-build"
+
+    CFLAGS="${LOCAL_CFLAGS}" \
+    CXXFLAGS="${LOCAL_CXXFLAGS}" \
+    LDFLAGS="${LOCAL_LDFLAGS}" \
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
-    ../Configure "$@" $host no-shared > $buildlog 2>&1
+    ../Configure "$@" $host no-shared> $buildlog 2>&1
     $MAKE >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
