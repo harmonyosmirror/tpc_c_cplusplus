@@ -149,8 +149,8 @@ build() {
 
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
         -DOpenBLAS_INCLUDE_DIR=$LYCIUM_ROOT/usr/OpenBLAS/$ARCH/include/openblas \
-        -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS} -L${LYCIUM_ROOT}/usr/clapack/${ARCH}/lib" \
-        -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS} -L${LYCIUM_ROOT}/usr/clapack/${ARCH}/lib" \
+        -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS} -L${LYCIUM_ROOT}/usr/clapack/${ARCH}/lib -s" \
+        -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS} -L${LYCIUM_ROOT}/usr/clapack/${ARCH}/lib -s" \
         -DCMAKE_CXX_FLAGS="-I${LYCIUM_ROOT}/usr/clapack/${ARCH}/include -I`pwd`/julia/deps" \
         -DUSE_CUDA=OFF -DUSE_SSE=OFF -DUSE_OPENMP=OFF \
         -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
