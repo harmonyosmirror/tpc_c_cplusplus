@@ -1,0 +1,142 @@
+diff --git a/configure.ac b/configure.ac
+index d5a0c707..4d3f98c4 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -778,22 +778,23 @@ if test "$enable_dco" != "no"; then
+ fi
+ 
+ dnl
+-dnl Depend on libcap-ng on Linux
+-dnl
+-case "$host" in
++ dnl Depend on libcap-ng on Linux
++ dnl
++ case "$host" in
+ 	*-*-linux*)
+ 		PKG_CHECK_MODULES([LIBCAPNG],
+-				  [libcap-ng],
+-				  [],
+-				  [AC_MSG_ERROR([libcap-ng package not found. Is the development package and pkg-config ${pkg_config_found} installed?])]
+-		)
+-		AC_CHECK_HEADER([sys/prctl.h],,[AC_MSG_ERROR([sys/prctl.h not found!])])
++			  [libcap-ng],
++			  [
++				AC_CHECK_HEADER([sys/prctl.h],,[AC_MSG_ERROR([sys/prctl.h not found!])])
+ 
+-		OPTIONAL_LIBCAPNG_CFLAGS="${LIBCAPNG_CFLAGS}"
+-		OPTIONAL_LIBCAPNG_LIBS="${LIBCAPNG_LIBS}"
+-		AC_DEFINE(HAVE_LIBCAPNG, 1, [Enable libcap-ng support])
++				OPTIONAL_LIBCAPNG_CFLAGS="${LIBCAPNG_CFLAGS}"
++				OPTIONAL_LIBCAPNG_LIBS="${LIBCAPNG_LIBS}"
++				AC_DEFINE(HAVE_LIBCAPNG, 1, [Enable libcap-ng support])
++			],
++			  [AC_MSG_WARN([libcap-ng package not found. Disabling libcap-ng support.])]
++		)
+ 	;;
+-esac
++ esac
+ 
+ 
+ if test "${with_crypto_library}" = "openssl"; then
+diff --git a/distro/dns-scripts/haikuos_file-dns-updown.sh b/distro/dns-scripts/haikuos_file-dns-updown.sh
+index 6da09549..1924bfc7 100644
+--- a/distro/dns-scripts/haikuos_file-dns-updown.sh
++++ b/distro/dns-scripts/haikuos_file-dns-updown.sh
+@@ -85,6 +85,6 @@ dns-up)
+     echo "${text}" > "${conf}"
+     ;;
+ dns-down)
+-    sed -i'' -e "/### openvpn ${dev} begin ###/,/### openvpn ${dev} end ###/d" "$conf"
++    /bin/sed -i'' -e "/### openvpn ${dev} begin ###/,/### openvpn ${dev} end ###/d" "$conf"
+     ;;
+ esac
+diff --git a/distro/dns-scripts/resolvconf_file-dns-updown.sh b/distro/dns-scripts/resolvconf_file-dns-updown.sh
+index 70872c78..16389830 100644
+--- a/distro/dns-scripts/resolvconf_file-dns-updown.sh
++++ b/distro/dns-scripts/resolvconf_file-dns-updown.sh
+@@ -85,6 +85,6 @@ dns-up)
+     echo "${text}" > "${conf}"
+     ;;
+ dns-down)
+-    sed -i'' -e "/### openvpn ${dev} begin ###/,/### openvpn ${dev} end ###/d" "$conf"
++    /bin/sed -i'' -e "/### openvpn ${dev} begin ###/,/### openvpn ${dev} end ###/d" "$conf"
+     ;;
+ esac
+diff --git a/distro/dns-scripts/systemd-dns-updown.sh b/distro/dns-scripts/systemd-dns-updown.sh
+index ed3947a0..8cd5c445 100644
+--- a/distro/dns-scripts/systemd-dns-updown.sh
++++ b/distro/dns-scripts/systemd-dns-updown.sh
+@@ -233,10 +233,10 @@ function do_resolv_conf_file {
+         }
+         text="${text}### openvpn ${dev} end ###"
+ 
+-        sed -i "1i${text}" "$conf"
++        /bin/sed -i "1i${text}" "$conf"
+     else
+         echo "unsetting DNS using resolv.conf file"
+-        sed -i "/### openvpn ${dev} begin ###/,/### openvpn ${dev} end ###/d" "$conf"
++        /bin/sed -i "/### openvpn ${dev} begin ###/,/### openvpn ${dev} end ###/d" "$conf"
+     fi
+ 
+     return 0
+diff --git a/src/openvpn/Makefile.am b/src/openvpn/Makefile.am
+index db87dfcf..ae93a953 100644
+--- a/src/openvpn/Makefile.am
++++ b/src/openvpn/Makefile.am
+@@ -38,9 +38,11 @@ if WIN32
+ AM_CFLAGS += -municode -UUNICODE
+ endif
+ 
+-sbin_PROGRAMS = openvpn
++# Build shared library
++lib_LTLIBRARIES = libopenvpn.la
+ 
+-openvpn_SOURCES = \
++# Separate source files for library (exclude main openvpn.c)
++libopenvpn_la_SOURCES = \
+ 	argv.c argv.h \
+ 	auth_token.c auth_token.h \
+ 	base64.c base64.h \
+@@ -105,7 +107,6 @@ openvpn_SOURCES = \
+ 	pkcs11.c pkcs11.h pkcs11_backend.h \
+ 	pkcs11_openssl.c \
+ 	pkcs11_mbedtls.c \
+-	openvpn.c openvpn.h \
+ 	options.c options.h \
+ 	options_util.c options_util.h \
+ 	options_parse.c \
+@@ -151,11 +152,32 @@ openvpn_SOURCES = \
+ 	win32.h win32.c \
+ 	win32-util.h win32-util.c \
+ 	cryptoapi.h cryptoapi.c
++
++libopenvpn_la_LDFLAGS = -version-info 1:0:0
++libopenvpn_la_LIBADD = \
++	$(top_builddir)/src/compat/libcompat.la \
++	$(SOCKETS_LIBS) \
++	$(OPTIONAL_LZO_LIBS) \
++	$(OPTIONAL_LZ4_LIBS) \
++	$(OPTIONAL_PKCS11_HELPER_LIBS) \
++	$(OPTIONAL_CRYPTO_LIBS) \
++	$(OPTIONAL_SELINUX_LIBS) \
++	$(OPTIONAL_SYSTEMD_LIBS) \
++	$(OPTIONAL_DL_LIBS) \
++	$(OPTIONAL_INOTIFY_LIBS)
++if WIN32
++libopenvpn_la_LIBADD += -lgdi32 -lws2_32 -lwininet -lcrypt32 -liphlpapi -lwinmm -lfwpuclnt -lrpcrt4 -lncrypt -lsetupapi -lbcrypt
++endif
++
++# Main executable only includes the main file
++sbin_PROGRAMS = openvpn
++
++openvpn_SOURCES = openvpn.c openvpn.h
++
+ openvpn_LDADD = \
++	libopenvpn.la \
+ 	$(top_builddir)/src/compat/libcompat.la \
+ 	$(SOCKETS_LIBS) \
+-	$(OPTIONAL_LIBCAPNG_LIBS) \
+-	$(OPTIONAL_LIBNL_GENL_LIBS) \
+ 	$(OPTIONAL_LZO_LIBS) \
+ 	$(OPTIONAL_LZ4_LIBS) \
+ 	$(OPTIONAL_PKCS11_HELPER_LIBS) \
