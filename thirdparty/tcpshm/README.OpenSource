@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "tcpshm",
+        "License": "MIT License",
+        "License File": "https://github.com/MengRao/tcpshm/blob/master/LICENSE",
+        "Version Number": "master",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://github.com/MengRao/tcpshm",
+        "Description": "A connection-oriented persistent message queue framework based on TCP or SHM(shared memory)"
+    }
+]

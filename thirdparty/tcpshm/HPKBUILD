@@ -1,0 +1,78 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+pkgname=tcpshm
+pkgver=master
+pkgrel=0
+pkgdesc="A connection-oriented persistent message queue framework based on Tcp or SHM(shared memmory)"
+url="https://github.com/MengRao/tcpshm"
+archs=("arm64-v8a" "armeabi-v7a")
+license=("MIT license")
+depends=()
+makedepends=()
+source="https://github.com/MengRao/tcpshm.git"
+
+autounpack=false
+downloadpackage=false
+buildtools="cmake"
+builddir=$pkgname
+cloneFlag=true
+patchflag=true
+
+prepare() {
+    if $cloneFlag
+    then
+        git clone $source $builddir > $publicbuildlog 2>&1
+        cloneFlag=false
+        cd $builddir
+        git checkout --detach f8258162beb75e00e4278110db4dbcb2225a1c15
+        cd $OLDPWD
+    fi
+    if $patchflag
+    then
+        cd $builddir
+        git apply ../tcpshm_oh_pkg.patch
+        patchflag=false
+        cd $OLDPWD
+    fi
+}
+
+build() {
+    # origin source is header only, here build example for test
+    cd $builddir/test
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" > $buildlog 2>&1
+    $MAKE VERBOSE=1 >> $buildlog 2>&1
+    ret=$?
+    cd $OLDPWD
+    return $ret
+}
+
+package() {
+    mkdir -p $LYCIUM_ROOT/usr/$pkgname/$ARCH/
+    mkdir -p $LYCIUM_ROOT/usr/$pkgname/$ARCH/include/
+    cd $builddir
+    cp test/echo_client $LYCIUM_ROOT/usr/$pkgname/$ARCH/
+    cp test/echo_server $LYCIUM_ROOT/usr/$pkgname/$ARCH/
+    cp *.h $LYCIUM_ROOT/usr/$pkgname/$ARCH/include/
+    cd $OLDPWD
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+}
+
+# 清理环境
+cleanbuild() {
+    echo "clean"
+    rm -rf ${PWD}/$builddir
+}
