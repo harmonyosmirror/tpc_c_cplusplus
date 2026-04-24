@@ -1,0 +1,926 @@
+--- /dev/null	2026-03-24 21:55:43.313111993 +0800
++++ test_mediacore/HwaccelManagerTest.cpp	2026-03-28 12:05:35.975150788 +0800
+@@ -0,0 +1,25 @@
++#include <iostream>
++#include "HwaccelManager.h"
++#include "Logger.h"
++
++using namespace std;
++using namespace MediaCore;
++using namespace Logger;
++
++int main(int argc, char* argv[])
++{
++    Log(INFO) << "========== HwaccelTest Start ==========" << endl;
++
++    GetDefaultLogger()->SetShowLevels(DEBUG);
++    auto hHwaMgr = HwaccelManager::CreateInstance();
++    hHwaMgr->SetLogLevel(DEBUG);
++    if (!hHwaMgr->Init())
++    {
++        Log(Error) << "FAILED to init 'HwaccelManager' instance! Error is '" << hHwaMgr->GetError() << "'." << endl;
++        return -1;
++    }
++    auto devices = hHwaMgr->GetHwaccelTypes();
++    
++    Log(INFO) << "========== HwaccelTest Finished ==========" << endl;
++    return 0;
++}
+\ No newline at end of file
+--- /dev/null	2026-03-24 21:55:43.313111993 +0800
++++ test_mediacore/MediaEncoderTest.cpp	2026-03-28 16:49:10.785186412 +0800
+@@ -0,0 +1,241 @@
++#include <iostream>
++#include <string>
++#include <memory>
++#include <vector>
++
++#include "MediaParser.h"
++#include "MediaReader.h"
++#include "MediaEncoder.h"
++#include "Logger.h"
++#include "FFUtils.h"
++
++extern "C" {
++#include <libavutil/pixfmt.h>
++#include <libswscale/swscale.h>
++}
++
++using namespace std;
++using namespace Logger;
++using namespace MediaCore;
++
++int main(int argc, const char* argv[])
++{
++    cout << "========== MediaEncoderTest Start ==========" << endl;
++    if (argc < 3)
++    {
++        Log(Error) << "Wrong arguments!" << endl;
++        return -1;
++    }
++    
++    GetDefaultLogger()->SetShowLevels(DEBUG);
++    MediaEncoder::GetLogger()->SetShowLevels(DEBUG);
++
++    string vidEncCodec = "mpeg4";         
++    string vidEncImgFormat = "yuv420p"; 
++    
++    uint32_t outWidth{1280}, outHeight{720};
++    Ratio outFrameRate = { 60, 1 };
++    uint64_t outVidBitRate = 30*1000*1000;
++    
++    string audEncCodec = "aac";
++    uint32_t outAudChannels = 2;
++    uint32_t outSampleRate = 48000;
++    uint64_t outAudBitRate = 128*1000;
++    int64_t maxEncodeDuration = 5*1000;
++    
++    vector<MediaEncoder::Option> extraOpts;
++    bool videoOnly{true}, audioOnly{false};
++
++    MediaParser::Holder hParser = MediaParser::CreateInstance();
++    if (!hParser->Open(argv[1]))
++    {
++        Log(Error) << "FAILED to open MediaParser by file '" << argv[1] << "'! Error is '" << hParser->GetError() << "'." << endl;
++        return -1;
++    }
++    MediaInfo::Holder hInfo = hParser->GetMediaInfo();
++
++    int vIdx = hParser->GetBestVideoStreamIndex();
++    uint32_t srcW = 1280, srcH = 720; 
++    if (vIdx >= 0 && vIdx < hInfo->streams.size()) {
++        auto vStream = std::dynamic_pointer_cast<VideoStream>(hInfo->streams[vIdx]);
++        if (vStream) {
++            srcW = vStream->width; 
++            srcH = vStream->height;
++            Log(INFO) << "Source Video Resolution: " << srcW << "x" << srcH << endl;
++        } else {
++            Log(Error) << "Stream at index " << vIdx << " is not a VideoStream!" << endl;
++        }
++    }
++    outWidth = srcW;
++    outHeight = srcH;
++
++    MediaReader::Holder hVidReader, hAudReader;
++    string audioPcmFormat;
++    uint32_t audioBlockAlign{0};
++    
++    if (hParser->GetBestVideoStreamIndex() >= 0 && !audioOnly)
++    {
++        hVidReader = MediaReader::CreateVideoInstance();
++        hVidReader->EnableHwAccel(false);
++        if (!hVidReader->Open(hParser))
++        {
++            Log(Error) << "FAILED to open video MediaReader! Error is '" << hVidReader->GetError() << "'." << endl;
++            return -2;
++        }
++        
++        if (!hVidReader->ConfigVideoReader(outWidth, outHeight, IM_CF_RGBA))
++        {
++            Log(Error) << "FAILED to configure video MediaReader! Error is '" << hVidReader->GetError() << "'." << endl;
++            return -3;
++        }
++        hVidReader->Start();
++    }
++    
++    if (hParser->GetBestAudioStreamIndex() >= 0 && !videoOnly)
++    {
++        hAudReader = MediaReader::CreateInstance();
++        if (!hAudReader->Open(hParser)) 
++            return -4;
++        if (!hAudReader->ConfigAudioReader(outAudChannels, outSampleRate, "fltp")) 
++            return -5;
++        audioPcmFormat = hAudReader->GetAudioOutPcmFormat();
++        audioBlockAlign = hAudReader->GetAudioOutFrameSize();
++        hAudReader->Start();
++    }
++
++    auto hEncoder = MediaEncoder::CreateInstance();
++    if (!hEncoder->Open(argv[2])) return -6;
++
++    if (hVidReader && !hEncoder->ConfigureVideoStream(vidEncCodec, vidEncImgFormat, outWidth, outHeight, outFrameRate, outVidBitRate, &extraOpts))
++    {
++        Log(Error) << "FAILED to configure video encoder! Error is '" << hEncoder->GetError() << "'." << endl;
++        return -7;
++    }
++    
++    string audEncSmpFormat = "fltp";
++    if (hAudReader && !hEncoder->ConfigureAudioStream(audEncCodec, audEncSmpFormat, outAudChannels, outSampleRate, outAudBitRate)) return -8;
++    
++    hEncoder->Start();
++
++    SwsContext* swsCtx = nullptr;
++    if (hVidReader) {
++        swsCtx = sws_getContext(
++            outWidth, outHeight, AV_PIX_FMT_RGBA, 
++            outWidth, outHeight, AV_PIX_FMT_YUV420P, 
++            SWS_FAST_BILINEAR, nullptr, nullptr, nullptr
++        );
++    }
++
++    bool vidInputEof = hVidReader ? false : true;
++    bool audInputEof = hAudReader ? false : true;
++    int64_t audpos = 0, vidpos = 0;
++    uint32_t vidFrameCount = 0;
++    ImGui::ImMat vmat, amat;
++    
++    while (!vidInputEof || !audInputEof)
++    {
++        if ((!vidInputEof && vidpos <= audpos) || audInputEof)
++        {
++            bool eof = false;
++            vidpos = (int64_t)((double)vidFrameCount*outFrameRate.den/outFrameRate.num*1000);
++            
++            auto hVf = hVidReader->ReadVideoFrame(vidpos, eof);
++            if (hVf && !eof) 
++            {
++                if (!hVf->GetMat(vmat)) vmat.release();
++            }
++            
++            if (vmat.empty() && !eof)
++            {
++                Log(Error) << "FAILED to read video frame! Error is '" << hVidReader->GetError() << "'." << endl;
++                break;
++            }
++            
++            vidFrameCount++;
++            if (maxEncodeDuration > 0 && vidpos >= maxEncodeDuration) eof = true;
++                
++            if (!eof)
++            {
++                vmat.time_stamp = (double)vidpos/1000;
++                
++                SelfFreeAVFramePtr yuvAvfrm = AllocSelfFreeAVFramePtr();
++                yuvAvfrm->format = AV_PIX_FMT_YUV420P;
++                yuvAvfrm->width = outWidth;
++                yuvAvfrm->height = outHeight;
++                yuvAvfrm->pts = vidpos;
++
++                if (av_frame_get_buffer(yuvAvfrm.get(), 0) < 0) {
++                    Log(Error) << "FAILED to allocate physical buffer for YUV frame!" << endl;
++                    break;
++                }
++
++                // 利用 sws_scale 把 RGBA 精准映射进 YUV 的 3 个平面
++                uint8_t* srcData[4] = { (uint8_t*)vmat.data, nullptr, nullptr, nullptr };
++                int srcLinesize[4] = { (int)(outWidth * 4), 0, 0, 0 }; 
++                sws_scale(swsCtx, srcData, srcLinesize, 0, outHeight, yuvAvfrm->data, yuvAvfrm->linesize);
++
++                // 包装成原生 Holder，送给编码器！
++                auto hYuvVf = FFUtils::CreateVideoFrameFromAVFrame(yuvAvfrm, vidpos);
++
++                bool consumed = false;
++                Log(INFO) << "Pushing Video Frame to encoder at " << vidpos << " ms..." << endl;
++                if (!hEncoder->EncodeVideoFrame(hYuvVf, consumed))
++                {
++                    Log(Error) << "FAILED to encode video frame! Error is '" << hEncoder->GetError() << "'." << endl;
++                    break;
++                }
++            }
++            else
++            {
++                vmat.release();
++                bool consumed = false;
++                MediaCore::VideoFrame::Holder emptyVf = nullptr; 
++                if (!hEncoder->EncodeVideoFrame(emptyVf, consumed))
++                {
++                    Log(Error) << "FAILED to encode video EOF! Error is '" << hEncoder->GetError() << "'." << endl;
++                    break;
++                }
++                vidInputEof = true;
++            }
++        }
++        else
++        {
++            bool eof = false;
++            uint32_t readSamples = 0;
++            if (!hAudReader->ReadAudioSamples(amat, readSamples, eof) && !eof)
++            {
++                Log(Error) << "FAILED to read audio samples! Error is '" << hAudReader->GetError() << "'." << endl;
++                break;
++            }
++            audpos = amat.time_stamp*1000;
++            
++            if (maxEncodeDuration > 0 && audpos >= maxEncodeDuration) 
++                eof = true;
++                
++            if (!eof)
++            {
++                bool consumed = false;
++                if (!hEncoder->EncodeAudioSamples(amat, consumed)) break;
++            }
++            else
++            {
++                amat.release();
++                bool consumed = false;
++                if (!hEncoder->EncodeAudioSamples(amat, consumed)) break;
++                audInputEof = true;
++            }
++        }
++    }
++    
++    hEncoder->FinishEncoding();
++    hEncoder->Close();
++
++    hEncoder = nullptr;
++    hVidReader = nullptr;
++    hAudReader = nullptr;
++    hInfo = nullptr;
++    hParser = nullptr;
++    
++    cout << "\n========== MediaEncoderTest Finished ==========" << endl;
++    return 0;
++}
+\ No newline at end of file
+--- /dev/null	2026-03-24 21:55:43.313111993 +0800
++++ test_mediacore/MediaReaderTest.cpp	2026-03-28 12:07:24.547777435 +0800
+@@ -0,0 +1,93 @@
++#include <iostream>
++#include <string>
++#include "MediaParser.h"
++#include "MediaReader.h"
++#include "Logger.h"
++
++using namespace std;
++using namespace MediaCore;
++using namespace Logger;
++
++int main(int argc, char* argv[])
++{
++    Log(INFO) << "==========  MediaReaderTest ==========" << endl;
++
++    if (argc < 2) {
++        cout << "[ERROR] Usage: ./MediaReaderTest <media_file_path>" << endl;
++        return -1;
++    }
++
++    string filePath = argv[1];
++
++    GetDefaultLogger()->SetShowLevels(DEBUG);
++    MediaParser::GetLogger()->SetShowLevels(INFO);
++    MediaReader::GetDefaultLogger()->SetShowLevels(INFO);
++
++    Log(INFO) << "\nParsing media file: " << filePath << endl;
++    MediaParser::Holder hParser = MediaParser::CreateInstance();
++    if (!hParser->Open(filePath)) {
++        Log(Error) << "FAILED to open media file! Error: " << hParser->GetError() << endl;
++        return -1;
++    }
++
++    auto info = hParser->GetMediaInfo();
++    Log(INFO) << "  -> Media Duration: " << info->duration << " seconds" << endl;
++    Log(INFO) << "  -> Total Streams: " << info->streams.size() << endl;
++
++    if (hParser->HasVideo()) {
++        Log(INFO) << "\nTesting Video Reader..." << endl;
++        auto vidReader = MediaReader::CreateVideoInstance();
++        vidReader->EnableHwAccel(false);
++        vidReader->Open(hParser);
++        
++        vidReader->ConfigVideoReader((uint32_t)800, (uint32_t)450);
++        vidReader->Start();
++
++        Log(INFO) << "  -> Reading first 10 video frames..." << endl;
++        bool eof = false;
++        for (int i = 0; i < 10; ++i) {
++            auto hVf = vidReader->ReadNextVideoFrame(eof);
++            if (hVf && !eof) {
++                ImGui::ImMat vmat;
++                hVf->GetMat(vmat);
++                Log(INFO) << "     [Video] Frame " << i 
++                     << " | PTS: " << vmat.time_stamp 
++                     << " | Size: " << vmat.w << "x" << vmat.h << endl;
++                vmat.release();
++            } else {
++                Log(INFO) << "     [Video] Reached EOF or read failed." << endl;
++                break;
++            }
++        }
++        vidReader->Close();
++    }
++
++    if (hParser->HasAudio()) {
++        Log(INFO) << "\nTesting Audio Reader..." << endl;
++        auto audReader = MediaReader::CreateInstance();
++        audReader->Open(hParser);
++        
++        audReader->ConfigAudioReader((uint32_t)2, (uint32_t)44100, "flt");
++        audReader->Start();
++
++        Log(INFO) << "  -> Reading first 10 audio sample blocks..." << endl;
++        bool eof = false;
++        for (int i = 0; i < 10; ++i) {
++            ImGui::ImMat amat;
++            uint32_t readSamples = 0;
++            if (audReader->ReadAudioSamples(amat, readSamples, eof) && !eof) {
++                Log(INFO) << "     [Audio] Block " << i 
++                     << " | PTS: " << amat.time_stamp 
++                     << " | Samples: " << readSamples << endl;
++                amat.release();
++            } else {
++                Log(INFO) << "     [Audio] Reached EOF or read failed." << endl;
++                break;
++            }
++        }
++        audReader->Close();
++    }
++
++    Log(INFO) << "\n========== MediaReader Test Finished ==========" << endl;
++    return 0;
++}
+\ No newline at end of file
+--- /dev/null	2026-03-24 21:55:43.313111993 +0800
++++ test_mediacore/MultiTrackAudioReaderTest.cpp	2026-03-28 12:04:55.273123134 +0800
+@@ -0,0 +1,95 @@
++#include <iostream>
++#include <string>
++#include <vector>
++#include "MediaParser.h"
++#include "MultiTrackAudioReader.h"
++#include "Logger.h"
++
++using namespace std;
++using namespace Logger;
++using namespace MediaCore;
++
++int main(int argc, const char* argv[])
++{
++    Log(INFO) << "========== MultiTrackAudioReaderTest (Headless) Start ==========" << endl;
++
++    if (argc < 2)
++    {
++        Log(Error) << "Wrong arguments! Usage: ./MultiTrackAudioReaderTest <input_audio_or_video>" << endl;
++        return -1;
++    }
++
++    GetDefaultLogger()->SetShowLevels(DEBUG);
++    MultiTrackAudioReader::GetLogger()->SetShowLevels(DEBUG);
++    MediaReader::GetDefaultLogger()->SetShowLevels(INFO);
++
++    // 2. 创建并配置多轨道音频混合器
++    uint32_t outChannels = 2;       // 双声道立体声
++    uint32_t outSampleRate = 44100; // 44.1kHz 采样率
++    string outPcmFormat = "fltp";   
++
++    auto mtAudReader = MultiTrackAudioReader::CreateInstance();
++    mtAudReader->Configure(outChannels, outSampleRate, outPcmFormat);
++    mtAudReader->Start();
++
++    // 3. 添加一条音频轨道 (Track)
++    int64_t trackId = 1;
++    if (!mtAudReader->AddTrack(trackId))
++    {
++        Log(Error) << "FAILED to add audio track!" << endl;
++        return -2;
++    }
++    AudioTrack::Holder hTrack = mtAudReader->GetTrackByIndex(0);
++
++    // 4. 解析输入的媒体文件
++    MediaParser::Holder hParser = MediaParser::CreateInstance();
++    if (!hParser->Open(argv[1]))
++    {
++        Log(Error) << "FAILED to open input file: " << argv[1] << endl;
++        return -3;
++    }
++
++    // 5. 将解析出来的音频流作为 Clip 插入轨道
++    int64_t clipId = 100;
++    int64_t mediaDuration = (int64_t)(hParser->GetMediaInfo()->duration * 1000); // 毫秒
++
++    Log(INFO) << "Adding Audio Clip from file. Duration: " << mediaDuration << " ms" << endl;
++
++    // 参数：clipId, 解析器, 轨道起始时间(0), 轨道结束时间(总长), 文件内部起始偏移(0), 文件内部结束偏移(总长)
++    hTrack->AddNewClip(clipId, hParser, 0, mediaDuration, 0, mediaDuration);
++
++    // 6. 刷新混合器，构建内部混音树
++    mtAudReader->Refresh();
++
++    bool eof = false;
++    uint32_t frameCount = 0;
++    uint32_t maxTestFrames = 100; 
++
++    while (!eof && frameCount < maxTestFrames)
++    {
++        ImGui::ImMat amat;
++        
++        if (!mtAudReader->ReadAudioSamples(amat, eof))
++        {
++            Log(Error) << "Failed to read audio samples! Internal error." << endl;
++            break;
++        }
++
++        if (!amat.empty())
++        {
++            uint32_t dataSize = amat.total() * amat.elemsize;
++            Log(INFO) << ">> Read Audio Pkt #" << frameCount 
++                 << " | PTS: " << amat.time_stamp << " s"
++                 << " | Size: " << dataSize << " bytes" 
++                 << endl;
++            frameCount++;
++        }
++    }
++
++    mtAudReader = nullptr;
++    hTrack = nullptr;
++    hParser = nullptr;
++
++    Log(INFO) << "========== MultiTrackAudioReaderTest Finished ==========" << endl;
++    return 0;
++}
+\ No newline at end of file
+--- /dev/null	2026-03-24 21:55:43.313111993 +0800
++++ test_mediacore/MultiTrackVideoReaderTest.cpp	2026-03-28 14:35:12.677728338 +0800
+@@ -0,0 +1,109 @@
++#include <iostream>
++#include <string>
++#include <vector>
++#include "MediaParser.h"
++#include "MultiTrackVideoReader.h"
++#include "VideoClip.h"
++#include "Logger.h"
++
++using namespace std;
++using namespace Logger;
++using namespace MediaCore;
++
++int main(int argc, const char* argv[])
++{
++    Log(INFO) << "========== MultiTrackVideoReaderTest (Headless) Start ==========" << endl;
++    
++    if (argc < 2)
++    {
++        Log(Error) << "Wrong arguments! Usage: ./MultiTrackVideoReaderTest <input_video>" << endl;
++        return -1;
++    }
++
++    GetDefaultLogger()->SetShowLevels(DEBUG);
++    MultiTrackVideoReader::GetLogger()->SetShowLevels(DEBUG);
++    MediaReader::GetVideoLogger()->SetShowLevels(INFO);
++
++    uint32_t outWidth{1280}, outHeight{720};
++    Ratio outFrameRate = {30, 1};
++    
++    auto mtVidReader = MultiTrackVideoReader::CreateInstance();
++    // 配置输出画面大小、帧率和数据类型
++    mtVidReader->Configure(outWidth, outHeight, outFrameRate, IM_DT_INT8);
++    mtVidReader->Start();
++
++    // 添加一条视频轨道 (Track)
++    int64_t trackId = 1;
++    if (!mtVidReader->AddTrack(trackId))
++    {
++        Log(Error) << "FAILED to add track!" << endl;
++        return -2;
++    }
++    VideoTrack::Holder hTrack = mtVidReader->GetTrackByIndex(0);
++
++    // 解析输入的视频文件
++    MediaParser::Holder hParser = MediaParser::CreateInstance();
++    if (!hParser->Open(argv[1]))
++    {
++        Log(Error) << "FAILED to open input video: " << argv[1] << endl;
++        return -3;
++    }
++
++    // 根据视频文件创建一个视频片段 (Clip)
++    int64_t clipId = 100;
++    int64_t mediaDuration = (int64_t)(hParser->GetMediaInfo()->duration * 1000); // 毫秒
++    
++    Log(INFO) << "Creating Video Clip from input file. Duration: " << mediaDuration << " ms" << endl;
++    
++    auto hClip = VideoClip::CreateVideoInstance(
++        clipId, 
++        hParser, 
++        mtVidReader->GetSharedSettings(),
++        0,              // 放置在时间线的起始位置 (0ms)
++        mediaDuration,  // 截取整个视频的长度
++        0,              // 视频文件自身的起始偏移
++        mediaDuration,  // 视频文件自身的结束偏移
++        0,              // 当前播放指针的相对位置
++        true            // 正向播放
++    );
++
++    // 把片段放进轨道里
++    hTrack->InsertClip(hClip);
++    
++    // 刷新多轨道引擎，让它内部构建渲染树
++    mtVidReader->Refresh();
++
++    int64_t playPos = 0;
++    uint32_t frameCount = 0;
++    uint32_t maxTestFrames = 100;
++
++    while (playPos <= mediaDuration && frameCount < maxTestFrames)
++    {
++        vector<CorrelativeFrame> frames;
++        // 核心接口：向引擎请求 playPos 这个时间点的混合画面
++        bool readRes = mtVidReader->ReadVideoFrameByPosEx(playPos, frames, true, false);
++
++        if (readRes && !frames.empty())
++        {
++            ImGui::ImMat vmat = frames[0].frame;
++            if (!vmat.empty())
++            {
++                Log(INFO) << ">> Read Frame #" << frameCount 
++                     << " | Timeline Pos: " << playPos << " ms"
++                     << " | PTS: " << vmat.time_stamp << " s"
++                     << " | Format: " << vmat.color_format 
++                     << " | Size: " << vmat.w << "x" << vmat.h << endl;
++            }
++        }
++        frameCount++;
++        playPos = (int64_t)((double)frameCount * outFrameRate.den / outFrameRate.num * 1000);
++    }
++
++    mtVidReader = nullptr;
++    hTrack = nullptr;
++    hClip = nullptr;
++    hParser = nullptr;
++
++    Log(INFO) << "========== MultiTrackVideoReaderTest Finished ==========" << endl;
++    return 0;
++}
+\ No newline at end of file
+--- /dev/null	2026-03-24 21:55:43.313111993 +0800
++++ test_mediacore/OverviewTest.cpp	2026-03-28 12:14:10.608429765 +0800
+@@ -0,0 +1,55 @@
++#include <iostream>
++#include <string>
++#include "MediaParser.h"
++#include "Overview.h"
++#include "Logger.h"
++
++using namespace std;
++using namespace Logger;
++using namespace MediaCore;
++
++int main(int argc, char* argv[])
++{
++    Log(INFO) << "========== OpenHarmony Overview Test Start ==========" << endl;
++
++    if (argc < 2)
++    {
++        Log(Error) << "Wrong arguments! Usage: ./OverviewTest <input_video>" << endl;
++        return -1;
++    }
++
++    GetDefaultLogger()->SetShowLevels(DEBUG);
++    Overview::GetLogger()->SetShowLevels(DEBUG);
++
++    string filePathName = argv[1];
++
++    Log(INFO) << "Step 1: Parsing media file: " << filePathName << endl;
++
++    // 初始化解析器并开启视频关键帧搜索支持 (VIDEO_SEEK_POINTS)
++    auto parser = MediaParser::CreateInstance();
++    if (!parser->Open(filePathName)) {
++        Log(Error) << "[ERROR] Failed to open media file! Error: " << parser->GetError() << endl;
++        return -1;
++    }
++    parser->EnableParseInfo(MediaParser::VIDEO_SEEK_POINTS);
++    Log(INFO) << "[SUCCESS] Media parsed successfully!" << endl;
++
++    // 初始化 Overview 模块，设定抽取 12 张缩略图
++    uint32_t ssCount = 12;
++    Log(INFO) << "Creating Overview with " << ssCount << " snapshots..." << endl;
++    
++    auto overview = Overview::CreateInstance();
++    
++    // 调用 Open 开始底层抽帧运算
++    if (overview->Open(parser, ssCount)) {
++        Log(INFO) << "[SUCCESS] Overview generated successfully!" << endl;
++    } else {
++        Log(INFO) << "[ERROR] Failed to open Overview!" << endl;
++    }
++
++    overview = nullptr;
++    parser = nullptr;
++
++    Log(INFO) << "========== OpenHarmony OverviewTest Finished ==========" << endl;
++    return 0;
++}
+\ No newline at end of file
+--- /dev/null	2026-03-24 21:55:43.313111993 +0800
++++ test_mediacore/SnapshotTest.cpp	2026-03-28 12:20:06.260939146 +0800
+@@ -0,0 +1,75 @@
++#include <iostream>
++#include <string>
++#include "MediaParser.h"
++#include "Snapshot.h"
++#include "Logger.h"
++
++using namespace std;
++using namespace Logger;
++using namespace MediaCore;
++
++int main(int argc, char* argv[])
++{
++    Log(INFO) << "========== SnapshotTest Start ==========" << endl;
++    if (argc < 2)
++    {
++        Log(Error) << "Wrong arguments! Usage: ./SnapshotTest <input_video>" << endl;
++        return -1;
++    }
++    string filePathName = argv[1];
++
++    GetDefaultLogger()->SetShowLevels(DEBUG);
++    MediaParser::GetLogger()->SetShowLevels(INFO);
++    Snapshot::GetLogger()->SetShowLevels(DEBUG);
++
++    Log(INFO) << "Parsing media file: " << filePathName << endl;
++
++    // 初始化解析器
++    auto parser = MediaParser::CreateInstance();
++    if (!parser->Open(filePathName)) {
++        Log(Error) << "Failed to open media file! Error: " << parser->GetError() << endl;
++        return -1;
++    }
++    Log(INFO) << "Media parsed successfully!" << endl;
++
++    // 初始化 Snapshot Generator (抽帧生成器)
++    Log(INFO) << "Step 2: Creating Snapshot Generator..." << endl;
++    auto ssgen = Snapshot::Generator::CreateInstance();
++
++    // 绑定解析器开始抽帧业务
++    if (!ssgen->Open(parser)) {
++        Log(Error) << "Failed to open Snapshot Generator!" << endl;
++        return -1;
++    }
++
++    // 5. 核心测试逻辑：提取视频信息并配置截图参数
++    auto pVidstm = ssgen->GetVideoStream();
++    if (pVidstm) {
++        Log(INFO) << "Original Video Size: " << pVidstm->width << "x" << pVidstm->height << endl;
++        
++        // 测试一：设置截图尺寸为原视频的一半
++        int snapWidth = pVidstm->width / 2;
++        int snapHeight = pVidstm->height / 2;
++        ssgen->SetSnapshotSize(snapWidth, snapHeight);
++        Log(INFO) << "Target Snapshot Size: " << snapWidth << "x" << snapHeight << endl;
++
++        // 测试二：配置截图的时间窗口和帧数 (根据原代码逻辑改造)
++        double windowSize = (double)ssgen->GetVideoDuration() / 1000.0; // 获取视频秒数
++        double windowFrames = 14.0; // 在这个时间段内均匀抽取 14 帧
++        
++        Log(INFO) << "Configuring Snap Window (Duration: " << windowSize << "s, Frames: " << windowFrames << ")" << endl;
++        
++        // 下发抽帧指令给底层引擎
++        ssgen->ConfigSnapWindow(windowSize, windowFrames);
++        
++        Log(INFO) << "Snapshot Generator configured successfully!" << endl;
++    } else {
++        Log(Error) << "No video stream found for snapshot!" << endl;
++    }
++
++    ssgen = nullptr;
++    parser = nullptr;
++
++    Log(INFO) << "========== Snapshot Test Finished ==========" << endl;
++    return 0;
++}
+\ No newline at end of file
+--- /dev/null	2026-03-24 21:55:43.313111993 +0800
++++ test_mediacore/SubtitleReaderTest.cpp	2026-03-28 12:10:07.359567149 +0800
+@@ -0,0 +1,87 @@
++#include <iostream>
++#include <string>
++#include "Logger.h"
++#include "SubtitleTrack.h"
++#include "FontManager.h"
++#include "imgui_helper.h" // 修复点 1：引入这个头文件
++
++using namespace std;
++using namespace Logger;
++using namespace MediaCore;
++using namespace FM;
++
++int main(int argc, char* argv[])
++{
++    cout << "==========  SubtitleReader Test ==========" << endl;
++
++    if (argc < 2) {
++        cout << "[ERROR] Usage: ./SubtitleReaderTest <subtitle_file_path.srt>" << endl;
++        return -1;
++    }
++
++    string filePath = argv[1];
++
++    GetDefaultLogger()->SetShowLevels(DEBUG);
++    GetSubtitleTrackLogger()->SetShowLevels(VERBOSE);
++
++    cout << "\n[Step 1] Initializing Font and Subtitle Library..." << endl;
++    if (!InitializeSubtitleLibrary()) {
++        Log(Error) << "FAILED to initialize the subtitle library!" << endl;
++        return -1;
++    }
++
++    auto availableFonts = FM::GetAvailableFonts();
++    cout << "  -> Found " << availableFonts.size() << " fonts installed in the system." << endl;
++
++    cout << "\n[Step 2] Loading Subtitle File: " << filePath << endl;
++    auto subtrack = SubtitleTrack::BuildFromFile(0, filePath);
++    
++    if (!subtrack) {
++        cout << "[ERROR] Failed to parse subtitle file!" << endl;
++        ReleaseSubtitleLibrary();
++        return -1;
++    }
++
++    subtrack->SetFrameSize(1920, 1080);
++    subtrack->SetAlignment(5); 
++
++    int clipCount = subtrack->ClipCount();
++    cout << "[SUCCESS] Subtitle loaded. Total lines (clips): " << clipCount << endl;
++
++    cout << "\n[Step 3] Testing Subtitle Rendering Engine..." << endl;
++    int testCount = min(5, clipCount);
++    
++    subtrack->SeekToIndex(0);
++    
++    for (int i = 0; i < testCount; ++i) {
++        SubtitleClipHolder clip = subtrack->GetCurrClip();
++        if (clip) {
++            cout << "\n  --- Subtitle " << i + 1 << " ---" << endl;
++            cout << "  Text: " << clip->Text() << endl;
++            
++            cout << "  Time: " << ImGuiHelper::MillisecToString(clip->StartTime()) << " -> " 
++                 << ImGuiHelper::MillisecToString(clip->StartTime() + clip->Duration()) << endl;
++
++            SubtitleImage subImage = clip->Image();
++            
++            if (subImage.Valid()) {
++                SubtitleImage::Rect dispRect = subImage.Area();
++                ImGui::ImMat vmat = subImage.Vmat();
++                cout << "  [Render SUCCESS] Generated Image Matrix:" << endl;
++                cout << "    - Canvas Position (X,Y): (" << dispRect.x << ", " << dispRect.y << ")" << endl;
++                cout << "    - Image Size (W,H): " << dispRect.w << "x" << dispRect.h << endl;
++                cout << "    - Pixel Format: " << vmat.color_format << endl;
++            } else {
++                cout << "  [Render FAILED] Could not generate image for this clip." << endl;
++            }
++        }
++        
++        subtrack->GetNextClip();
++    }
++
++    subtrack = nullptr;
++    ReleaseSubtitleLibrary();
++
++    cout << "\n========== SubtitleReader Test Finished ==========" << endl;
++    return 0;
++}
+\ No newline at end of file
+--- /dev/null	2026-03-24 21:55:43.313111993 +0800
++++ test_mediacore/UnitTest.cpp	2026-03-26 14:35:49.631505158 +0800
+@@ -0,0 +1,59 @@
++#include <string>
++#include <functional>
++#include <unordered_map>
++#include "DebugHelper.h"
++#include "Logger.h"
++
++using namespace std;
++using namespace Logger;
++using namespace MediaCore;
++
++#include "MediaReader.h"
++static void Unit_CreateVideoReaderInstance()
++{
++    AutoSection _as("CreateVideoInstance");
++    auto hVideoReader = MediaReader::CreateVideoInstance();
++}
++
++struct TestCase
++{
++    function<void (void)> testProc;
++};
++
++static unordered_map<string, TestCase> g_TestUnits = {
++    {"CreateVideoReaderInstance", {Unit_CreateVideoReaderInstance}}
++};
++
++int main(int argc, char* argv[])
++{
++    if (argc < 2)
++    {
++        Log(Error) << "Wrong arguments! Usage: TestUnit <TestCaseName> [loopCount]" << endl;
++        return -1;
++    }
++
++    string testCaseName;
++    int testLoopCount = 1;
++    if (argc >= 2)
++        testCaseName = string(argv[1]);
++    if (argc >= 3)
++        testLoopCount = atoi(argv[2]);
++
++    auto testCaseIter = g_TestUnits.find(testCaseName);
++    if (testCaseIter == g_TestUnits.end())
++    {
++        Log(Error) << "No TestCase is named as '" << testCaseName << "'!" << endl;
++        return -1;
++    }
++
++    int loopCnt = 0;
++    while (loopCnt++ < testLoopCount)
++    {
++        auto hPa = PerformanceAnalyzer::GetThreadLocalInstance();
++        hPa->Reset();
++        testCaseIter->second.testProc();
++        hPa->End();
++        hPa->LogAndClearStatistics(INFO);
++    }
++    return 0;
++}
+\ No newline at end of file
+--- /dev/null	2026-04-21 11:20:33.113000086 +0800
++++ script/gen_test_assets.sh	2026-04-23 14:21:58.771821364 +0800
+@@ -0,0 +1,48 @@
++#!/bin/sh
++
++VIDEO_NAME="test.mp4"
++SUBTITLE_NAME="test.srt"
++
++BASE_LIB_DIR="${LYCIUM_ROOT}/usr"
++FFMPEG_PATH="${LYCIUM_ROOT}/usr/FFmpeg/${ARCH}/bin/ffmpeg"
++AUTO_LIB_DIRS=$(find "$BASE_LIB_DIR" -type d -name "arm64-v8a" -exec find {} \( -type f -o -type l \) -name "*.so*" \; | sed 's|/[^/]*$||' | sort -u | paste -sd ":" -)
++export LD_LIBRARY_PATH="${AUTO_LIB_DIRS}"
++
++if [ ! -x "${FFMPEG_PATH}" ]; then
++    echo "[Error] FFmpeg executable not found: ${FFMPEG_PATH}"
++    exit 1
++fi
++
++# 生成测试视频 (加入 1000Hz 测试音，使用 mpeg4 视频软编 + aac 音频软编)
++echo "1.Generating a test video and audio now. (mpeg4 + aac): ${VIDEO_NAME} ..."
++"${FFMPEG_PATH}" -y -f lavfi -i testsrc=duration=5:size=1280x720:rate=60 \
++    -f lavfi -i sine=frequency=1000:duration=5:sample_rate=48000 \
++    -c:v mpeg4 -pix_fmt yuv420p \
++    -c:a aac -b:a 128k \
++    ${VIDEO_NAME} > /dev/null 2>&1
++
++if [ $? -eq 0 ]; then
++    echo "  -> [Success] The video has been generated!"
++else
++    echo "  -> [Failed] An error occurred during video generation. Please check the FFmpeg and dynamic library dependencies."
++    exit 1
++fi
++
++# 生成测试字幕 (.srt 格式)
++echo "2.Generating test subtitles now.: ${SUBTITLE_NAME} ..."
++cat > ${SUBTITLE_NAME} << EOF
++1
++00:00:00,500 --> 00:00:02,000
++For testing only....
++Hello, OpenHarmony!
++
++2
++00:00:02,500 --> 00:00:04,500
++This is a generated test subtitle.
++SubtitleReader For testing only
++EOF
++
++echo "  -> [成功] 字幕已生成！"
++echo "======================================"
++ls -lh ${VIDEO_NAME} ${SUBTITLE_NAME}
+\ No newline at end of file

@@ -1,0 +1,165 @@
+diff --git a/MediaCore/CMakeLists.txt b/MediaCore/CMakeLists.txt
+index 69b3493..c63df68 100644
+--- a/MediaCore/CMakeLists.txt
++++ b/MediaCore/CMakeLists.txt
+@@ -159,7 +159,7 @@ set(BUILD_MEDIACORE_TEST ON CACHE BOOL "Choose whether or not to build the test
+ endif()
+ 
+ if(BUILD_MEDIACORE_TEST)
+-set(LIB_TEST_DIR ${PROJECT_SOURCE_DIR}/test)
++set(LIB_TEST_DIR ${PROJECT_SOURCE_DIR}/test_mediacore)
+ 
+ add_executable(MediaEncoderTest
+     ${LIB_TEST_DIR}/MediaEncoderTest.cpp
+diff --git a/imgui/CMakeLists.txt b/imgui/CMakeLists.txt
+index aa05bd2..50c1cc9 100644
+--- a/imgui/CMakeLists.txt
++++ b/imgui/CMakeLists.txt
+@@ -84,17 +84,17 @@ find_package(PkgConfig)
+ _OPTION(IMGUI_STATIC                "Build ImGui as static library" OFF)
+ _OPTION(IMGUI_BUILD_EXAMPLE         "Build ImGui example" OFF)
+ _OPTION(IMGUI_WGPU                  "Build ImGui wgpu backends" OFF)
+-_OPTION(IMGUI_GL2                   "Build ImGui OpenGL2 backends" ON)
+-_OPTION(IMGUI_GL3                   "Build ImGui OpenGL3 backends" ON)
++_OPTION(IMGUI_GL2                   "Build ImGui OpenGL2 backends" OFF)
++_OPTION(IMGUI_GL3                   "Build ImGui OpenGL3 backends" OFF)
+ _OPTION(IMGUI_SDL2                  "Build ImGui SDL2 backends" ON)
+ _OPTION(IMGUI_SDL2_RENDERER         "Build ImGui SDL2 Renderer backends" OFF)
+-_OPTION(IMGUI_GLFW                  "Build ImGui GLFW backends" ON)
++_OPTION(IMGUI_GLFW                  "Build ImGui GLFW backends" OFF)
+ _OPTION(IMGUI_GLUT                  "Build ImGui GLUT backends" OFF)
+-_OPTION(IMGUI_GLEW                  "Build ImGui GLEW backends" ON)
++_OPTION(IMGUI_GLEW                  "Build ImGui GLEW backends" OFF)
+ _OPTION(IMGUI_GLES                  "Build ImGui GLES backends" ON)
+ _OPTION(IMGUI_MATAL                 "Build ImGui Apple Metal backends(Apple only)" ON IF APPLE)
+ _OPTION(IMGUI_VULKAN                "Build ImGui Vulkan backends" OFF)
+-_OPTION(IMGUI_VULKAN_SHADER         "Build ImGui With Vulkan compute support" ON)
++_OPTION(IMGUI_VULKAN_SHADER         "Build ImGui With Vulkan compute support" OFF)
+ _OPTION(IMGUI_DX9                   "Build ImGui Direct9 backends(Windows only)" ON IF WIN32)
+ _OPTION(IMGUI_DX10                  "Build ImGui Direct10 backends(Windows only)" ON IF WIN32)
+ _OPTION(IMGUI_DX11                  "Build ImGui Direct11 backends(Windows only)" ON IF WIN32)
+@@ -103,7 +103,7 @@ _OPTION(IMGUI_FREETYPE              "Build ImGui with FreeType support" OFF)
+ _OPTION(IMGUI_BUILD_DITHER          "Build ImGui with Dither support" OFF)
+ _OPTION(IMGUI_BUILD_POTRACE         "Build ImGui with Potace support" OFF)
+ _OPTION(IMGUI_ICONS                 "Internal Icons build in library" ON)
+-_OPTION(IMGUI_APPS                  "build apps base on imgui" ON)
++_OPTION(IMGUI_APPS                  "build apps base on imgui" OFF)
+ _OPTION(IMGUI_SKIP_INSTALL          "Skip imgui install" ON)
+ 
+ if(IOS AND CMAKE_OSX_ARCHITECTURES MATCHES "arm")
+@@ -169,13 +169,13 @@ if(PKG_CONFIG_FOUND)
+         message("imgui zlib found")
+     endif(ZLIB_FOUND)
+     if(IMGUI_GLEW)
+-        pkg_search_module(GLEW REQUIRED glew)
++        pkg_search_module(GLEW glew)
+     endif(IMGUI_GLEW)
+     if(IMGUI_GLFW)
+-        pkg_search_module(GLFW REQUIRED glfw3)
++        pkg_search_module(GLFW glfw3)
+     endif(IMGUI_GLFW)
+     if(IMGUI_GLUT AND NOT GLUT_FOUND)
+-        pkg_search_module(GLUT REQUIRED glut)
++        pkg_search_module(GLUT glut)
+         if (GLUT_FOUND)
+             message("imgui glut found")
+         endif (GLUT_FOUND)
+@@ -187,7 +187,7 @@ if(PKG_CONFIG_FOUND)
+         endif(VULKAN_FOUND)
+     endif(IMGUI_VULKAN)
+     if(NOT OPENGL_FOUND)
+-        pkg_search_module(OPENGL REQUIRED gl)
++        set(OPENGL_FOUND OFF)
+         if (OPENGL_FOUND)
+             message("imgui opengl found")
+         endif()
+@@ -198,7 +198,7 @@ if(PKG_CONFIG_FOUND)
+             message("imgui freetype found")
+         endif()
+     endif()
+-    pkg_search_module(SDL2 REQUIRED sdl2)
++    pkg_search_module(SDL2 sdl2)
+     if(SDL2_FOUND)
+         message("imgui sdl2 found")
+     endif()
+@@ -206,7 +206,7 @@ if(PKG_CONFIG_FOUND)
+         find_package(glm CONFIG REQUIRED)
+         set(GLM_FOUND ON)
+     else()
+-        pkg_search_module(GLM REQUIRED glm)
++        pkg_search_module(GLM glm)
+     endif(WIN32)
+     if (GLM_FOUND)
+         message("imgui glm found")
+@@ -1242,11 +1242,9 @@ set(IMGUI_INCS
+ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+ set(IMGUI_SRC
+     ${IMGUI_SRC}
+-    ${CMAKE_CURRENT_SOURCE_DIR}/addon/ImGuiZmo/mesh.cpp
+ )
+ set(IMGUI_INCS
+     ${IMGUI_INCS}
+-    ${CMAKE_CURRENT_SOURCE_DIR}/addon/ImGuiZmo/mesh.h
+ )
+ endif()
+ 
+diff --git a/imgui/addon/BaseUtils/CMakeLists.txt b/imgui/addon/BaseUtils/CMakeLists.txt
+index 7d97802..bb8c9cc 100644
+--- a/imgui/addon/BaseUtils/CMakeLists.txt
++++ b/imgui/addon/BaseUtils/CMakeLists.txt
+@@ -15,7 +15,7 @@ if(BaseUtils_STATIC)
+     set(LIBRARY_TYPE STATIC)
+ else(BaseUtils_STATIC)
+     message("Build BaseUtils as shared library")
+-    set(LIBRARY_TYPE SHARED)
++    set(LIBRARY_TYPE STATIC)
+ endif(BaseUtils_STATIC)
+ 
+ set(BaseUtils_VERSION_MAJOR 0)
+diff --git a/imgui/addon/ImMaskCreator/CMakeLists.txt b/imgui/addon/ImMaskCreator/CMakeLists.txt
+index 2fd308a..e29fdc1 100644
+--- a/imgui/addon/ImMaskCreator/CMakeLists.txt
++++ b/imgui/addon/ImMaskCreator/CMakeLists.txt
+@@ -22,7 +22,7 @@ if(ImMaskCreator_STATIC)
+     set(LIBRARY_TYPE STATIC)
+ else(ImMaskCreator_STATIC)
+     message("Build ImMaskCreator as shared library")
+-    set(LIBRARY_TYPE SHARED)
++    set(LIBRARY_TYPE STATIC)
+ endif(ImMaskCreator_STATIC)
+ 
+ 
+diff --git a/imgui/misc/cpp/imgui_socket.cpp b/imgui/misc/cpp/imgui_socket.cpp
+index 91a2479..c1f7b2d 100644
+--- a/imgui/misc/cpp/imgui_socket.cpp
++++ b/imgui/misc/cpp/imgui_socket.cpp
+@@ -1,4 +1,5 @@
+ #include "imgui_socket.h"
++#include <sys/time.h>
+ #define MAX_BUFFER 1024
+ 
+ namespace ImSocket
++
+
+diff --git a/imgui/CMakeLists.txt b/imgui/CMakeLists.txt
+index aa05bd2..50c1cc9 100644
+--- a/imgui/CMakeLists.txt
++++ b/imgui/CMakeLists.txt
+@@ -1117,7 +1117,11 @@ if (IMGUI_BUILD_EXAMPLE)
+     set(IMGUI_SRC
+         ${IMGUI_SRC}
+         addon/ImNewCurve/ImNewCurveDemo.cpp
+     )
+ endif(IMGUI_BUILD_EXAMPLE)
+ 
+ # BaseUtils
+ if(NOT DEFINED BaseUtils_STATIC)
+     set(BaseUtils_STATIC OFF)
+ endif()
+ add_subdirectory(addon/BaseUtils)
+ set(IMGUI_INC_DIRS
+     ${IMGUI_INC_DIRS}
+     ${CMAKE_CURRENT_SOURCE_DIR}/addon/BaseUtils/Include
+ )
+ 
+ # New Curve
