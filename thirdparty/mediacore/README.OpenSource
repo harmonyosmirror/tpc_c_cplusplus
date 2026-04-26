@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "MediaCore",
+        "License": "LGPL",
+        "License File": "https://github.com/opencodewin/MediaEditor/blob/master/LICENSE",
+        "Version Number": "4c4386837d596368e483d6c2a2f09cd37788af7f",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://github.com/opencodewin/MediaEditor/archive/4c4386837d596368e483d6c2a2f09cd37788af7f.tar.gz",
+        "Description": "MediaCore 是一个 LGPL 多媒体框架，专为媒体（视频/音频/文本）编辑而设计。"
+    }
+]
