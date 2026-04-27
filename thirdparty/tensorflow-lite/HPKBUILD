@@ -1,0 +1,149 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: handong056@chinasoftinc.com 
+# Maintainer: handong056@chinasoftinc.com
+
+pkgname=tensorflow-lite
+pkgver=2.20.0
+pkgrel=0
+pkgdesc="Enable developers to efficiently build, train, and deploy various machine learning models"
+url="https://github.com/tensorflow/tensorflow"
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+license=("MIT")
+depends=()
+makedepends=("cmake")
+source="https://github.com/tensorflow/tensorflow/archive/refs/tags/v$pkgver.tar.gz"
+buildtools="cmake"
+builddir=tensorflow-${pkgver}
+packagename=${builddir}.tar.gz
+TFLITE_SRC_DIR="tensorflow/lite"
+PKG_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)
+patchflag=true
+source envset.sh
+
+# 安装 flatbuffers 工具
+install_flatbuffers_host_tool() {
+	local log="${PWD}/host-tools-build.log"
+	[ -f host-flatc-install/bin/flatc ] && return 0
+	mkdir -p host-tools-build
+	cmake -S "$TFLITE_SRC_DIR/tools/cmake/native_tools/flatbuffers" -B host-tools-build \
+		-DCMAKE_INSTALL_PREFIX="${PWD}/host-flatc-install" >>"$log" 2>&1
+	cmake --build host-tools-build >>"$log" 2>&1
+	cmake --install host-tools-build >>"$log" 2>&1
+}
+
+# 安装 protobuf 工具
+install_protobuf_host_tool() {
+	local log="${PWD}/host-tools-build.log"
+	[ -f host-protoc-install/bin/protoc ] && return 0
+	[ -d protobuf-src/.git ] || git clone https://github.com/protocolbuffers/protobuf.git protobuf-src >>"$log" 2>&1
+	git -C protobuf-src checkout 90b73ac3f0b10320315c2ca0d03a5a9b095d2f66 >>"$log" 2>&1
+	mkdir -p protobuf-src/cmake-build-host
+	cmake -S protobuf-src -B protobuf-src/cmake-build-host \
+		-DCMAKE_INSTALL_PREFIX="${PWD}/host-protoc-install" \
+		-Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_PROTOC_BINARIES=ON \
+		-Dprotobuf_BUILD_SHARED_LIBS=OFF -Dprotobuf_WITH_ZLIB=OFF \
+		-DCMAKE_BUILD_TYPE=Release >>"$log" 2>&1
+	cmake --build protobuf-src/cmake-build-host --parallel "$(nproc)" >>"$log" 2>&1
+	cmake --install protobuf-src/cmake-build-host >>"$log" 2>&1
+}
+
+prepare() {
+	cd "$PKG_ROOT"
+	if $patchflag; then
+		(cd "$builddir" && patch -p1 < "$PKG_ROOT/tensorflow_ohos_pkg.patch")
+		patchflag=false
+	fi
+	cd "$PKG_ROOT/$builddir"
+	mkdir -p "${ARCH}-build"
+	CMAKE_ARGS=(
+		"-DTFLITE_HOST_TOOLS_DIR=${PWD}/host-flatc-install"
+		"-DFETCHCONTENT_SOURCE_DIR_FFT2D=${PWD}/fft2d-src"
+		"-DFLATBUFFERS_LOCALE_INDEPENDENT=ON"
+	)
+	case "$ARCH" in
+	armeabi-v7a)
+		CMAKE_ARGS+=(
+			"-DCMAKE_C_FLAGS='-mfpu=neon -mfloat-abi=softfp -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE'"
+			"-DCMAKE_CXX_FLAGS='-mfpu=neon -mfloat-abi=softfp -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE'"
+			"-DCMAKE_EXE_LINKER_FLAGS='-lrt'"
+			"-DCMAKE_SHARED_LINKER_FLAGS='-lrt'"
+			"-DCMAKE_MODULE_LINKER_FLAGS='-lrt'"
+			"-DXNNPACK_ENABLE_ASSEMBLY=OFF" "-DXNNPACK_ENABLE_ARM_FP16=OFF"
+			"-DXNNPACK_ENABLE_ARM_BF16=OFF" "-DXNNPACK_ENABLE_JIT=OFF"
+			"-DXNNPACK_BUILD_MICROKERNELS_PROD=ON"
+		)
+		;;
+	arm64-v8a|x86_64)
+		CMAKE_ARGS+=(
+			"-DCMAKE_C_FLAGS='-D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE'"
+			"-DCMAKE_CXX_FLAGS='-D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE'"
+			"-DCMAKE_EXE_LINKER_FLAGS='-lrt'"
+		)
+		;;
+	esac
+}
+
+build() {
+	cd "$PKG_ROOT/$builddir"
+	install_flatbuffers_host_tool
+	install_protobuf_host_tool
+	local log="${PWD}/host-tools-build.log"
+	if [ ! -d fft2d-src/.git ]; then
+		rm -rf fft2d-src
+		git clone --depth 1 --branch v1.0 https://github.com/petewarden/OouraFFT.git fft2d-src >>"$log" 2>&1
+	fi
+	local flatc="${PWD}/host-flatc-install/bin/flatc"
+	local protoc="${PWD}/host-protoc-install/bin/protoc"
+	export FLATC="$flatc" FLATBUFFERS_FLATC_EXECUTABLE="$flatc"
+	export Protobuf_PROTOC_EXECUTABLE="$protoc" CMAKE_PROTOC_EXECUTABLE="$protoc" PROTOC="$protoc"
+	export PATH="$(dirname "$flatc"):$(dirname "$protoc"):$PATH"
+	hash -r
+	# TFLITE_ENABLE_INSTALL=OFF — package() copies libtensorflow-lite.a by hand; upstream CMake install() is not relied for OHOS tree.
+	# TFLITE_ENABLE_TESTS=OFF — skip the default TFLite CTest wiring oriented to the full upstream test set;
+	PKG_CONFIG_LIBDIR="${pkgconfigpath}" ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
+		"${CMAKE_ARGS[@]}" \
+		-DTFLITE_ENABLE_INSTALL=OFF \
+		-DTFLITE_ENABLE_TESTS=OFF \
+		-DTFLITE_KERNEL_TEST=ON \
+		-DTFLITE_ENABLE_LITE_TESTING=ON \
+		-DBUILD_TESTING=ON \
+		-DXNNPACK_BUILD_LIBRARY=ON \
+		-DRUY_ENABLE_INSTALL=ON \
+		-DABSL_ENABLE_INSTALL=ON \
+		-Dprotobuf_INSTALL=ON \
+		-DFLATBUFFERS_INSTALL=ON \
+		-DCMAKE_INSTALL_PREFIX=$LYCIUM_ROOT/usr/$pkgname/${ARCH} \
+		-DOHOS_ARCH=$ARCH \
+		-B$ARCH-build \
+		-S$TFLITE_SRC_DIR \
+		-L >$buildlog 2>&1 || return $?
+	$MAKE VERBOSE=1 -C $ARCH-build >>$buildlog 2>&1
+}
+
+package() {
+	cd "$PKG_ROOT/$builddir"
+	local out="$LYCIUM_ROOT/usr/$pkgname/$ARCH"
+	mkdir -p "$out/lib" "$out/include"
+	[ -f "$ARCH-build/libtensorflow-lite.a" ] || return 1
+	cp -v "$ARCH-build/libtensorflow-lite.a" "$out/lib/" >>"$buildlog" 2>&1
+	for h in c_api.h c_api_experimental.h c_api_types.h common.h; do cp -v "$TFLITE_SRC_DIR/c/$h" "$out/include/" >>"$buildlog" 2>&1; done
+	find "$ARCH-build" -name "libxnnpack-delegate.a" -type f -exec cp -v {} "$out/lib/" \; >>"$buildlog" 2>&1
+}
+
+check() {
+	echo "The test must be on an OpenHarmony device!"
+}
+
+cleanbuild() { rm -rf "$PKG_ROOT/$builddir"; }

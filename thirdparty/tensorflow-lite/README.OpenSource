@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "tensorflow",
+        "License": "Apache-2.0",
+        "License File": "https://github.com/tensorflow/tensorflow/blob/master/LICENSE",
+        "Version Number": "0.20.0",
+        "Owner": "xiafeng@huawei.com",
+        "Upstream URL": "https://github.com/tensorflow/tensorflow",
+        "Description": "TASSL is an SSL/TLS protocol implementation that supports national secret algorithms"
+    }
+]
