@@ -50,8 +50,8 @@ build() {
     -DSSL_INCLUDE_DIR=$LYCIUM_ROOT/usr/boringssl-fips-20251031/$ARCH/include \
     -DSSL_LIBRARY_STATIC=$LYCIUM_ROOT/usr/boringssl-fips-20251031/$ARCH/lib/libssl.a \
     -DCRYPTO_LIBRARY_STATIC=$LYCIUM_ROOT/usr/boringssl-fips-20251031/$ARCH/lib/libcrypto.a \
-    -DCMAKE_C_FLAGS="-Wno-error=format -Wno-error=implicit-function-declaration -Wno-incompatible-pointer-types -Wno-unused-command-line-argument" \
-    -DCMAKE_CXX_FLAGS="-Wno-error=format -Wno-error=implicit-function-declaration -Wno-incompatible-pointer-types -Wno-unused-command-line-argument" \
+    -DCMAKE_C_FLAGS="-Wno-error=format -Wno-error=implicit-function-declaration -Wno-incompatible-pointer-types -Wno-unused-command-line-argument -s" \
+    -DCMAKE_CXX_FLAGS="-Wno-error=format -Wno-error=implicit-function-declaration -Wno-incompatible-pointer-types -Wno-unused-command-line-argument -s" \
     -DSSL_TYPE=boringssl -DSSL_PATH=$LYCIUM_ROOT/usr/boringssl-fips-20251031/$ARCH \
     -DCMAKE_SHARED_LINKER_FLAGS="-lc++" \
     -DXQC_ENABLE_TESTING=1 -DXQC_SUPPORT_SENDMMSG_BUILD=1 -DXQC_ENABLE_EVENT_LOG=1 -DXQC_ENABLE_BBR2=1 -DXQC_ENABLE_RENO=1 \
