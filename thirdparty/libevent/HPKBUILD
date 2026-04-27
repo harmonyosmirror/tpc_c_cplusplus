@@ -37,6 +37,8 @@ prepare() {
 build() {
     cd $builddir
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake -DEVENT__LIBRARY_TYPE=BOTH "$@" -DOHOS_ARCH=$ARCH \
+        -DCMAKE_C_FLAGS="-s" \
+        -DCMAKE_CXX_FLAGS="-s" \
         -B$ARCH-build/ -S./ -L > `pwd`/$ARCH-build/build.log 2>&1
     # 编译
     make -j4 -C $ARCH-build VERBOSE=1 >> `pwd`/$ARCH-build/build.log 2>&1   
