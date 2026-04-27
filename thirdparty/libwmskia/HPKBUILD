@@ -45,6 +45,7 @@ prepare() {
     # 拉取 Skia 第三方依赖（与 zlib/tensorflow-lite 等流程一致）
     if [ "$depsyncflag" == true ]; then
         cd $builddir
+        patch -p1 < ../skia-canvaskit-oh-pkg.patch
         python3 tools/git-sync-deps > $publicbuildlog 2>&1
         respy=$?
         cd $OLDPWD
