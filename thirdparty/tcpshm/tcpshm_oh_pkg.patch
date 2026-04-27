@@ -1,0 +1,56 @@
+diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
+new file mode 100644
+index 0000000..fc48a46
+--- /dev/null
++++ b/test/CMakeLists.txt
+@@ -0,0 +1,17 @@
++cmake_minimum_required(VERSION 3.10)
++project(EchoServerClient CXX)
++
++set(CMAKE_CXX_STANDARD 11)
++set(CMAKE_CXX_STANDARD_REQUIRED ON)
++set(CMAKE_CXX_EXTENSIONS OFF)
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
++
++find_package(Threads REQUIRED)
++
++# 服务器可执行文件
++add_executable(echo_server echo_server.cc)
++target_link_libraries(echo_server PRIVATE Threads::Threads rt)
++
++# 客户端可执行文件
++add_executable(echo_client echo_client.cc)
++target_link_libraries(echo_client PRIVATE Threads::Threads rt)
+\ No newline at end of file
+diff --git a/test/echo_client.cc b/test/echo_client.cc
+index 1e09420..460da7b 100644
+--- a/test/echo_client.cc
++++ b/test/echo_client.cc
+@@ -1,5 +1,11 @@
+ #include "../tcpshm_client.h"
++#ifdef __OHOS__
++#include <cassert>
++#include <iostream>
++#include <thread>
++#else
+ #include <bits/stdc++.h>
++#endif
+ #include "timestamp.h"
+ #include "common.h"
+ #include "cpupin.h"
+diff --git a/test/echo_server.cc b/test/echo_server.cc
+index a7c2e5b..0ad2636 100644
+--- a/test/echo_server.cc
++++ b/test/echo_server.cc
+@@ -1,5 +1,11 @@
+ #include "../tcpshm_server.h"
++#ifdef __OHOS__
++#include <signal.h>
++#include <iostream>
++#include <thread>
++#else
+ #include <bits/stdc++.h>
++#endif
+ #include "timestamp.h"
+ #include "common.h"
+ #include "cpupin.h"
