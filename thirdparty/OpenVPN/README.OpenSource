@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "OpenVPN",
+        "License": "GPL-2.0 license",
+        "License File": "https://github.com/OpenVPN/openvpn/tree/v2.7_rc4?tab=License-2-ov-file",
+        "Version Number": "v2.7_rc4",
+        "Owner": "xiafeng@huawei.com",
+        "Upstream URL": "https://codeload.github.com/OpenVPN/openvpn/zip/refs/tags/v2.7_rc4",
+        "Description": "OpenVPN is an open-source virtual private network (VPN) software with DCO support."
+    }
+]
