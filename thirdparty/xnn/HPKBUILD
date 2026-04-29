@@ -1,0 +1,149 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: handong056@chinasoftinc.com
+# Maintainer: handong056@chinasoftinc.com
+
+pkgname=xnn
+pkgver=0.1
+pkgrel=0
+pkgdesc="XNN: C++ inference API (Caffe + MXNet + optional Torch7/LuaJIT-TH)"
+url="https://github.com/aaalgo/xnn"
+archs=("armeabi-v7a" "arm64-v8a")
+license=()
+depends=(caffe spdlog fmt picpac mxnet TH luaT json11-1.0.0 boost LuaJIT glog gflags opencv OpenBLAS_0.3.23)
+makedepends=()
+source="https://codeload.github.com/aaalgo/xnn/tar.gz/refs/heads/master"
+
+downloadpackage=true
+autounpack=true
+buildtools=make
+
+builddir="${pkgname}-master"
+packagename="${builddir}.tar.gz"
+patchflag=true
+
+prepare() {
+    archbuilddir="${builddir}/${ARCH}-build"
+
+    if ${patchflag}; then
+        cd "${builddir}"
+        # 鸿蒙适配补丁：修复工具链差异、原子操作、OpenCV API 
+        patch --batch -p1 --forward < "../${pkgname}-oh-pkg.patch" >> "${publicbuildlog:-/dev/null}" 2>&1 \
+            || patch --batch -R -p1 --dry-run < "../${pkgname}-oh-pkg.patch" >> "${publicbuildlog:-/dev/null}" 2>&1 \
+            || return -1
+        patchflag=false
+        cd "${OLDPWD}"
+    fi
+
+    mkdir -p "${archbuilddir}"
+    tar -C "${builddir}" --exclude='*-build' -cf - . | tar -C "${archbuilddir}" -xf -
+
+    cd "${archbuilddir}"
+
+    tr -d '\r' < Makefile > Makefile.lf && mv Makefile.lf Makefile
+
+    if [ "${ARCH}" = "armeabi-v7a" ]; then
+        export CC="${OHOS_SDK}/native/llvm/bin/arm-linux-ohos-clang"
+        export CXX="${OHOS_SDK}/native/llvm/bin/arm-linux-ohos-clang++"
+    elif [ "${ARCH}" = "arm64-v8a" ]; then
+        export CC="${OHOS_SDK}/native/llvm/bin/aarch64-linux-ohos-clang"
+        export CXX="${OHOS_SDK}/native/llvm/bin/aarch64-linux-ohos-clang++"
+    else
+        echo "${ARCH} not support"
+        return -1
+    fi
+
+    cd "${OLDPWD}"
+    return 0
+}
+
+build() {
+    cd "${builddir}/${ARCH}-build"
+
+    jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)"
+    _blog="${buildlog:-/dev/null}"
+
+    # 默认关闭 Torch，先聚焦排查 protobuf 冲突；如需开启可显式设置 USE_TORCH=1
+    _defs="-DUSE_CAFFE=1 -DUSE_MXNET=${USE_MXNET:-1} -DUSE_TORCH=${USE_TORCH:-1}"
+
+    _root="${LYCIUM_ROOT}/usr"
+    _I=""
+    _I="${_I} -I${_root}/json11-1.0.0/${ARCH}/include"
+    [ -d "${_root}/json11-1.0.0/${ARCH}/include/arm-linux-ohos" ] && _I="${_I} -I${_root}/json11-1.0.0/${ARCH}/include/arm-linux-ohos"
+    [ -d "${_root}/json11-1.0.0/${ARCH}/include/aarch64-linux-ohos" ] && _I="${_I} -I${_root}/json11-1.0.0/${ARCH}/include/aarch64-linux-ohos"
+    [ -d "${_root}/json11-1.0.0/${ARCH}/include/x86_64-linux-ohos" ] && _I="${_I} -I${_root}/json11-1.0.0/${ARCH}/include/x86_64-linux-ohos"
+    _I="${_I} -I${_root}/boost/${ARCH}/include"
+    _I="${_I} -I${_root}/caffe/${ARCH}/include"
+    _I="${_I} -I${_root}/fmt/${ARCH}/include"
+    _I="${_I} -I${_root}/spdlog/${ARCH}/include"
+    _I="${_I} -I${_root}/glog/${ARCH}/include"
+    _I="${_I} -I${_root}/gflags/${ARCH}/include"
+    _I="${_I} -I${_root}/opencv/${ARCH}/include/opencv4"
+    _I="${_I} -I${_root}/picpac/${ARCH}/include"
+    _I="${_I} -I${_root}/mxnet/${ARCH}/include"
+    _I="${_I} -I${_root}/TH/${ARCH}/include"
+    _I="${_I} -I${_root}/OpenBLAS/${ARCH}/include"
+    _I="${_I} -I${_root}/OpenBLAS_0.3.23/${ARCH}/include"
+    _I="${_I} -I${_root}/OpenBLAS_0.3.23/${ARCH}/include/openblas"
+    _I="${_I} -I${_root}/LuaJIT/${ARCH}/include"
+    [ -d "${_root}/LuaJIT/${ARCH}/include/luajit-2.1" ] && _I="${_I} -I${_root}/LuaJIT/${ARCH}/include/luajit-2.1"
+    [ -d "${_root}/LuaJIT/${ARCH}/include/luajit-2.0" ] && _I="${_I} -I${_root}/LuaJIT/${ARCH}/include/luajit-2.0"
+    _I="${_I} -I${_root}/luaT/${ARCH}/include"
+    _L="-L${_root}/caffe/${ARCH}/lib -L${_root}/picpac/${ARCH}/lib -L${_root}/fmt/${ARCH}/lib -L${_root}/spdlog/${ARCH}/lib"
+    [ -d "${_root}/boost/${ARCH}/lib" ] && _L="${_L} -L${_root}/boost/${ARCH}/lib"
+    [ -d "${_root}/glog/${ARCH}/lib" ] && _L="${_L} -L${_root}/glog/${ARCH}/lib"
+    [ -d "${_root}/gflags/${ARCH}/lib" ] && _L="${_L} -L${_root}/gflags/${ARCH}/lib"
+    [ -d "${_root}/opencv/${ARCH}/lib" ] && _L="${_L} -L${_root}/opencv/${ARCH}/lib"
+    [ -d "${_root}/OpenBLAS_0.3.23/${ARCH}/lib" ] && _L="${_L} -L${_root}/OpenBLAS_0.3.23/${ARCH}/lib"
+    [ -d "${_root}/OpenBLAS/${ARCH}/lib" ] && _L="${_L} -L${_root}/OpenBLAS/${ARCH}/lib"
+    [ -d "${_root}/json11-1.0.0/${ARCH}/lib" ] && _L="${_L} -L${_root}/json11-1.0.0/${ARCH}/lib"
+    [ -d "${_root}/json11-1.0.0/${ARCH}/lib/arm-linux-ohos" ] && _L="${_L} -L${_root}/json11-1.0.0/${ARCH}/lib/arm-linux-ohos"
+    [ -d "${_root}/json11-1.0.0/${ARCH}/lib/aarch64-linux-ohos" ] && _L="${_L} -L${_root}/json11-1.0.0/${ARCH}/lib/aarch64-linux-ohos"
+    [ -d "${_root}/mxnet/${ARCH}/lib" ] && _L="${_L} -L${_root}/mxnet/${ARCH}/lib"
+    [ -d "${_root}/TH/${ARCH}/lib" ] && _L="${_L} -L${_root}/TH/${ARCH}/lib"
+    [ -d "${_root}/luaT/${ARCH}/lib" ] && _L="${_L} -L${_root}/luaT/${ARCH}/lib"
+    [ -d "${_root}/LuaJIT/${ARCH}/lib" ] && _L="${_L} -L${_root}/LuaJIT/${ARCH}/lib"
+
+    make -j"${jobs}" predict xnn-roc \
+        CC="${CC}" CXX="${CXX}" \
+        USE_MXNET="${USE_MXNET:-1}" USE_TORCH="${USE_TORCH:-1}" \
+        CFLAGS="-fPIC -O3 -Wall" \
+        CXXFLAGS="-std=c++17 -fPIC -O3 -Wall ${_I} -DCPU_ONLY=1 ${_defs}" \
+        LDFLAGS="--sysroot=${OHOS_SDK}/native/sysroot ${_L} -lm -ldl -lc++ -lc++abi" >> "${_blog}" 2>&1
+
+    ret=$?
+    cd "${OLDPWD}"
+    return $ret
+}
+
+package() {
+    install_root="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}"
+    mkdir -p "${install_root}/lib" "${install_root}/bin" "${install_root}/include"
+
+    cd "${builddir}/${ARCH}-build"
+    cp -f "libxnn.a" "${install_root}/lib/"
+    [ -f "xnn.h" ] && cp -f "xnn.h" "${install_root}/include/" || true
+    cd "${OLDPWD}"
+    return 0
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+    return 0 
+}
+
+cleanbuild() {
+    rm -rf "${PWD}/${builddir}" "${PWD}/${builddir}/"*"-build" 2>/dev/null || true
+    return 0 
+}
