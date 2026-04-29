@@ -68,8 +68,8 @@ prepare() {
 }
 
 build() {
-    export CFLAGS="-D__MUSL__=1 -I${LYCIUM_ROOT}/usr/libcap-ng/${ARCH}/include -I${LYCIUM_ROOT}/usr/libnl/${ARCH}/include -I${LYCIUM_ROOT}/usr/linux-pam/${ARCH}/include -I${LYCIUM_ROOT}/usr/linux-pam/${ARCH}/include/security --sysroot=$OHOS_SDK/native/sysroot/"
-    export LDFLAGS="-L${LYCIUM_ROOT}/usr/libcap-ng/${ARCH}/lib -L${LYCIUM_ROOT}/usr/libnl/${ARCH}/lib -L${LYCIUM_ROOT}/usr/linux-pam/${ARCH}/lib -lcap-ng -lnl-genl-3 -lnl-3"
+    export CFLAGS="-D__MUSL__=1 -I${LYCIUM_ROOT}/usr/libcap-ng/${ARCH}/include -I${LYCIUM_ROOT}/usr/libnl/${ARCH}/include -I${LYCIUM_ROOT}/usr/linux-pam/${ARCH}/include -I${LYCIUM_ROOT}/usr/linux-pam/${ARCH}/include/security --sysroot=$OHOS_SDK/native/sysroot/ -fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -ftrapv"
+    export LDFLAGS="-L${LYCIUM_ROOT}/usr/libcap-ng/${ARCH}/lib -L${LYCIUM_ROOT}/usr/libnl/${ARCH}/lib -L${LYCIUM_ROOT}/usr/linux-pam/${ARCH}/lib -lcap-ng -lnl-genl-3 -lnl-3 -s"
 
     local current_dir=$(pwd)
     
