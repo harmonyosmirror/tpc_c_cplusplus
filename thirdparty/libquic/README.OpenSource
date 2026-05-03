@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "libquic",
+        "License": "BSD-3-Clause license",
+        "License File": "https://github.com/devsisters/libquic/blob/master/LICENSE",
+        "Version Number": "8954789a056d8e7d5fcb6452fd1572ca57eb5c4e",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://github.com/devsisters/libquic/archive/refs/heads/master.zip",
+        "Description": "QUIC is an experimental protocol aimed at reducing web latency over that of TCP"
+    }
+]
