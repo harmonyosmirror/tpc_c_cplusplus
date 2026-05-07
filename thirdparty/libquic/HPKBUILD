@@ -1,0 +1,117 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: lixingyang<lixingyang15@h-partners.com>
+# Maintainer: lixingyang<lixingyang15@h-partners.com>
+
+pkgname=libquic
+pkgver=8954789a056d8e7d5fcb6452fd1572ca57eb5c4e
+pkgrel=0
+pkgdesc="QUIC is an experimental protocol aimed at reducing web latency over that of TCP"
+url="https://github.com/devsisters/libquic"
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+license=("BSD-3-Clause license")
+depends=()
+makedepends=()
+
+source=https://github.com/devsisters/libquic.git
+autounpack=false
+downloadpackage=false
+buildtools="cmake"
+
+builddir=$pkgname-${pkgver}
+rootDir=$PWD
+
+source envset.sh
+patchflag=true
+cloneflag=true
+host=
+
+prepare() {
+    if $patchflag
+     then
+        mkdir -p $builddir
+        # 克隆源码
+        git clone -b master "$source" "$builddir" > "$buildlog" 2>&1
+        if [ $? -ne 0 ]; then
+            return -1
+        fi
+        cd $builddir
+        git reset --hard "$pkgver" >> "$buildlog" 2>&1
+        if [ $? -ne 0 ]; then
+            return -2
+        fi
+        cd $OLDPWD
+        cloneflag=false
+    fi
+
+    if $patchflag
+    then
+        cd $builddir
+        patch -p1 < `pwd`/../libquic_oh_test.patch >> $buildlog 2>&1 # 原库没有测试用例，新增测试用例
+        # patch只需要打一次，关闭打patch
+        patchflag=false
+        cd $OLDPWD
+    fi
+    # 复制源码，为每个架构创建一个独立的构建目录
+    cp -arf $builddir $builddir-$ARCH-build
+}
+
+build() {
+    cd $builddir-$ARCH-build
+    export GO111MODULE=off # 关闭Go模块模式，使用GOPATH模式，编译boringssl依赖需要的go脚本
+    export GOPATH=/tmp/gopath
+    mkdir -p $GOPATH/src/github.com/google
+    ln -sf $(pwd)/boringssl $GOPATH/src/github.com/google/boringssl 2>/dev/null || true
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
+        -DCMAKE_SYSTEM_NAME=Linux \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_SKIP_RPATH=ON \
+        -DCMAKE_SKIP_INSTALL_RPATH=ON \
+        -DCMAKE_TOOLCHAIN_FILE=$OHOS_SDK/native/build/cmake/ohos.toolchain.cmake \
+        -DCMAKE_C_FLAGS="-w -DOPENSSL_NO_ASM -fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -ftrapv" \
+        -DCMAKE_CXX_FLAGS="-w -fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -ftrapv" \
+        -DOPENSSL_NO_ASM=ON \
+        -DCMAKE_DISABLE_FIND_PACKAGE_Go=ON \
+        -DOHOS_ARCH=$ARCH \
+        -B $ARCH-build \
+        -S . \
+        > $buildlog 2>&1
+    $MAKE -C $ARCH-build >> $buildlog 2>&1
+    ret=$?
+    cd $rootDir
+}
+
+package() {
+    cd $builddir-$ARCH-build
+    local install_dir="$LYCIUM_ROOT/usr/$pkgname/$ARCH"
+    # 创建bin、lib、include目录
+    mkdir -p $install_dir/lib
+    mkdir -p $install_dir/bin
+    mkdir -p $install_dir/include
+    find $ARCH-build -type f -executable ! -name "*.a" ! -name "*.so" ! -name "*.so.*" -exec cp -v {} "$install_dir/bin/" \; >> $buildlog 2>&1
+    find $ARCH-build -type f -name "*.a" -exec cp -v {} "$install_dir/lib/" \; >> $buildlog 2>&1
+    find ./src -name "*.h" -type f -exec cp --parents -v {} "$install_dir/include/" \; >> $buildlog 2>&1
+    cd $rootDir
+}
+
+check() {
+  echo "The test must be on an OpenHarmony device!"
+}
+
+cleanbuild() {
+    rm -rf ${PWD}/$builddir 
+    rm -rf ${PWD}/$builddir-arm64-v8a-build
+    rm -rf ${PWD}/$builddir-armeabi-v7a-build
+    rm -rf ${PWD}/$builddir-x86_64-build
+}
