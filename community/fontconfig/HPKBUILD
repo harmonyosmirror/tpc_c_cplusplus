@@ -10,8 +10,8 @@ archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("HPND" "Public Domain" "MIT-Modern-Variant" "MIT")
 depends=("libzip" "freetype2" "libxml2" "libpng" "json-c")
 makedepends=("gperf" "gettextize" "autopoint" "libtool")
-source="https://www.freedesktop.org/software/${pkgname}/release/${pkgname}-${pkgver}.tar.gz"
-
+# source="https://www.freedesktop.org/software/${pkgname}/release/${pkgname}-${pkgver}.tar.gz"
+source="https://gitcode.com/openharmony-tpc-incubate/${pkgname}/releases/download/${pkgname}-${pkgver}/${pkgname}-${pkgver}.tar.gz"
 autounpack=true
 downloadpackage=true
 buildtools="configure"
