@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "gstreamer",
+        "License": "LGPL-2.1",
+        "License File": "https://gitlab.freedesktop.org/gstreamer/gstreamer/-/blob/main/LICENSE",
+        "Version Number": "1.26.8",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://gitlab.freedesktop.org/gstreamer/gstreamer/-/archive/1.26.8/gstreamer-1.26.8.tar.gz",
+        "Description": "A framework for streaming media."
+    }
+]

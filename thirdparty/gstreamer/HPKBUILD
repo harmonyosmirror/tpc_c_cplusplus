@@ -1,0 +1,131 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: lixingyang<lixingyang15@h-partners.com>
+# Maintainer: lixingyang<lixingyang15@h-partners.com>
+
+pkgname=gstreamer
+pkgver=ohos_1.26
+pkgrel=0
+pkgdesc="A framework for streaming media"
+url="https://gitlab.freedesktop.org/gstreamer/gstreamer"
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+license=("LGPL-2.1")
+depends=()
+makedepends=("meson" "ninja" "pkg-config")
+
+# source="https://gitlab.freedesktop.org/$pkgname/$pkgname/-/archive/$pkgver/$pkgname-$pkgver.tar.gz" 因网络原因使用镜像
+source="https://gitcode.com/openharmony-tpc-incubate/$pkgname.git"
+
+downloadpackage=false
+autounpack=false
+cloneflag=true
+buildtools="meson"
+builddir=$pkgname-$pkgver
+packagename=$builddir.tar.gz
+patchflag=true
+
+prepare() {
+    if $cloneflag
+    then
+        git clone -b $pkgver $source $builddir > $buildlog 2>&1
+        if [ $? -ne 0 ]
+        then
+            echo "$pkgname git clone $source error." >&2
+            return -1
+        fi
+        cloneflag=false
+        if $patchflag
+        then
+            cd "$builddir"
+            patch -p1 < ../gst_ohos_pkg.patch > $buildlog 2>&1 # 使用patch修复测试文件路径
+            if [ $? -ne 0 ]
+            then
+                echo "$pkgname patch error." > $buildlog 2>&1
+                return -1
+            fi
+            patchflag=false
+            cd $OLDPWD
+        fi
+    fi
+    mkdir -p $builddir/$ARCH-build
+    cp $ARCH-cross-file.txt $builddir
+}
+
+build() {
+    # 安装fontTools以支持ttx命令
+    pip install fonttools > $buildlog 2>&1
+    # Dgst-plugins-bad:opensles=disabled原因：ohos有自己的音频框架，Android专用，不需要OpenSL ES
+    # Dpython=disabled原因：ohos有自己的python解释器，减少构建依赖，避免需要安装指定版本的Python开发库
+    # Dlibxml2:python=disabled原因：libxml2尝试构建特定版本的Python，减少依赖链，避免引入不必要的Python相关组件
+    cd $builddir
+    ohos_sdk_path=${OHOS_SDK//\//\\\/}
+    sed -i 's/ohos_sdk/'"$ohos_sdk_path"'/g' $ARCH-cross-file.txt
+
+    if [ $ARCH == "armeabi-v7a" ];then
+        c_args="['-mfloat-abi=softfp', '-mfpu=neon', '-fPIC', '-marm', '-march=armv7-a', '-D__MUSL__=1', '-Dsecure_getenv=getenv', '-DOPUS_ARM_ASM=1', '-DTESTFILE=\"./meson.build\"']"
+        cpp_args="['-mfloat-abi=softfp', '-mfpu=neon', '-fPIC', '-marm', '-march=armv7-a', '-D__MUSL__=1', '-Dsecure_getenv=getenv', '-DOPUS_ARM_ASM=1', '-DTESTFILE=\"./meson.build\"']"
+    elif [ $ARCH == "arm64-v8a" ];then
+        c_args="['-march=armv8-a', '-fPIC', '-D__MUSL__=1', '-Dsecure_getenv=getenv', '-DOPUS_ARM_ASM=1', '-DTESTFILE=\"./meson.build\"']"
+        cpp_args="['-march=armv8-a', '-fPIC', '-D__MUSL__=1', '-Dsecure_getenv=getenv', '-DOPUS_ARM_ASM=1', '-DTESTFILE=\"./meson.build\"']"
+    elif [ $ARCH == "x86_64" ];then
+        c_args="['-march=x86-64', '-fPIC', '-D__MUSL__=1', '-Dsecure_getenv=getenv', '-DOPUS_ARM_ASM=1', '-DTESTFILE=\"./meson.build\"']"
+        cpp_args="['-march=x86-64', '-fPIC', '-D__MUSL__=1', '-Dsecure_getenv=getenv', '-DOPUS_ARM_ASM=1', '-DTESTFILE=\"./meson.build\"']"
+    else
+        echo "$ARCH not support" >> $buildlog 2>&1
+        return -1
+    fi
+
+    meson setup $ARCH-build --cross-file $ARCH-cross-file.txt --prefix=$LYCIUM_ROOT/usr/$pkgname/$ARCH \
+        -Dc_args="$c_args" -Dcpp_args="$cpp_args" \
+        -Dgst-plugins-bad:cpp_link_args="-latomic" \
+        -Dgst-plugins-bad:c_link_args="-latomic" \
+        -Dgst-plugins-bad:opensles=disabled \
+        -Dgst-plugins-base:alsa=auto \
+        -Dgst-plugins-base:playback=enabled \
+        -Dgst-plugins-good:oss=enabled \
+        -Dgst-plugins-good:oss4=enabled \
+        -Dgst-plugins-good:jack=enabled \
+        -Dglib:default_library=both \
+        -Dpython=disabled \
+        -Dlibxml2:python=disabled \
+        -Dtests=enabled \
+        -Dgst-plugins-base:tests=enabled \
+        -Dgst-plugins-good:tests=enabled \
+        -Dgst-plugins-bad:tests=enabled \
+        -Dgst-plugins-ugly:tests=enabled \
+        -Dgst-libav:tests=enabled \
+        > $buildlog 2>&1
+
+    echo "meson setup end." | tee -a $buildlog
+
+    $Ninja -v -C $ARCH-build >> $buildlog 2>&1
+    ret=$?
+    cd $OLDPWD
+    return $ret
+}
+
+package() {
+    cd $builddir
+    $Ninja -v -C $ARCH-build install >> $buildlog 2>&1
+    cd $OLDPWD
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+}
+
+# 清理环境
+cleanbuild() {
+    rm -rf ${PWD}/$builddir #${PWD}/$packagename
+}

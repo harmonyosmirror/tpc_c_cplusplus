@@ -1,0 +1,13 @@
+diff --git a/subprojects/gstreamer/tests/check/meson.build b/subprojects/gstreamer/tests/check/meson.build
+index 78a6f9a5..782cd41b 100644
+--- a/subprojects/gstreamer/tests/check/meson.build
++++ b/subprojects/gstreamer/tests/check/meson.build
+@@ -133,7 +133,7 @@ test_defines = [
+   '-UG_DISABLE_ASSERT',
+   '-UG_DISABLE_CAST_CHECKS',
+   '-DGST_CHECK_TEST_ENVIRONMENT_BEACON="GST_STATE_IGNORE_ELEMENTS"',
+-  '-DTESTFILE="' + fsmod.as_posix(meson.current_source_dir()) + '/meson.build"',
++  '-DTESTFILE="./meson.build"',
+   '-DGST_DISABLE_DEPRECATED',
+ ]
+ 
