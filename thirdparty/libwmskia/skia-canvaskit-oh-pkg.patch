@@ -1,0 +1,118 @@
+diff --git a/DEPS b/DEPS
+index da03faa..eb2046f 100644
+--- a/DEPS
++++ b/DEPS
+@@ -8,54 +8,53 @@ vars = {
+ }
+ 
+ deps = {
+-  "buildtools"                                   : "https://chromium.googlesource.com/chromium/src/buildtools.git@b138e6ce86ae843c42a1a08f37903207bebcca75",
+-  "third_party/externals/angle2"                 : "https://chromium.googlesource.com/angle/angle.git@fa6b6d174a2f760dc44dd49456745cf94b9470a0",
+-  "third_party/externals/brotli"                 : "https://skia.googlesource.com/external/github.com/google/brotli.git@e61745a6b7add50d380cfd7d3883dd6c62fc2c71",
+-  "third_party/externals/d3d12allocator"         : "https://skia.googlesource.com/external/github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git@169895d529dfce00390a20e69c2f516066fe7a3b",
++  "buildtools"                                   : "https://gitcode.com/openharmony-tpc-incubate/buildtools.git@b138e6ce86ae843c42a1a08f37903207bebcca75",
++  "third_party/externals/angle2"                 : "https://gitcode.com/gh_mirrors/an/angle.git@fa6b6d174a2f760dc44dd49456745cf94b9470a0",
++  "third_party/externals/brotli"                 : "https://gitcode.com/gh_mirrors/brotl/brotli.git@e61745a6b7add50d380cfd7d3883dd6c62fc2c71",
++  "third_party/externals/d3d12allocator"         : "https://gitcode.com/gh_mirrors/d3/D3D12MemoryAllocator.git@169895d529dfce00390a20e69c2f516066fe7a3b",
+   # Dawn requires jinja2 and markupsafe for the code generator, tint for SPIRV compilation, and abseil for string formatting.
+   # When the Dawn revision is updated these should be updated from the Dawn DEPS as well.
+-  "third_party/externals/dawn"                   : "https://dawn.googlesource.com/dawn.git@688c6dc80828672373b9b38451906c0815b648cd",
+-  "third_party/externals/jinja2"                 : "https://chromium.googlesource.com/chromium/src/third_party/jinja2@ee69aa00ee8536f61db6a451f3858745cf587de6",
+-  "third_party/externals/markupsafe"             : "https://chromium.googlesource.com/chromium/src/third_party/markupsafe@0944e71f4b2cb9a871bcbe353f95e889b64a611a",
+-  "third_party/externals/abseil-cpp"             : "https://skia.googlesource.com/external/github.com/abseil/abseil-cpp.git@c5a424a2a21005660b182516eb7a079cd8021699",
+-  "third_party/externals/dng_sdk"                : "https://android.googlesource.com/platform/external/dng_sdk.git@c8d0c9b1d16bfda56f15165d39e0ffa360a11123",
+-  "third_party/externals/egl-registry"           : "https://skia.googlesource.com/external/github.com/KhronosGroup/EGL-Registry@a0bca08de07c7d7651047bedc0b653cfaaa4f2ae",
+-  "third_party/externals/emsdk"                  : "https://skia.googlesource.com/external/github.com/emscripten-core/emsdk.git@4a48a752e6a8bef6f222622f2b4926d5eb3bdeb3",
+-  "third_party/externals/expat"                  : "https://chromium.googlesource.com/external/github.com/libexpat/libexpat.git@a28238bdeebc087071777001245df1876a11f5ee",
+-  "third_party/externals/freetype"               : "https://chromium.googlesource.com/chromium/src/third_party/freetype2.git@048f2e247c3ebe84fb26e52198d05e4c586764df",
+-  "third_party/externals/harfbuzz"               : "https://chromium.googlesource.com/external/github.com/harfbuzz/harfbuzz.git@f1f2be776bcd994fa9262622e1a7098a066e5cf7",
+-  "third_party/externals/highway"                : "https://chromium.googlesource.com/external/github.com/google/highway.git@424360251cdcfc314cfc528f53c872ecd63af0f0",
+-  "third_party/externals/icu"                    : "https://chromium.googlesource.com/chromium/deps/icu.git@a0718d4f121727e30b8d52c7a189ebf5ab52421f",
+-  "third_party/externals/imgui"                  : "https://skia.googlesource.com/external/github.com/ocornut/imgui.git@55d35d8387c15bf0cfd71861df67af8cfbda7456",
+-  "third_party/externals/libavif"                : "https://github.com/AOMediaCodec/libavif.git@f49462dc93784bf34148715eee36ab6697ca0b35",
+-  "third_party/externals/libgav1"                : "https://chromium.googlesource.com/codecs/libgav1.git@0fb779c1e169fe6c229cd1fa9cc6ea6feeb441da",
+-  "third_party/externals/libgifcodec"            : "https://skia.googlesource.com/libgifcodec@fd59fa92a0c86788dcdd84d091e1ce81eda06a77",
+-  "third_party/externals/libjpeg-turbo"          : "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo.git@ed683925e4897a84b3bffc5c1414c85b97a129a3",
+-  "third_party/externals/libjxl"                 : "https://chromium.googlesource.com/external/gitlab.com/wg1/jpeg-xl.git@a205468bc5d3a353fb15dae2398a101dff52f2d3",
+-  "third_party/externals/libpng"                 : "https://skia.googlesource.com/third_party/libpng.git@386707c6d19b974ca2e3db7f5c61873813c6fe44",
+-  "third_party/externals/libwebp"                : "https://chromium.googlesource.com/webm/libwebp.git@a8e366166ab57bb1b4aaf6739fc775515bc71b51",
+-  "third_party/externals/libyuv"                 : "https://chromium.googlesource.com/libyuv/libyuv.git@d248929c059ff7629a85333699717d7a677d8d96",
+-  "third_party/externals/microhttpd"             : "https://android.googlesource.com/platform/external/libmicrohttpd@748945ec6f1c67b7efc934ab0808e1d32f2fb98d",
+-  "third_party/externals/oboe"                   : "https://chromium.googlesource.com/external/github.com/google/oboe.git@b02a12d1dd821118763debec6b83d00a8a0ee419",
+-  "third_party/externals/opengl-registry"        : "https://skia.googlesource.com/external/github.com/KhronosGroup/OpenGL-Registry@14b80ebeab022b2c78f84a573f01028c96075553",
+-  "third_party/externals/perfetto"               : "https://android.googlesource.com/platform/external/perfetto@93885509be1c9240bc55fa515ceb34811e54a394",
+-  "third_party/externals/piet-gpu"               : "https://skia.googlesource.com/external/github.com/linebender/piet-gpu.git@947a85f9cfb97f946b9bbd32ca9c2c1e5246b482",
+-  "third_party/externals/piex"                   : "https://android.googlesource.com/platform/external/piex.git@bb217acdca1cc0c16b704669dd6f91a1b509c406",
+-  "third_party/externals/rive"                   : "https://skia.googlesource.com/external/github.com/rive-app/rive-cpp.git@c9ff7391efb75e81c3670ddca77a5893538a26fa",
+-  "third_party/externals/sfntly"                 : "https://chromium.googlesource.com/external/github.com/googlei18n/sfntly.git@b55ff303ea2f9e26702b514cf6a3196a2e3e2974",
+-  "third_party/externals/swiftshader"            : "https://swiftshader.googlesource.com/SwiftShader@be37d7fbc94fe872d1befbf56a84f44853e80cb7",
+-  "third_party/externals/vulkanmemoryallocator"  : "https://chromium.googlesource.com/external/github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator@7de5cc00de50e71a3aab22dea52fbb7ff4efceb6",
++  "third_party/externals/dawn"                   : "https://gitcode.com/openharmony-tpc-incubate/dawn.git@688c6dc80828672373b9b38451906c0815b648cd",
++  "third_party/externals/jinja2"                 : "https://gitcode.com/openharmony-tpc-incubate/jinja2@ee69aa00ee8536f61db6a451f3858745cf587de6",
++  "third_party/externals/markupsafe"             : "https://gitcode.com/openharmony-tpc-incubate/markupsafe@0944e71f4b2cb9a871bcbe353f95e889b64a611a",
++  "third_party/externals/abseil-cpp"             : "https://gitcode.com/openharmony-tpc-incubate/abseil_cpp.git@c5a424a2a21005660b182516eb7a079cd8021699",
++  "third_party/externals/dng_sdk"                : "https://gitcode.com/openharmony-tpc-incubate/dng_sdk.git@c8d0c9b1d16bfda56f15165d39e0ffa360a11123",
++  "third_party/externals/egl-registry"           : "https://gitcode.com/openharmony-tpc-incubate/EGL-Registry@a0bca08de07c7d7651047bedc0b653cfaaa4f2ae",
++  "third_party/externals/emsdk"                  : "https://gitcode.com/gh_mirrors/em/emsdk.git@4a48a752e6a8bef6f222622f2b4926d5eb3bdeb3",
++  "third_party/externals/expat"                  : "https://gitcode.com/gh_mirrors/li/libexpat.git@a28238bdeebc087071777001245df1876a11f5ee",
++  "third_party/externals/freetype"               : "https://gitcode.com/gh_mirrors/free/freetype.git@048f2e247c3ebe84fb26e52198d05e4c586764df",
++  "third_party/externals/harfbuzz"               : "https://gitcode.com/gh_mirrors/ha/harfbuzz.git@f1f2be776bcd994fa9262622e1a7098a066e5cf7",
++  "third_party/externals/highway"                : "https://gitcode.com/gh_mirrors/highwa/highway.git@424360251cdcfc314cfc528f53c872ecd63af0f0",
++  "third_party/externals/icu"                    : "https://gitcode.com/openharmony-tpc-incubate/icu.git@a0718d4f121727e30b8d52c7a189ebf5ab52421f",
++  "third_party/externals/imgui"                  : "https://gitcode.com/GitHub_Trending/im/imgui.git@55d35d8387c15bf0cfd71861df67af8cfbda7456",
++  "third_party/externals/libavif"                : "https://gitcode.com/gh_mirrors/li/libavif.git@f49462dc93784bf34148715eee36ab6697ca0b35",
++  "third_party/externals/libgav1"                : "https://gitcode.com/openharmony-tpc-incubate/libgav1.git@0fb779c1e169fe6c229cd1fa9cc6ea6feeb441da",
++  "third_party/externals/libgifcodec"            : "https://gitcode.com/openharmony-tpc-incubate/libgifcodec@fd59fa92a0c86788dcdd84d091e1ce81eda06a77",
++  "third_party/externals/libjpeg-turbo"          : "https://gitcode.com/openharmony-tpc-incubate/libjpeg_turbo.git@ed683925e4897a84b3bffc5c1414c85b97a129a3",
++  "third_party/externals/libjxl"                 : "https://gitcode.com/gh_mirrors/li/libjxl.git@a205468bc5d3a353fb15dae2398a101dff52f2d3",
++  "third_party/externals/libpng"                 : "https://gitcode.com/gh_mirrors/li/libpng.git@386707c6d19b974ca2e3db7f5c61873813c6fe44",
++  "third_party/externals/libwebp"                : "https://gitcode.com/gh_mirrors/li/libwebp.git@a8e366166ab57bb1b4aaf6739fc775515bc71b51",
++  "third_party/externals/libyuv"                 : "https://gitcode.com/gh_mirrors/li/libyuv.git@d248929c059ff7629a85333699717d7a677d8d96",
++  "third_party/externals/microhttpd"             : "https://gitcode.com/openharmony-tpc-incubate/libmicrohttpd@748945ec6f1c67b7efc934ab0808e1d32f2fb98d",
++  "third_party/externals/oboe"                   : "https://gitcode.com/gh_mirrors/ob/oboe.git@b02a12d1dd821118763debec6b83d00a8a0ee419",
++  "third_party/externals/opengl-registry"        : "https://gitcode.com/openharmony-tpc-incubate/OpenGL-Registry@14b80ebeab022b2c78f84a573f01028c96075553",
++  "third_party/externals/perfetto"               : "https://gitcode.com/GitHub_Trending/pe/perfetto.git@93885509be1c9240bc55fa515ceb34811e54a394",
++  "third_party/externals/piet-gpu"               : "https://gitcode.com/GitHub_Trending/ve/vello.git@947a85f9cfb97f946b9bbd32ca9c2c1e5246b482",
++  "third_party/externals/piex"                   : "https://gitcode.com/openharmony-tpc-incubate/piex.git@bb217acdca1cc0c16b704669dd6f91a1b509c406",
++  "third_party/externals/rive"                   : "https://gitcode.com/openharmony-tpc-incubate/rive-cpp.git@c9ff7391efb75e81c3670ddca77a5893538a26fa",
++  "third_party/externals/sfntly"                 : "https://gitcode.com/openharmony-tpc-incubate/sfntly.git@b55ff303ea2f9e26702b514cf6a3196a2e3e2974",
++  "third_party/externals/swiftshader"            : "https://gitcode.com/gh_mirrors/sw/swiftshader.git@be37d7fbc94fe872d1befbf56a84f44853e80cb7",
++  "third_party/externals/vulkanmemoryallocator"  : "https://gitcode.com/gh_mirrors/vu/VulkanMemoryAllocator.git@7de5cc00de50e71a3aab22dea52fbb7ff4efceb6",
+   # vulkan-deps is a meta-repo containing several interdependent Khronos Vulkan repositories.
+   # When the vulkan-deps revision is updated, those repos (spirv-*, vulkan-*) should be updated as well.
+-  "third_party/externals/vulkan-deps"            : "https://chromium.googlesource.com/vulkan-deps@c8b855ee4e1d8607786c4ae1d1b8736703fb44b3",
+-  "third_party/externals/spirv-cross"            : "https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Cross@210a80013067672b52847ec7aa70ff78b2f4d77e",
+-  "third_party/externals/spirv-headers"          : "https://skia.googlesource.com/external/github.com/KhronosGroup/SPIRV-Headers.git@87d5b782bec60822aa878941e6b13c0a9a954c9b",
+-  "third_party/externals/spirv-tools"            : "https://skia.googlesource.com/external/github.com/KhronosGroup/SPIRV-Tools.git@5f45f793ae962a84c71a9b7ff434591c57cdad57",
+-  "third_party/externals/vulkan-headers"         : "https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Headers@9f4c61a31435a7a90a314fc68aeb386c92a09c0f",
+-  "third_party/externals/vulkan-tools"           : "https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Tools@d9f4641f9006f96def1376774be6f6403a56712b",
+-  #"third_party/externals/v8"                     : "https://chromium.googlesource.com/v8/v8.git@5f1ae66d5634e43563b2d25ea652dfb94c31a3b4",
+-  "third_party/externals/wuffs"                  : "https://skia.googlesource.com/external/github.com/google/wuffs-mirror-release-c.git@600cd96cf47788ee3a74b40a6028b035c9fd6a61",
+-  "third_party/externals/zlib"                   : "https://chromium.googlesource.com/chromium/src/third_party/zlib@c876c8f87101c5a75f6014b0f832499afeb65b73",
++  "third_party/externals/vulkan-deps"            : "https://gitcode.com/openharmony-tpc-incubate/vulkan-deps@c8b855ee4e1d8607786c4ae1d1b8736703fb44b3",
++  "third_party/externals/spirv-cross"            : "https://gitcode.com/gh_mirrors/sp/SPIRV-Cross.git@210a80013067672b52847ec7aa70ff78b2f4d77e",
++  "third_party/externals/spirv-headers"          : "https://gitcode.com/gh_mirrors/sp/SPIRV-Headers.git@87d5b782bec60822aa878941e6b13c0a9a954c9b",
++  "third_party/externals/spirv-tools"            : "https://gitcode.com/gh_mirrors/sp/SPIRV-Tools.git@5f45f793ae962a84c71a9b7ff434591c57cdad57",
++  "third_party/externals/vulkan-headers"         : "https://gitcode.com/gh_mirrors/vu/Vulkan-Headers.git@9f4c61a31435a7a90a314fc68aeb386c92a09c0f",
++  "third_party/externals/vulkan-tools"           : "https://gitcode.com/openharmony-tpc-incubate/Vulkan-Tools@d9f4641f9006f96def1376774be6f6403a56712b",
++  "third_party/externals/wuffs"                  : "https://gitcode.com/openharmony-tpc-incubate/wuffs-mirror-release-c.git@600cd96cf47788ee3a74b40a6028b035c9fd6a61",
++  "third_party/externals/zlib"                   : "https://gitcode.com/openharmony-tpc-incubate/zlib@c876c8f87101c5a75f6014b0f832499afeb65b73",
+ 
+   'bin': {
+     'packages': [
+diff --git a/bin/fetch-gn b/bin/fetch-gn
+index b63f2bb..802a8f3 100755
+--- a/bin/fetch-gn
++++ b/bin/fetch-gn
+@@ -25,9 +25,8 @@ with open(gnzip, 'wb') as f:
+   OS  = {'darwin': 'mac', 'linux': 'linux', 'linux2': 'linux', 'win32': 'windows'}[sys.platform]
+   cpu = {'aarch64': 'arm64', 'amd64': 'amd64', 'arm64': 'arm64', 'x86_64': 'amd64'}[platform.machine().lower()]
+ 
+-  rev = 'd62642c920e6a0d1756316d225a90fd6faa9e21e'
+-  url = 'https://chrome-infra-packages.appspot.com/dl/gn/gn/{}-{}/+/git_revision:{}'.format(
+-          OS,cpu,rev)
++  url = 'https://gitcode.com/openharmony-tpc-incubate/gn-binaries/releases/download/0.1.0/gn-{}-{}.zip'.format(
++          OS,cpu)
+   f.write(urlopen(url).read())
+ 
+ gn = 'gn.exe' if 'win32' in sys.platform else 'gn'
