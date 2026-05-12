@@ -67,6 +67,7 @@ prepare() {
 build() {
     cd $builddir/$ARCH-build
      #依赖zlib的OpenSSL支持使用gzip和deflate压缩算法的HTTPS协议可根据需求开启关闭
+    LDFLAGS="-Wl,-s"
     ../Configure "$@" $host zlib > $buildlog 2>&1
     $MAKE VERBOSE=1 >> $buildlog 2>&1
     ret=$?
