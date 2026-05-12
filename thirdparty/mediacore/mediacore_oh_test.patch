@@ -875,7 +875,7 @@
 \ No newline at end of file
 --- /dev/null	2026-04-21 11:20:33.113000086 +0800
 +++ script/gen_test_assets.sh	2026-04-23 14:21:58.771821364 +0800
-@@ -0,0 +1,48 @@
+@@ -0,0 +1,47 @@
 +#!/bin/sh
 +
 +VIDEO_NAME="test.mp4"
