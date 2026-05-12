@@ -11,3 +11,20 @@ diff -Nura aliyun-oss-cpp-sdk-1.10.0/CMakeLists.txt aliyun-oss-cpp-sdk-1.10.0-pa
  	else()
  		message(FATAL_ERROR "Do not support target platform")
  	endif()
+--- aliyun-oss-cpp-sdk-1.10.0/sdk/CMakeLists_old.txt	2026-05-12 19:44:06.464052563 +0800
++++ aliyun-oss-cpp-sdk-1.10.0/sdk/CMakeLists.txt	2026-05-12 19:44:45.888337517 +0800
+@@ -194,6 +194,14 @@
+     target_link_libraries(${PROJECT_NAME} ${CLIENT_LIBS})    
+ endif()
+ 
++if (${CMAKE_SYSTEM_NAME} STREQUAL "OHOS")
++    target_compile_options(${PROJECT_NAME}${STATIC_LIB_SUFFIX} PRIVATE "-include" "sys/socket.h")
++    
++    if (BUILD_SHARED_LIBS)
++        target_compile_options(${PROJECT_NAME} PRIVATE "-include" "sys/socket.h")
++    endif()
++endif()
++
+ #install 
+ install(FILES ${sdk_auth_header}
+     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/alibabacloud/oss/auth)
