@@ -24,7 +24,8 @@ license=("MIT")
 depends=()
 makedepends=()
 
-source="https://github.com/microsoft/onnxruntime.git"
+#source="https://github.com/microsoft/onnxruntime.git"
+source="https://gitcode.com/GitHub_Trending/on/onnxruntime.git" ## 使用gitcode加速仓
 
 downloadpackage=false
 autounpack=false
@@ -33,11 +34,12 @@ buildtools=cmake
 builddir=${pkgname}-${pkgver}
 
 cloneflag=true
+subcloneflag=true
 patchflag=true
 
 prepare() {
     if [ $cloneflag == true ];then
-        git clone --depth 1 --branch $pkgver --recursive $source $builddir > $publicbuildlog 2>&1
+        git clone --depth 1 --branch $pkgver $source $builddir > $publicbuildlog 2>&1
         ret=$?
         if [ $ret -ne 0 ]
         then
@@ -59,7 +61,7 @@ prepare() {
         ## 6. onnxruntime源码修改,cpu检测部分添加华为cpu型号检测
         ## 7. onnxruntime源码修改,armv7平台测试用例运行崩溃修改
         ## 8. onnxruntime源码修改,x86_64平台不支持的内建函数修改
-        patch -p1 < ../ohos-1.23.2.patch >> $publicbuildlog 2>&1
+        patch -p1 < ../onnxruntime-oh-pkg.patch >> $publicbuildlog 2>&1
         ret=$?
         cd $OLDPWD
         if [ $ret -ne 0 ]
@@ -69,6 +71,19 @@ prepare() {
         fi
         patchflag=false
         echo "$pkgname patch success."
+    fi
+
+    if [ $subcloneflag == true ];then
+        git -C $builddir submodule update --init --recursive >> $publicbuildlog 2>&1
+
+        ret=$?
+        if [ $ret -ne 0 ]
+        then
+            echo "$pkgname git submodule update error."
+            return $ret
+        fi
+        subcloneflag=false
+        echo "$pkgname git submodule update success."
     fi
 }
 
