@@ -21,7 +21,7 @@ pkgdesc="Aliyun OSS SDK for C++"
 url="https://github.com/aliyun/aliyun-oss-cpp-sdk"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("the Apache License")
-depends=("openssl" "curl")
+depends=("openssl_1_0_2o" "curl_7_30_0")
 makedepends=()
 
 source="https://github.com/aliyun/$pkgname/archive/refs/tags/$pkgver.tar.gz"
@@ -42,6 +42,7 @@ prepare() {
     then
       cd $builddir
       # CMakeLists.txt添加opoenharmony平台宏
+      sed -i 's/\r$//' sdk/CMakeLists.txt
       patch -p1 < ../aliyun-oss-cpp-sdk_1.10.0_oh_pkg.patch
       cd $OLDPWD
       patchflag=false
@@ -52,8 +53,8 @@ build() {
     cd $builddir
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
         -B$ARCH-build -S./ -L -DBUILD_SHARED_LIBS=ON \
-        -DCMAKE_CXX_FLAGS="-I$LYCIUM_ROOT/usr/curl/$ARCH/include \
-        -L$LYCIUM_ROOT/usr/curl/$ARCH/lib -lcurl -Wno-unused-command-line-argument" > $buildlog 2>&1
+        -DCMAKE_CXX_FLAGS="-I$LYCIUM_ROOT/usr/curl_7_30_0/$ARCH/include \
+        -L$LYCIUM_ROOT/usr/curl_7_30_0/$ARCH/lib -lcurl -Wno-unused-command-line-argument" > $buildlog 2>&1
     $MAKE -C $ARCH-build VERBOSE=1 >> $buildlog 2>&1
     ret=$?
     cd $OLDPWD
