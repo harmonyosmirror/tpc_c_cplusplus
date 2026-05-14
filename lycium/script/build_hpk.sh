@@ -23,7 +23,7 @@ download() {
         echo ${PWD}/$2"，存在"
     else
         echo "Downloading "$2
-        wget "$1" -O ${PWD}/$2 -o download.log
+        wget "$1" -O ${PWD}/$2 --no-check-certificate -o download.log
         return $?
     fi
 }
