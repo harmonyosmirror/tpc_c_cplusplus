@@ -45,7 +45,7 @@ prepare() {
         git clone $source "$LOCAL_SOURCE_DIR"
         cd "$LOCAL_SOURCE_DIR"
         git checkout $pkgver
-        cd - > /dev/null
+        cd $OLDPWD
         cloneflag=false
     fi
 
@@ -67,19 +67,32 @@ prepare() {
 build() {
     LOCAL_ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
     LOCAL_SOURCE_DIR="$LOCAL_ROOT_DIR/$builddir"
-    cd "$LOCAL_SOURCE_DIR/Logan/Clogan/build_${ARCH}"
-    cmake "$LOCAL_SOURCE_DIR/Logan/Clogan" "$@"
     
+    cd "$LOCAL_SOURCE_DIR/Logan/Clogan/build_${ARCH}"
+    
+    cmake "$LOCAL_SOURCE_DIR/Logan/Clogan" "$@"
     $MAKE
+
+    cd $OLDPWD
 }
 
 package() {
-    cd "$LYCIUM_ROOT" || exit 1
-    
-    mkdir -p "usr/$pkgname/$ARCH/include" "usr/$pkgname/$ARCH/lib"
-    
-    cp "$LYCIUM_ROOT/../thirdparty/logan/$builddir/Logan/Clogan/build_${ARCH}/libclogan.a" "usr/$pkgname/$ARCH/lib/"
-    cp "$LYCIUM_ROOT/../thirdparty/logan/$builddir/Logan/Clogan"/*.h "usr/$pkgname/$ARCH/include/"
+    cd $LOCAL_SOURCE_DIR
+
+    SOUR_INC_DIR=Logan/Clogan/
+    SOUR_LIB_DIR=Logan/Clogan/build_${ARCH}
+    DEST_DIR=$LYCIUM_ROOT/usr/$pkgname/$ARCH
+
+    mkdir -p $DEST_DIR/include
+    mkdir -p $DEST_DIR/lib
+
+    cp $SOUR_INC_DIR/*.h "$DEST_DIR/include/"
+    cp $SOUR_LIB_DIR/libclogan.a "$DEST_DIR/lib/"
+    cp $SOUR_LIB_DIR/clogan.out/libmbedcrypto.a "$DEST_DIR/lib/"
+    cp $SOUR_LIB_DIR/clogan.out/libmbedtls.a "$DEST_DIR/lib/"
+    cp $SOUR_LIB_DIR/clogan.out/libmbedx509.a "$DEST_DIR/lib/"
+
+    cd $OLDPWD
 }
 
 check() {
