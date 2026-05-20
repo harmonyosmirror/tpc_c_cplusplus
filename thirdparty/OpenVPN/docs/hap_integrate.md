@@ -88,7 +88,7 @@
   ```
   cd openvpn-2.7_rc4-arm64-v8a-build/tests
   mkdir -p .libs
-  ln -sf ../../../../lycium/usr/OpenVPN/arm64-v8a/sbin/openvpn .libs/openvpn
+  cp ../../../../lycium/usr/OpenVPN/arm64-v8a/sbin/openvpn .libs/
   export PATH=/bin:$PATH
   export LD_LIBRARY_PATH=../../../../lycium/usr/OpenVPN/arm64-v8a/lib:../../../../lycium/usr/libcap-ng/arm64-v8a/lib:../../../../lycium/usr/libnl/arm64-v8a/lib:../../../../lycium/usr/lzo/arm64-v8a/lib:../../../../lycium/usr/openssl/arm64-v8a/lib:../../../../lycium/usr/linux-pam/arm64-v8a/lib:$LD_LIBRARY_PATH
   bash ./t_lpback.sh V=1
