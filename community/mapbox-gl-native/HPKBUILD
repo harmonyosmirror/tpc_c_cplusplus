@@ -1,0 +1,233 @@
+#!/bin/bash
+# Contributor: mbgl-ohos
+# Maintainer: mbgl-ohos
+pkgname=mapbox-gl-native
+pkgver=maps-v1.6.0
+pkgrel=0
+pkgdesc="mapbox-gl-native (mbgl-core) — cross-platform vector map rendering engine core C++ library (OpenGL ES backend)"
+url="https://github.com/mapbox/mapbox-gl-native"
+archs=("armeabi-v7a" "arm64-v8a")
+license=("BSD-2-Clause, ISC, MIT, Boost-1.0, BSD-3-Clause, curl")
+depends=()
+makedepends=()
+
+source envset.sh
+
+# Source is obtained via git clone in prepare() because GitHub archive tarballs
+# do NOT include git submodule contents (vendor/). There is no tarball to download.
+source=""
+downloadpackage=false   # skip wget
+autounpack=false        # skip tar/unzip — no tarball exists
+buildtools="cmake"
+
+builddir=${pkgname}-${pkgver}
+packagename=${pkgname}-${pkgver}.tar.gz
+
+prepare() {
+    # 1. Clone source tree from GitHub (idempotent, failure-safe)
+    if [ ! -d "${builddir}/.git" ]; then
+        # Clone with up to 5 retries to tolerate transient TLS/network failures.
+        local _cloned=0
+        for _try in 1 2 3 4 5; do
+            rm -rf "${builddir}"
+            echo "[mbgl] Cloning ${url} at tag ${pkgver} (attempt ${_try}/5)..."
+            git clone \
+                --branch "${pkgver}" \
+                --depth 1 \
+                "${url}.git" \
+                "${builddir}" && _cloned=1 && break
+            echo "[mbgl] Clone attempt ${_try} failed, retrying in 5s..."
+            sleep 5
+        done
+        if [ ${_cloned} -eq 0 ]; then
+            echo "[mbgl] ERROR: git clone failed after 5 attempts." >&2
+            rm -rf "${builddir}"
+            return 1
+        fi
+    else
+        echo "[mbgl] Source already cloned, skipping."
+    fi
+
+    # A --depth 1 shallow clone does not populate the git index with submodule
+    # gitlink entries, even though they exist in the HEAD tree object.
+    # 1. git read-tree HEAD  — synchronises the index with HEAD so that git
+    #    submodule commands can resolve vendor/ paths correctly.
+    # 2. git checkout-index -a -f — writes all blob files recorded in the index
+    #    back to the working tree (restores vendor/*.cmake and similar files that
+    #    are plain files, not submodules, and may be absent after index repair).
+    echo "[mbgl] Syncing git index and working tree with HEAD..."
+    git -C "${builddir}" read-tree HEAD
+    git -C "${builddir}" checkout-index -a -f
+
+    # Fetch only the vendor submodules required for a core-only build.
+    # (vendor/icu, vendor/benchmark, vendor/googletest etc. are NOT needed.)
+    # Each submodule is retried individually so a transient network error on
+    # one does not abort the others, and already-cloned modules are skipped.
+    # vendor/mapbox-base uses --recursive because it has nested submodules
+    # (deps/optional, deps/geometry.hpp, etc.) required at compile time.
+    echo "[mbgl] Fetching required vendor/ submodules (with per-module retries)..."
+    local _failed=0
+    for _mod in \
+        vendor/earcut.hpp \
+        vendor/protozero \
+        vendor/vector-tile \
+        vendor/wagyu \
+        vendor/polylabel \
+        vendor/eternal \
+        vendor/unique_resource \
+        vendor/boost \
+        vendor/nunicode
+    do
+        local _ok=0
+        for _try in 1 2 3; do
+            git -C "${builddir}" submodule update --init "${_mod}" && _ok=1 && break
+            echo "[mbgl] Retry ${_try}/3 for ${_mod}..."
+            sleep 3
+        done
+        if [ ${_ok} -eq 0 ]; then
+            echo "[mbgl] ERROR: failed to clone ${_mod} after 3 attempts" >&2
+            _failed=1
+        fi
+    done
+
+    # vendor/mapbox-base has nested submodules (deps/optional, deps/geometry.hpp,
+    # etc.) that are needed at compile time. Use --recursive and retry more times
+    # since there are many nested repos to fetch over a potentially flaky connection.
+    echo "[mbgl] Fetching vendor/mapbox-base (recursive, up to 5 attempts)..."
+    local _ok=0
+    for _try in 1 2 3 4 5; do
+        git -C "${builddir}" submodule update --init --recursive vendor/mapbox-base && _ok=1 && break
+        echo "[mbgl] Retry ${_try}/5 for vendor/mapbox-base (recursive)..."
+        sleep 5
+    done
+    if [ ${_ok} -eq 0 ]; then
+        echo "[mbgl] ERROR: failed to recursively clone vendor/mapbox-base after 5 attempts" >&2
+        _failed=1
+    fi
+
+    # Network retries can leave a submodule with a .git dir but an empty working
+    # tree (clone succeeded, checkout failed mid-retry).  Walk every git repo
+    # under vendor/mapbox-base and force-checkout any that have no tracked files.
+    echo "[mbgl] Verifying working-tree content of all nested submodules..."
+    while IFS= read -r -d '' _gitdir; do
+        _repo="${_gitdir%/.git}"
+        _nfiles=$(git -C "${_repo}" ls-files | wc -l)
+        if [ "${_nfiles}" -eq 0 ]; then
+            echo "[mbgl] Re-checking out empty repo: ${_repo}"
+            git -C "${_repo}" checkout HEAD -- . 2>&1 || true
+        fi
+    done < <(find "${builddir}/vendor/mapbox-base" -name ".git" -print0)
+
+    if [ ${_failed} -ne 0 ]; then
+        echo "[mbgl] ERROR: one or more submodules could not be fetched" >&2
+        return 1
+    fi
+
+    # 2. Create per-arch CMake build directory
+    mkdir -p "${builddir}/${ARCH}-build"
+}
+
+build() {
+    local _pwd="$PWD"
+    cd "${builddir}"
+
+    # "$@" is injected by lycium's cmakedependpath() and contains:
+    #   -DCMAKE_TOOLCHAIN_FILE=.../ohos.toolchain.cmake
+    #   -DCMAKE_INSTALL_PREFIX=.../usr/mapbox-gl-native/<ARCH>/
+    #   -DOHOS_ARCH=<ARCH>  -G "Unix Makefiles"  -DCMAKE_BUILD_TYPE=Release
+    #
+    # MBGL_WITH_CORE_ONLY=ON : compile only the platform-independent C++ core.
+    #   The CMakeLists.txt returns() before platform-detection, so OHOS being
+    #   unknown does NOT trigger FATAL_ERROR.
+    # MBGL_WITH_WERROR=OFF   : suppress -Werror for minor cross-compiler warnings.
+    # CMAKE_CXX_FLAGS        : -DMBGL_USE_GLES2=1 enables the GLES2 code path in
+    #   src/mbgl/gl/ (excludes desktop-GL-only symbols: glDrawPixels etc.).
+    #   Appended to preserve any flags injected by the lycium toolchain wrapper.
+    # GLES2 is hardcoded because OHOS currently only exposes an OpenGL ES 2.0
+    #   compatible context; GLES3/Vulkan/Metal paths are not available on OHOS.
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake \
+        "$@" \
+        -DMBGL_WITH_CORE_ONLY=ON \
+        -DMBGL_WITH_WERROR=OFF \
+        -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS:+${CMAKE_CXX_FLAGS} }-DMBGL_USE_GLES2=1" \
+        -B"${ARCH}-build" \
+        -S./
+
+    ${OHOS_SDK}/native/build-tools/cmake/bin/cmake --build "${ARCH}-build" -j$(nproc)
+
+    local ret=$?
+    cd "$_pwd"
+    return ${ret}
+}
+
+package() {
+    # Upstream has no CMake install() rules; copy artifacts manually.
+    local installdir="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}"
+    local srcdir="${builddir}/vendor/mapbox-base"
+    mkdir -p "${installdir}/lib"
+    mkdir -p "${installdir}/include/mbgl"
+    mkdir -p "${installdir}/include/mapbox"
+    mkdir -p "${installdir}/include/nonstd"
+    mkdir -p "${installdir}/include/rapidjson"
+
+    cp "${builddir}/${ARCH}-build/libmbgl-core.a" "${installdir}/lib/"
+
+    # ── mbgl core module headers ──────────────────────────────────────────────
+    # Copy the entire include/mbgl/ tree, then remove subdirectories that
+    # require platform implementations and must not be used from the core-only
+    # build.  This approach is robust to upstream adding new core modules.
+    #
+    # Excluded:
+    #   i18n/    — collator / number_format require platform implementations
+    #   platform/ — thread / time / settings require platform implementations
+    #   storage/  — file_source / online_file_source require platform implementations
+    cp -r "${builddir}/include/mbgl/." "${installdir}/include/mbgl/"
+    rm -rf "${installdir}/include/mbgl/i18n" \
+           "${installdir}/include/mbgl/platform" \
+           "${installdir}/include/mbgl/storage"
+
+    # ── vendor transitive-dependency headers ─────────────────────────────────
+    # mbgl public headers #include these directly; downstream projects must be
+    # able to find them or they will fail to compile against libmbgl-core.a.
+
+    # mapbox/geometry/*.hpp  (geo.hpp, geometry.hpp, …)
+    cp -r "${srcdir}/deps/geometry.hpp/include/mapbox/." \
+          "${installdir}/include/mapbox/"
+
+    # mapbox/variant.hpp, mapbox/recursive_wrapper.hpp, …
+    cp -r "${srcdir}/deps/variant/include/mapbox/." \
+          "${installdir}/include/mapbox/"
+
+    # optional.hpp  (C++14 optional polyfill used by mapbox-base)
+    cp    "${srcdir}/deps/optional/optional.hpp" \
+          "${installdir}/include/"
+
+    # nonstd/expected.hpp  (mapbox-base error-handling type)
+    cp -r "${srcdir}/extras/expected-lite/include/nonstd/." \
+          "${installdir}/include/nonstd/"
+
+    # rapidjson/*.h  (used by mbgl style-parsing public types)
+    cp -r "${srcdir}/extras/rapidjson/include/rapidjson/." \
+          "${installdir}/include/rapidjson/"
+
+    echo "[mbgl] installed to ${installdir}"
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+}
+
+cleanbuild() {
+    # Only remove CMake build output dirs — source tree is preserved so
+    # re-builds after a code/flag change don't require re-downloading.
+    echo "[mbgl] Removing build dirs (source kept)..."
+    rm -rf "${builddir}/armeabi-v7a-build"
+    rm -rf "${builddir}/arm64-v8a-build"
+}
+
+distclean() {
+    # Full wipe: removes source tree + build dirs.
+    # Use this when you need a completely fresh start (e.g. version bump).
+    echo "[mbgl] Full clean: removing source + build dirs..."
+    rm -rf "${PWD}/${builddir}"
+}

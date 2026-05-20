@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "mapbox-gl-native",
+        "License": "BSD-2-Clause, ISC, MIT, Boost-1.0, BSD-3-Clause, curl",
+        "License File": "https://github.com/mapbox/mapbox-gl-native/blob/master/LICENSE.mbgl-core.md",
+        "Version Number": "maps-v1.6.0",
+        "Owner": "mbgl-ohos",
+        "Upstream URL": "https://github.com/mapbox/mapbox-gl-native",
+        "Description": "mapbox-gl-native (mbgl-core) is a cross-platform vector map rendering engine core C++ library (OpenGL ES backend)."
+    }
+]
