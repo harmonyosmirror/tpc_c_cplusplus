@@ -38,8 +38,7 @@ openharmonycheck() {
     # 确保 .libs 目录和符号链接存在
     mkdir -p .libs
     if [ ! -f .libs/openvpn ]; then
-        ln -sf ../../../../lycium/usr/OpenVPN/${ARCH}/sbin/openvpn .libs/openvpn 2>/dev/null || \
-        ln -sf ../../src/openvpn/openvpn .libs/openvpn
+        cp ../../../../lycium/usr/OpenVPN/${ARCH}/sbin/openvpn .libs/
     fi
 
     # 设置 PATH 确保 sed 可用
