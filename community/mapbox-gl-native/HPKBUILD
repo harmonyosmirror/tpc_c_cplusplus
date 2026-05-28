@@ -21,7 +21,8 @@ autounpack=false        # skip tar/unzip — no tarball exists
 buildtools="cmake"
 
 builddir=${pkgname}-${pkgver}
-packagename=${pkgname}-${pkgver}.tar.gz
+#packagename=${pkgname}-${pkgver}.tar.gz
+packagename=""
 
 prepare() {
     # 1. Clone source tree from GitHub (idempotent, failure-safe)
@@ -149,7 +150,9 @@ build() {
         "$@" \
         -DMBGL_WITH_CORE_ONLY=ON \
         -DMBGL_WITH_WERROR=OFF \
-        -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS:+${CMAKE_CXX_FLAGS} }-DMBGL_USE_GLES2=1" \
+        -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS:+${CMAKE_CXX_FLAGS} }-DMBGL_USE_GLES2=1 -fstack-protector-strong -fPIE -D_FORTIFY_SOURCE=2 -O2 -ftrapv" \
+        -DCMAKE_EXE_LINKER_FLAGS="-pie -Wl,-z,relro,-z,now" \
+        -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-z,relro,-z,now" \
         -B"${ARCH}-build" \
         -S./
 
