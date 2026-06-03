@@ -24,8 +24,9 @@ archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("GNU LGPL" "BSD 3-clause" "unRAR license")
 depends=()
 makedepends=()
+pkgverpath=24.09
 
-source="https://www.7-zip.org/a/7z$pkgver-src.tar.xz"
+source="https://downloads.sourceforge.net/project/sevenzip/7-Zip/$pkgverpath/7z$pkgver-src.tar.xz"
 
 autounpack=false
 downloadpackage=true
