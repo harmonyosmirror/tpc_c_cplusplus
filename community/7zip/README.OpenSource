@@ -5,7 +5,7 @@
         "License File": "https://www.7-zip.org/license.txt",
         "Version Number": "24.09",
         "Owner": "xiafeng@huawei.com",
-        "Upstream URL": "https://www.7-zip.org/a/7z2409-src.tar.xz",
+        "Upstream URL": "https://downloads.sourceforge.net/project/sevenzip/7-Zip/24.09/7z2409-src.tar.xz",
         "Description": "7-Zip is a file archiver with a high compression ratio."
     }
 ]
