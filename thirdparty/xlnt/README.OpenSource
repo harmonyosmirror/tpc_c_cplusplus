@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "xlnt",
+        "License": "MIT",
+        "License File": "https://github.com/tfussell/xlnt/blob/master/LICENSE",
+        "Version Number": "1.5.0",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://github.com/tfussell/xlnt/archive/refs/tags/v1.5.0.tar.gz",
+        "Description": "xlnt is a C++ library for reading and writing Excel files (xlsx). All dependencies (libstudxml, miniz, utfcpp) are embedded. A patch (xlnt_ohos.patch) adds __OHOS__ platform recognition in source/utils/path.cpp, using <limits.h> instead of <linux/limits.h>."
+    }
+]
