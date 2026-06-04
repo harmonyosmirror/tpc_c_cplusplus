@@ -1,0 +1,25 @@
+# Contributor: mahange <mahange@hauwei.com>
+# Maintainer: mahange <mahange@hauwei.com>
+source HPKBUILD > /dev/null 2>&1
+logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
+
+# Native test: run mp4_demux_test with the MP4 sample file placed in this package directory.
+# Prerequisite: a valid MP4 file named "1.mp4" must exist in thirdparty/libmp4/.
+openharmonycheck() {
+    test_bin="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/bin/mp4_demux_test"
+    test_data="${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/1.mp4"
+
+    if [ ! -f "${test_bin}" ]; then
+        echo "Error: test binary not found: ${test_bin}" > ${logfile}
+        return 1
+    fi
+
+    if [ ! -f "${test_data}" ]; then
+        echo "Error: test data not found: ${test_data}" > ${logfile}
+        echo "Please place a valid MP4 file as thirdparty/libmp4/1.mp4" >> ${logfile}
+        return 1
+    fi
+
+    ${test_bin} ${test_data} > ${logfile} 2>&1
+    return $?
+}
