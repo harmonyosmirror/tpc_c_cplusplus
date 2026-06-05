@@ -1,0 +1,45 @@
+--- a/src/decoder.c
++++ b/src/decoder.c
+@@ -635,18 +635,32 @@ static int _skip_limited(nanocbor_value_t *it, uint8_t limit)
+                 /* propagate (other) errors up */
+                 return res;
+             }
+-            _advance(it, res);
+-
+-            if (type == NANOCBOR_TYPE_MAP) {
+-                if (len > UINT64_MAX / 2) {
+-                    return NANOCBOR_ERR_OVERFLOW;
++            /* Use a sub-decoder for nested content so that skipping inner items
++             * does NOT decrement it->remaining multiple times.  From the
++             * caller's perspective the whole container is ONE item. */
++            {
++                nanocbor_value_t sub;
++                nanocbor_decoder_init(&sub, it->cur + res,
++                                      (size_t)(it->end - (it->cur + res)));
++                uint64_t sub_count = len;
++                if (type == NANOCBOR_TYPE_MAP) {
++                    if (len > UINT64_MAX / 2) {
++                        return NANOCBOR_ERR_OVERFLOW;
++                    }
++                    sub_count = len * 2;
+                 }
+-                len *= 2;
+-            }
+-            if (len > UINT64_MAX - skip) {
+-                return NANOCBOR_ERR_OVERFLOW;
++                for (uint64_t i = 0; i < sub_count; i++) {
++                    int r = _skip_limited(&sub, limit - 1);
++                    if (r < 0) {
++                        return r;
++                    }
++                }
++                /* Advance it past the entire container (header + content),
++                 * decrementing remaining exactly once for the whole item. */
++                it->cur = sub.cur;
++                it->remaining--;
+             }
+-            skip += len - 1;
++            skip--;
+             continue;
+         }
+         else if (type == NANOCBOR_TYPE_TAG) {

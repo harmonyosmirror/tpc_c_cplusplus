@@ -1,0 +1,103 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: libcose adaptation
+# Maintainer: libcose adaptation
+
+pkgname=nanocbor
+pkgver=0623c45
+pkgrel=0
+pkgdesc="Minimal size CBOR encoder and decoder library targeted at constrained devices"
+url="https://github.com/bergzand/NanoCBOR"
+archs=("armeabi-v7a" "arm64-v8a")
+license=("CC0-1.0")
+depends=()
+source="https://github.com/bergzand/NanoCBOR/archive/0623c45686f6bc296c35416f3a41a71b148122d7.tar.gz"
+
+downloadpackage=true
+autounpack=true
+# NanoCBOR uses Meson as its native build system; no CMakeLists.txt is provided.
+# We compile the two source files directly with the OHOS NDK clang toolchain.
+buildtools="custom"
+
+builddir=NanoCBOR-0623c45686f6bc296c35416f3a41a71b148122d7
+packagename=0623c45.tar.gz
+patchflag=true
+
+source envset.sh
+
+prepare() {
+    CLANG_BIN="${OHOS_SDK}/native/llvm/bin/clang"
+    if [ $ARCH == "armeabi-v7a" ]; then
+        setarm32ENV
+        export CC="${CLANG_BIN} --target=arm-linux-ohos"
+    elif [ $ARCH == "arm64-v8a" ]; then
+        setarm64ENV
+        export CC="${CLANG_BIN} --target=aarch64-linux-ohos"
+    fi
+
+    # Apply OpenHarmony compatibility patch (_skip_limited remaining-counter fix).
+    if $patchflag; then
+        cd "${builddir}"
+        patch -p1 < "../${pkgname}_ohos.patch" >> $buildlog 2>&1
+        patchflag=false
+        cd "${OLDPWD}"
+    fi
+}
+
+build() {
+    cd $builddir
+    SYSROOT="${OHOS_SDK}/native/sysroot"
+    INSTALL_DIR="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}"
+    BUILD_DIR="${INSTALL_DIR}/build_objs"
+    mkdir -p "${BUILD_DIR}" "${INSTALL_DIR}/lib" "${INSTALL_DIR}/include"
+
+    local LOCAL_CFLAGS="${CFLAGS} -fstack-protector-strong"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    for src in decoder encoder; do
+        $CC $LOCAL_CFLAGS \
+            -I./include \
+            -I${SYSROOT}/usr/include \
+            -c src/${src}.c -o ${BUILD_DIR}/${src}.o >> $buildlog 2>&1
+    done
+
+    $CC -shared \
+        ${BUILD_DIR}/decoder.o ${BUILD_DIR}/encoder.o \
+        ${LOCAL_LDFLAGS} \
+        -o ${INSTALL_DIR}/lib/libnanocbor.so >> $buildlog 2>&1
+
+    ret=$?
+    cd $OLDPWD
+    return $ret
+}
+
+package() {
+    INSTALL_DIR="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}"
+    mkdir -p "${INSTALL_DIR}/include"
+    cp -r ${builddir}/include/* "${INSTALL_DIR}/include/"
+
+    if [ $ARCH == "armeabi-v7a" ]; then
+        unsetarm32ENV
+    elif [ $ARCH == "arm64-v8a" ]; then
+        unsetarm64ENV
+    fi
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+}
+
+cleanbuild() {
+    rm -rf ${PWD}/$builddir
+}

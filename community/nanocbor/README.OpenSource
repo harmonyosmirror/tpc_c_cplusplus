@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "NanoCBOR",
+    "License": "CC0-1.0",
+    "License File": "https://github.com/bergzand/NanoCBOR/blob/master/LICENSE",
+    "Version Number": "0623c45",
+    "Owner": "panjinling@huawei.com",
+    "Upstream URL": "https://github.com/bergzand/NanoCBOR",
+    "Description": "NanoCBOR is a tiny CBOR library aimed at embedded and heavily constrained devices."
+  }
+]
