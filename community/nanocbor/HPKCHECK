@@ -1,0 +1,50 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: libcose adaptation
+# Maintainer: libcose adaptation
+
+source HPKBUILD > /dev/null 2>&1
+logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
+
+openharmonycheck() {
+    res=0
+
+    # 1. Check shared library
+    lib_path="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/lib"
+    if [ -f "${lib_path}/libnanocbor.so" ]; then
+        echo "Success: libnanocbor.so found" > $logfile
+        file "${lib_path}/libnanocbor.so" >> $logfile
+    else
+        echo "Error: libnanocbor.so not found" >> $logfile
+        res=1
+    fi
+
+    # 2. Check key header
+    include_path="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/include"
+    if [ -f "${include_path}/nanocbor/nanocbor.h" ]; then
+        echo "Success: nanocbor/nanocbor.h found" >> $logfile
+    else
+        echo "Error: nanocbor/nanocbor.h not found" >> $logfile
+        res=2
+    fi
+
+    # 3. Note: nanocbor_ohos.patch must be applied before building.
+    # The patch fixes a bug in _skip_limited (decoder.c) where skipping a
+    # definite-length map or array from within a container context incorrectly
+    # decrements the parent's remaining counter multiple times, causing
+    # cose_sign_decode to return COSE_ERR_INVALID_CBOR.
+    echo "Note: nanocbor_ohos.patch (_skip_limited fix) must be applied." >> $logfile
+
+    return $res
+}
