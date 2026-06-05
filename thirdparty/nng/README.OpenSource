@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "nng",
+        "License": "MIT",
+        "License File": "https://github.com/nanomsg/nng/blob/main/LICENSE",
+        "Version Number": "1.11",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://github.com/nanomsg/nng",
+        "Description": "nng (nanomsg-next-generation) is a lightweight messaging library that provides a simple high-level API for creating distributed applications. It is a rewrite of the nanomsg library with improved reliability and performance."
+    }
+]
