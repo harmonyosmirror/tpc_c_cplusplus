@@ -15,7 +15,7 @@ RK3568开发板如何使用可以参照[润和RK3568开发板标准系统快速�
 
   ```sh
   cd ~/
-  git clone git@gitee.com:openharmony-sig/tpc_c_cplusplus.git --depth=1
+  git clone git@gitee.com:CPF-ApplicationTPC/tpc_c_cplusplus.git --depth=1
   ```
 
 - 仓库代码目录结构说明

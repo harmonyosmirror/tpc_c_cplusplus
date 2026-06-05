@@ -9,7 +9,7 @@ This library is verified based on the OpenHarmony 3.2 Release version on the RK3
 ## Compile third-party libraries
 - Download this repository
   ```
-  git clone https://gitee.com/openharmony-sig/tpc_c_cplusplus.git --depth=1
+  git clone https://gitcode.com/CPF-ApplicationTPC/tpc_c_cplusplus.git --depth=1
   ```
 - Third-party library directory structure
   ```

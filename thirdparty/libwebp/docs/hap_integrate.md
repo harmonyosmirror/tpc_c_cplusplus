@@ -8,7 +8,7 @@
 ## 编译三方库
 - 下载本仓库
   ```
-  git clone https://gitee.com/openharmony-sig/tpc_c_cplusplus.git --depth=1
+  git clone https://gitcode.com/CPF-ApplicationTPC/tpc_c_cplusplus.git --depth=1
   ```
   
 - 三方库目录结构
