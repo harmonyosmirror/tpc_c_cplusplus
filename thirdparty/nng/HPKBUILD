@@ -38,7 +38,8 @@ build() {
     cd $builddir
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
         -B$ARCH-build -S./ \
-        -DNNG_TESTS=ON
+        -DNNG_TESTS=ON \
+        -DNNG_TRANSPORT_IPC=OFF
     make -C $ARCH-build -j4
     ret=$?
     cd $OLDPWD
