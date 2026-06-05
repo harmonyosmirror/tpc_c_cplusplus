@@ -11,7 +11,7 @@
 - 下载本仓库
 
   ```shell
-  git clone https://gitcode.com/openharmony-sig/tpc_c_cplusplus.git
+  git clone https://gitcode.com/CPF-ApplicationTPC/tpc_c_cplusplus.git
   ```
 
 - 三方库目录结构

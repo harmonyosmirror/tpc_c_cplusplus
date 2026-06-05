@@ -14,7 +14,7 @@
 
   ```shell
   cd ~/
-  git clone git@gitee.com:openharmony-sig/tpc_c_cplusplus.git --depth=1
+  git clone git@gitee.com:CPF-ApplicationTPC/tpc_c_cplusplus.git --depth=1
   ```
 
 - 仓库代码目录结构说明
