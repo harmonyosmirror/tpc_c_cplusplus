@@ -1,0 +1,122 @@
+#!/bin/bash
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+pkgname=monocypher
+pkgver=3.1.3
+pkgrel=0
+pkgdesc="Easy to use, easy to deploy cryptographic library"
+url="https://github.com/LoupVaillant/Monocypher"
+archs=("armeabi-v7a" "arm64-v8a")
+license=("BSD-2-Clause")
+depends=()
+makedepends=()
+source="https://github.com/LoupVaillant/Monocypher/archive/refs/tags/${pkgver}.tar.gz"
+
+downloadpackage=true
+autounpack=true
+buildtools="custom"
+
+builddir=Monocypher-${pkgver}
+packagename=monocypher-${pkgver}.tar.gz
+
+source envset.sh
+
+prepare() {
+    case "${ARCH}" in
+        armeabi-v7a)
+            setarm32ENV
+            ;;
+        arm64-v8a)
+            setarm64ENV
+            ;;
+        *)
+            echo "[${pkgname}] ERROR: unsupported ARCH ${ARCH}"
+            return 1
+            ;;
+    esac
+
+    mkdir -p "${builddir}/bin/${ARCH}"
+}
+
+build() {
+    cd "${builddir}"
+
+    local BUILD_DIR="bin/${ARCH}"
+    local LOCAL_CFLAGS="${CFLAGS} -fPIC -fstack-protector-strong"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
+    ${CC} ${LOCAL_CFLAGS} \
+        -I src \
+        -c src/monocypher.c \
+        -o "${BUILD_DIR}/monocypher.o" >> "${buildlog}" 2>&1
+    if [ $? -ne 0 ]; then
+        cd "${OLDPWD}"
+        return 1
+    fi
+
+    ${CC} ${LOCAL_CFLAGS} \
+        -I src \
+        -I src/optional \
+        -c src/optional/monocypher-ed25519.c \
+        -o "${BUILD_DIR}/monocypher-ed25519.o" >> "${buildlog}" 2>&1
+    if [ $? -ne 0 ]; then
+        cd "${OLDPWD}"
+        return 1
+    fi
+
+    ${CC} -shared \
+        "${BUILD_DIR}/monocypher.o" \
+        "${BUILD_DIR}/monocypher-ed25519.o" \
+        ${LOCAL_LDFLAGS} \
+        -o "${BUILD_DIR}/libmonocypher.so" >> "${buildlog}" 2>&1
+    ret=$?
+
+    cd "${OLDPWD}"
+    return ${ret}
+}
+
+package() {
+    cd "${builddir}"
+
+    local INSTALL_DIR="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}"
+    install -d "${INSTALL_DIR}/lib/pkgconfig"
+    install -d "${INSTALL_DIR}/include/optional"
+
+    install -m 755 "bin/${ARCH}/libmonocypher.so" "${INSTALL_DIR}/lib/"
+    install -m 644 src/monocypher.h "${INSTALL_DIR}/include/"
+    install -m 644 src/optional/monocypher-ed25519.h "${INSTALL_DIR}/include/optional/"
+
+    cat > "${INSTALL_DIR}/lib/pkgconfig/monocypher.pc" <<EOF
+prefix=${INSTALL_DIR}
+exec_prefix=\${prefix}
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+
+Name: monocypher
+Description: Easy to use, easy to deploy cryptographic library
+Version: ${pkgver}
+Libs: -L\${libdir} -lmonocypher
+Cflags: -I\${includedir}
+EOF
+
+    cd "${OLDPWD}"
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+}
+
+cleanbuild() {
+    rm -rf "${PWD}/${builddir}"
+}
