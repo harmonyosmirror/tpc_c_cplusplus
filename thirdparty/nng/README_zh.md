@@ -10,6 +10,9 @@ nng（nanomsg-next-generation）是一个轻量级消息库，提供了简单的
 - 支持TCP、IPC等多种传输协议
 - 支持Zero Copy等高性能特性
 
+## 不支持说明
+- 鸿蒙因权限问题，本库在编译时屏蔽了 IPC 模式
+
 ## 使用约束
 - [IDE和SDK版本](../../docs/constraint.md)
 
