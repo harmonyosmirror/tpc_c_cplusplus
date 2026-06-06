@@ -1,0 +1,170 @@
+#!/bin/bash
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+pkgname=libcose
+pkgver=ea1fed8
+pkgrel=0
+pkgdesc="COSE (RFC8152) implementation in C for constrained devices, without dynamic memory allocation"
+url="https://github.com/bergzand/libcose"
+archs=("armeabi-v7a" "arm64-v8a")
+depends=("nanocbor" "CUnit" "monocypher")
+makedepends=()
+source="https://github.com/bergzand/libcose/archive/ea1fed87d6ca9b478f8bed323af97e6b192c0a6d.tar.gz"
+
+downloadpackage=true
+autounpack=true
+buildtools="make"
+
+builddir=libcose-ea1fed87d6ca9b478f8bed323af97e6b192c0a6d
+packagename=libcose-ea1fed87.tar.gz
+patchflag=true
+
+source envset.sh
+
+prepare() {
+    case "${ARCH}" in
+        armeabi-v7a)
+            setarm32ENV
+            ;;
+        arm64-v8a)
+            setarm64ENV
+            ;;
+        *)
+            echo "[${pkgname}] ERROR: unsupported ARCH ${ARCH}"
+            return 1
+            ;;
+    esac
+
+    if $patchflag; then
+        cd "${builddir}"
+        if ! patch -p1 < "../${pkgname}_ohos.patch" >> "${buildlog}" 2>&1; then
+            echo "[${pkgname}] ERROR: failed to apply ${pkgname}_ohos.patch" >&2
+            cd "${OLDPWD}"
+            return 1
+        fi
+        patchflag=false
+        cd "${OLDPWD}"
+    fi
+
+    if ! grep -q 'LDFLAGS.*-shared' "${builddir}/Makefile"; then
+        echo "[${pkgname}] ERROR: Makefile patch failed - LDFLAGS not found in .so link rule"
+        return 1
+    fi
+    if grep -q '\-Wl,\$(LIB_NANOCBOR)' "${builddir}/Makefile"; then
+        echo "[${pkgname}] ERROR: Makefile patch failed - absolute nanocbor path not fixed"
+        return 1
+    fi
+    if grep -q 'LDFLAGS_CRYPTO += -Wl,$(MONOCYPHER_LIB)' "${builddir}/makefiles/monocypher.mk"; then
+        echo "[${pkgname}] ERROR: monocypher.mk patch failed - Monocypher linker flags not fixed"
+        return 1
+    fi
+
+    # Pre-create arch-specific bin directories to prevent make -j4 race conditions.
+    # Using BIN_DIR=bin/${ARCH} keeps each architecture's objects and .so isolated.
+    mkdir -p "${builddir}/bin/${ARCH}/objs/crypt"
+    mkdir -p "${builddir}/bin/${ARCH}/objs/tests"
+}
+
+build() {
+    cd $builddir
+
+    NANOCBOR_INCDIR="${LYCIUM_ROOT}/usr/nanocbor/${ARCH}/include"
+    NANOCBOR_LIBDIR="${LYCIUM_ROOT}/usr/nanocbor/${ARCH}/lib"
+    MONOCYPHER_INCDIR="${LYCIUM_ROOT}/usr/monocypher/${ARCH}/include"
+    MONOCYPHER_LIBDIR="${LYCIUM_ROOT}/usr/monocypher/${ARCH}/lib"
+    CUNIT_INCDIR="${LYCIUM_ROOT}/usr/CUnit/${ARCH}/include"
+    CUNIT_LIBDIR="${LYCIUM_ROOT}/usr/CUnit/${ARCH}/lib"
+
+    make lib \
+        CC="${CC}" \
+        AR="${AR}" \
+        CFLAGS_WARN="" \
+        LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s" \
+        BIN_DIR="bin/${ARCH}" \
+        INC_NANOCBOR="${NANOCBOR_INCDIR}" \
+        LIB_NANOCBOR_PATH="${NANOCBOR_LIBDIR}" \
+        CRYPTO=monocypher \
+        MONOCYPHER_INCLUDE="-I${MONOCYPHER_INCDIR}" \
+        MONOCYPHER_LIB="-L${MONOCYPHER_LIBDIR} -lmonocypher" \
+        -j4 >> "${buildlog}" 2>&1
+
+    if [ $? -ne 0 ]; then
+        cd $OLDPWD
+        return 1
+    fi
+
+    # Build the CUnit test binary (libcose_test) if CUnit is available.
+    # Failure is non-fatal: the library itself has already been built successfully.
+    if [ -f "${CUNIT_LIBDIR}/libcunit.so" ]; then
+        ${CC} ${CFLAGS} -fstack-protector-strong \
+            -DCRYPTO_MONOCYPHER -DED25519_SHA512 \
+            -Iinclude \
+            -I"${NANOCBOR_INCDIR}" \
+            -I"${MONOCYPHER_INCDIR}" \
+            -I"${CUNIT_INCDIR}" \
+            tests/test.c \
+            tests/hdr.c \
+            tests/sign.c \
+            tests/crypto.c \
+            tests/encrypt.c \
+            tests/hkdf.c \
+            tests/suit.c \
+            -L"bin/${ARCH}" -lcose \
+            -L"${NANOCBOR_LIBDIR}" -lnanocbor \
+            -L"${MONOCYPHER_LIBDIR}" -lmonocypher \
+            -L"${CUNIT_LIBDIR}" -lcunit \
+            -Wl,-rpath-link,"bin/${ARCH}" \
+            -Wl,-rpath-link,"${NANOCBOR_LIBDIR}" \
+            -Wl,-rpath-link,"${MONOCYPHER_LIBDIR}" \
+            -Wl,-rpath-link,"${CUNIT_LIBDIR}" \
+            -Wl,-z,relro,-z,now \
+            -o "bin/${ARCH}/libcose_test" >> "${buildlog}" 2>&1
+        if [ $? -ne 0 ]; then
+            echo "[${pkgname}] WARNING: failed to build libcose_test for ${ARCH}; device tests will be skipped"
+            rm -f "bin/${ARCH}/libcose_test"
+        fi
+    else
+        echo "[${pkgname}] WARNING: CUnit not available; skipping libcose_test build for ${ARCH}"
+    fi
+
+    cd $OLDPWD
+    return 0
+}
+
+package() {
+    cd $builddir
+
+    install -d ${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/lib
+    install -d ${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/include
+    install -d ${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/tests
+
+    install -m 755 bin/${ARCH}/libcose.so ${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/lib/
+    cp -r include/* ${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/include/
+
+    # Install test binary to tests/ subdirectory.
+    if [ -f "bin/${ARCH}/libcose_test" ]; then
+        install -m 755 bin/${ARCH}/libcose_test \
+            ${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/tests/
+    fi
+
+    cd $OLDPWD
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+}
+
+cleanbuild() {
+    rm -rf ${PWD}/${builddir}
+}

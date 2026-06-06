@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "libcose",
+    "License": "LGPL-2.1-or-later",
+    "License File": "https://github.com/bergzand/libcose/blob/master/LICENSE",
+    "Version Number": "ea1fed8",
+    "Owner": "panjinling@huawei.com",
+    "Upstream URL": "https://github.com/bergzand/libcose",
+    "Description": "libcose is a C99 implementation of the COSE (CBOR Object Signing and Encryption, RFC 8152) standard for constrained devices, with zero dynamic memory allocation. Uses Monocypher 3.1.3 as the cryptographic backend (linked as an independent shared library)."
+  }
+]

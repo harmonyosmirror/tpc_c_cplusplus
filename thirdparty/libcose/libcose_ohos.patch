@@ -1,0 +1,28 @@
+diff --git a/Makefile b/Makefile
+--- a/Makefile
++++ b/Makefile
+@@ -82,10 +82,10 @@ $(OBJ_DIR)/tests/%.o: $(TEST_DIR)/%.c
+ $(BIN_DIR)/test: CFLAGS += $(CFLAGS_TEST)
+ $(BIN_DIR)/test: LDFLAGS += $(LDFLAGS_TEST)
+ $(BIN_DIR)/test: $(OBJS) $(OTESTS) prepare
+-	$(CC) $(CFLAGS) $(OBJS) $(OTESTS) -o $@  -Wl,$(LIB_NANOCBOR) $(LDFLAGS)
++	$(CC) $(CFLAGS) $(OBJS) $(OTESTS) -o $@  -L$(LIB_NANOCBOR_PATH) -lnanocbor $(LDFLAGS)
+ 
+ $(BIN_DIR)/libcose.so: $(OBJS) prepare
+-	$(CC) $(CFLAGS) $(OBJS) -o $@ -Wl,$(LIB_NANOCBOR)  -shared
++	$(CC) $(CFLAGS) $(OBJS) -o $@ -L$(LIB_NANOCBOR_PATH) -lnanocbor $(LDFLAGS) -shared
+ 
+ test: $(BIN_DIR)/test
+ 	LD_LIBRARY_PATH="$(LIB_NANOCBOR_PATH)" $<
+diff --git a/makefiles/monocypher.mk b/makefiles/monocypher.mk
+--- a/makefiles/monocypher.mk
++++ b/makefiles/monocypher.mk
+@@ -12,7 +12,7 @@ ifeq ($(MONOCYPHER_LOCAL), 1)
+ else
+   MONOCYPHER_INCLUDE ?= $(shell pkg-config --cflags $(MONOCYPHERLIB))
+   MONOCYPHER_LIB ?= $(shell pkg-config --libs $(MONOCYPHERLIB))
+-  LDFLAGS_CRYPTO += -Wl,$(MONOCYPHER_LIB)
++  LDFLAGS_CRYPTO += $(MONOCYPHER_LIB)
+ endif
+ 
+ CFLAGS_CRYPTO += $(MONOCYPHER_INCLUDE)
