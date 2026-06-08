@@ -5,7 +5,7 @@
         "License File": "COPYING",
         "Version Number": "c49afb1beda256acc16f4bbb7c8e65fb54fa2acf",
         "Owner": "mahange@huawei.com",
-        "Upstream URL": "https://github.com/Akaaba/libmp4/archive/refs/heads/master.tar.gz",
+        "Upstream URL": "https://github.com/Akaaba/libmp4/archive/c49afb1beda256acc16f4bbb7c8e65fb54fa2acf.tar.gz",
         "Description": "libmp4 is a C library to handle MP4 files (ISO base media file format, ISO/IEC 14496-12). It is mainly targeted to be used with videos produced by Parrot Drones."
     }
 ]

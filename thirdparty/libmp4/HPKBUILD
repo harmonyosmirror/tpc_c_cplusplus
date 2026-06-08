@@ -1,7 +1,18 @@
-# Contributor: mahange <mahange@hauwei.com>
-# Maintainer: mahange <mahange@hauwei.com>
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 pkgname=libmp4
-pkgver=master
+pkgver=c49afb1
 pkgrel=0
 pkgdesc="MP4 file library for ISO base media file format (ISO/IEC 14496-12)"
 url="https://github.com/Akaaba/libmp4"
@@ -9,14 +20,15 @@ archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("BSD-3-Clause")
 depends=()
 makedepends=()
-source="https://github.com/Akaaba/libmp4/archive/refs/heads/master.tar.gz"
+
+source="https://github.com/Akaaba/libmp4/archive/c49afb1beda256acc16f4bbb7c8e65fb54fa2acf.tar.gz"
 
 downloadpackage=true
 autounpack=true
 buildtools="make"
 
-builddir=libmp4-master
-packagename=libmp4-master.tar.gz
+builddir=libmp4-c49afb1beda256acc16f4bbb7c8e65fb54fa2acf
+packagename=libmp4-c49afb1beda256acc16f4bbb7c8e65fb54fa2acf.tar.gz
 
 source envset.sh
 
