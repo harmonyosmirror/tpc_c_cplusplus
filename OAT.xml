@@ -13,7 +13,7 @@
                 <filteritem type="filename" name="community/busybox/build_busybox.sh" desc="不添加版权头"/>
                 <filteritem type="filename" name="community/jbig2enc/adapted/init_includes.sh" desc="不添加版权头"/>
                 <filteritem type="filepath" name="community/mapbox-gl-native/HPKBUILD" desc="不添加版权头"/>
-		<filteritem type="filepath" name="thirdparty/libmp4/.*" desc="不添加版权头"/>
+                <filteritem type="filepath" name="thirdparty/libmp4/HPKBUILD" desc="内嵌第三方Parrot S.A.版权头，不添加版权头"/>
                 <filteritem type="filename" name="caffe.model" desc="模型定义文件，无法添加版权头"/>
                 <filteritem type="filename" name="blobs" desc="模型权重文件，无法添加版权头"/>
                 <filteritem type="filename" name="caffe.params" desc="Caffe模型参数，无法添加版权头"/>
@@ -29,7 +29,7 @@
                 <filteritem type="filename" name="community/busybox/build_busybox.sh" desc="LICENSE文件，无需添加许可头"/>
                 <filteritem type="filename" name="community/jbig2enc/adapted/init_includes.sh" desc="LICENSE文件，无需添加许可头"/>
                 <filteritem type="filepath" name="community/mapbox-gl-native/HPKBUILD" desc="不添加许可证头"/>
-		<filteritem type="filepath" name="thirdparty/libmp4/.*" desc="不添加许可证头"/>
+                <filteritem type="filepath" name="thirdparty/libmp4/HPKBUILD" desc="内嵌第三方Parrot S.A.版权头，不添加许可证头"/>
                 <filteritem type="filename" name="caffe.model" desc="模型定义文件，无法添加许可证头"/>
                 <filteritem type="filename" name="blobs" desc="模型权重文件，无法添加许可证头"/>
                 <filteritem type="filename" name="caffe.params" desc="Caffe模型参数，无法添加许可证头"/>
