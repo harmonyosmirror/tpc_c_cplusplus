@@ -1,11 +1,11 @@
 # udt集成到应用hap
-本库是在RK3568开发板上基于OpenHarmony3.2 Release版本的镜像验证的，如果是从未使用过RK3568，可以先查看[润和RK3568开发板标准系统快速上手](https://gitee.com/openharmony-sig/knowledge_demo_temp/tree/master/docs/rk3568_helloworld)。
+本库是在RK3568开发板上基于OpenHarmony3.2 Release版本的镜像验证的，如果是从未使用过RK3568，可以先查看[润和RK3568开发板标准系统快速上手](https://gitcode.com/openharmony-sig/knowledge_demo_temp/tree/master/docs/rk3568_helloworld)。
 ## 开发环境
-- [开发环境准备](https://gitcode.com/openharmony-sig/tpc_c_cplusplus/blob/master/lycium/Buildtools/README.md)
+- [开发环境准备](https://gitcode.com/CPF-ApplicationTPC/tpc_c_cplusplus/blob/master/lycium/Buildtools/README.md)
 ## 编译三方库
 - 下载本仓库
   ```
-  git clone https://gitee.com/openharmony-sig/tpc_c_cplusplus
+  git clone https://gitcode.com/CPF-ApplicationTPC/tpc_c_cplusplus
   ```
 - 三方库目录结构
   ```
@@ -19,7 +19,7 @@
   ```
   
 - 在lycium目录下编译三方库
-  编译环境的搭建参考[准备三方库构建环境](https://gitcode.com/openharmony-sig/tpc_c_cplusplus/tree/master/lycium)
+  编译环境的搭建参考[准备三方库构建环境](https://gitcode.com/CPF-ApplicationTPC/tpc_c_cplusplus/tree/master/lycium)
   
   ```
   cd lycium
@@ -50,14 +50,14 @@
   
   ```
 ## 测试三方库
-三方库的测试使用原库自带的测试用例来做测试，[准备三方库测试环境](https://gitcode.com/openharmony-sig/tpc_c_cplusplus/tree/master/lycium)
+三方库的测试使用原库自带的测试用例来做测试，[准备三方库测试环境](https://gitcode.com/CPF-ApplicationTPC/tpc_c_cplusplus/tree/master/lycium)
 
 进入到构建目录执行./test运行测试用例（arm64-v8a-build为构建64位的目录，armeabi-v7a-build为构建32位的目录）
 
  ![输入图片说明](pic/udt_test.PNG)
 
 ## 参考资料
-- [润和RK3568开发板标准系统快速上手](https://gitee.com/openharmony-sig/knowledge_demo_temp/tree/master/docs/rk3568_helloworld)
-- [OpenHarmony三方库地址](https://gitee.com/openharmony-tpc)
-- [OpenHarmony知识体系](https://gitee.com/openharmony-sig/knowledge)
-- [通过DevEco Studio开发一个NAPI工程](https://gitee.com/openharmony-sig/knowledge_demo_temp/blob/master/docs/napi_study/docs/hello_napi.md)
+- [润和RK3568开发板标准系统快速上手](https://gitcode.com/openharmony-sig/knowledge_demo_temp/tree/master/docs/rk3568_helloworld)
+- [OpenHarmony三方库地址](https://gitcode.com/openharmony-tpc)
+- [OpenHarmony知识体系](https://gitcode.com/openharmony-sig/knowledge)
+- [通过DevEco Studio开发一个NAPI工程](https://gitcode.com/openharmony-sig/knowledge_demo_temp/blob/master/docs/napi_study/docs/hello_napi.md)
