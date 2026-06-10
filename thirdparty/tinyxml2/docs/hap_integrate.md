@@ -8,7 +8,7 @@
 ### 增加构建脚本及配置文件
 
 - 下载本仓库代码  <br />
-  通过[C/C++三方库TCP仓](https://gitee.com/openharmony-sig/tpc_c_cplusplus)下载本三方库代码并将其解压。
+  通过[C/C++三方库TCP仓](https://gitcode.com/CPF-ApplicationTPC/tpc_c_cplusplus)下载本三方库代码并将其解压。
 - 仓库代码库目录结构说明
   ```
   tpc_c_cplusplus/thirdparty/tinyxml2  #三方库tinyxml2 的目录结构如下

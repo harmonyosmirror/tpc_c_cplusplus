@@ -7,7 +7,7 @@
 - 下载本仓库代码
   ```
   cd ~
-  git clone git@gitee.com:CPF-ApplicationTPC/tpc_c_cplusplus.git --depth=1
+  git clone git@gitcode.com:CPF-ApplicationTPC/tpc_c_cplusplus.git --depth=1
   ```
 - 三方库目录结构
   ```
@@ -33,7 +33,7 @@ git clone https://github.com/agl/jbig2enc.git -b 0.29 --depth=1    #下载三方
 ```
 - 下载依赖库leptonica
 
-  依赖库下载及适配参考:[leptonica的Rom集成](https://gitee.com/openharmony-sig/tpc_c_cplusplus/leptonica)
+  依赖库下载及适配参考:[leptonica的Rom集成](https://gitcode.com/CPF-ApplicationTPC/tpc_c_cplusplus/leptonica)
 
 ## 系统Rom中引入三方库
 
