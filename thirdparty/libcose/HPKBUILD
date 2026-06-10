@@ -85,12 +85,16 @@ build() {
     MONOCYPHER_LIBDIR="${LYCIUM_ROOT}/usr/monocypher/${ARCH}/lib"
     CUNIT_INCDIR="${LYCIUM_ROOT}/usr/CUnit/${ARCH}/include"
     CUNIT_LIBDIR="${LYCIUM_ROOT}/usr/CUnit/${ARCH}/lib"
+    local LOCAL_CFLAGS_WARN="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2"
+    local LOCAL_TEST_CFLAGS="${CFLAGS} -O2 ${LOCAL_CFLAGS_WARN}"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+    local LOCAL_MAKE_LDFLAGS="${LOCAL_LDFLAGS} -L${MONOCYPHER_LIBDIR} -lmonocypher"
 
     make lib \
         CC="${CC}" \
         AR="${AR}" \
-        CFLAGS_WARN="" \
-        LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s" \
+        CFLAGS_WARN="${LOCAL_CFLAGS_WARN}" \
+        LDFLAGS="${LOCAL_MAKE_LDFLAGS}" \
         BIN_DIR="bin/${ARCH}" \
         INC_NANOCBOR="${NANOCBOR_INCDIR}" \
         LIB_NANOCBOR_PATH="${NANOCBOR_LIBDIR}" \
@@ -107,7 +111,7 @@ build() {
     # Build the CUnit test binary (libcose_test) if CUnit is available.
     # Failure is non-fatal: the library itself has already been built successfully.
     if [ -f "${CUNIT_LIBDIR}/libcunit.so" ]; then
-        ${CC} ${CFLAGS} -fstack-protector-strong \
+        ${CC} ${LOCAL_TEST_CFLAGS} \
             -DCRYPTO_MONOCYPHER -DED25519_SHA512 \
             -Iinclude \
             -I"${NANOCBOR_INCDIR}" \
@@ -128,7 +132,7 @@ build() {
             -Wl,-rpath-link,"${NANOCBOR_LIBDIR}" \
             -Wl,-rpath-link,"${MONOCYPHER_LIBDIR}" \
             -Wl,-rpath-link,"${CUNIT_LIBDIR}" \
-            -Wl,-z,relro,-z,now \
+            ${LOCAL_LDFLAGS} \
             -o "bin/${ARCH}/libcose_test" >> "${buildlog}" 2>&1
         if [ $? -ne 0 ]; then
             echo "[${pkgname}] WARNING: failed to build libcose_test for ${ARCH}; device tests will be skipped"
