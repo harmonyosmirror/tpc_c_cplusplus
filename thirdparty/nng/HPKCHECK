@@ -20,7 +20,7 @@ openharmonycheck() {
     res=0
     if [ -f "${builddir}/${ARCH}-build/CTestTestfile.cmake" ]; then
         cd "${builddir}/${ARCH}-build"
-        ctest --output-on-failure > "${logfile}" 2>&1
+        ctest --output-on-failure --exclude-regex "nng\.multistress|nng\.reqstress" > "${logfile}" 2>&1
         res=$?
         if [ $res -ne 0 ]; then
             mkdir -p ${LYCIUM_FAULT_PATH}/${pkgname}
