@@ -35,12 +35,24 @@ prepare() {
 }
 
 build() {
+    local LOCAL_CFLAGS="${CFLAGS} -O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    local LOCAL_CXXFLAGS="${CXXFLAGS} -O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
     cd $builddir
+    mkdir -p $ARCH-build
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
         -B$ARCH-build -S./ \
         -DNNG_TESTS=ON \
-        -DNNG_TRANSPORT_IPC=OFF
-    make -C $ARCH-build -j4
+        -DNNG_TRANSPORT_IPC=OFF \
+        -DCMAKE_C_FLAGS="${LOCAL_CFLAGS}" \
+        -DCMAKE_CXX_FLAGS="${LOCAL_CXXFLAGS}" \
+        -DCMAKE_SHARED_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_EXE_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_SKIP_RPATH=TRUE \
+        > `pwd`/$ARCH-build/build.log 2>&1
+
+    make -C $ARCH-build -j4 >> `pwd`/$ARCH-build/build.log 2>&1
     ret=$?
     cd $OLDPWD
     return $ret
