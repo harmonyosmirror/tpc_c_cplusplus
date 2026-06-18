@@ -28,12 +28,31 @@ packagename=xlnt-1.5.0.tar.gz
 downloadpackage=true
 autounpack=true
 
+patchflag=true
+
 prepare() {
-    cd $builddir
-    # 移除 build2 的 version 文件（无扩展名），避免与 OHOS libcxx <version> 头文件冲突
-    mv third-party/libstudxml/version third-party/libstudxml/version.txt
-    # 生成 libstudxml/version.hxx（GitHub archive 中为空文件，需填充版本宏）
-    cat > third-party/libstudxml/libstudxml/version.hxx << 'VEOF'
+    # ========== 修复内嵌 expat 2.1.0 高危漏洞 ==========
+    # 将 expat 从 2.1.0 升级到 2.8.1，修复 25+ 个高危/严重 CVE
+    # 包括：CVE-2022-25235/CVE-2022-25236/CVE-2022-25315 (CVSS 9.8)
+    #       CVE-2022-23852/CVE-2022-22822~22827 (CVSS 9.8)
+    #       CVE-2024-45491/CVE-2024-45492 (CVSS 9.8) 等
+    # patch 包含：expat 源文件升级 + include 路径适配 + CMakeLists.txt 更新
+    if [ "$patchflag" = true ]; then
+        cd $builddir
+
+        # 应用 expat 2.1.0 → 2.8.1 升级补丁
+        # 补丁内容：替换 expat 源文件、添加新文件(siphash.h/random_*)、
+        # 修改 CMakeLists.txt 添加新源文件、修改 config.h 添加宏定义
+        patch -p1 < ../upgrade-expat-2.1.0-to-2.8.1.patch
+
+        # 注意：xmltok_impl.c/h 和 xmltok_ns.c 在 expat 2.8.1 中仍存在
+        # xmltok.c 通过 #include 引用它们，不能删除
+        # patch 已将裸 #include "xxx" 适配为 #include <libstudxml/details/expat/xxx>
+
+        # 移除 build2 的 version 文件（无扩展名），避免与 OHOS libcxx <version> 头文件冲突
+        mv third-party/libstudxml/version third-party/libstudxml/version.txt
+        # 生成 libstudxml/version.hxx（GitHub archive 中为空文件，需填充版本宏）
+        cat > third-party/libstudxml/libstudxml/version.hxx << 'VEOF'
 #ifndef LIBSTUDXML_VERSION
 #define LIBSTUDXML_VERSION       999999999508ULL
 #define LIBSTUDXML_VERSION_STR   "1.1.0-b.8"
@@ -46,14 +65,31 @@ prepare() {
 #define LIBSTUDXML_SNAPSHOT_ID   ""
 #endif
 VEOF
+
+        patchflag=false
+        cd $OLDPWD
+    fi
+    # ========== expat 升级结束 ==========
 }
 
 build() {
+    local LOCAL_CFLAGS="${CFLAGS} -O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    local LOCAL_CXXFLAGS="${CXXFLAGS} -O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    local LOCAL_LDFLAGS="-Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+
     cd $builddir
+    mkdir -p $ARCH-build
     ${OHOS_SDK}/native/build-tools/cmake/bin/cmake "$@" \
         -B$ARCH-build -S./ \
-        -DTESTS=ON  # 仓库自带测试用例(CTest + 自定义test_suite)，必须启用
-    make -j4 $ARCH-build >> `pwd`/$ARCH-build/build.log 2>&1
+        -DTESTS=ON \
+        -DCMAKE_C_FLAGS="${LOCAL_CFLAGS}" \
+        -DCMAKE_CXX_FLAGS="${LOCAL_CXXFLAGS}" \
+        -DCMAKE_SHARED_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_EXE_LINKER_FLAGS="${LOCAL_LDFLAGS}" \
+        -DCMAKE_SKIP_RPATH=TRUE \
+        > `pwd`/$ARCH-build/build.log 2>&1
+
+    make -j4 -C $ARCH-build >> `pwd`/$ARCH-build/build.log 2>&1
     ret=$?
     cd $OLDPWD
     return $ret
