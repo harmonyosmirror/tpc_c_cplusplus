@@ -1,0 +1,360 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: panjinling@huawei.com
+# Maintainer: panjinling@huawei.com
+
+pkgname=libsmbclient
+# Samba upstream release tarball version (extracts to samba-${pkgver})
+# stable tarball; need not match third_party/samba Git snapshot
+pkgver=4.24.2
+pkgrel=0
+pkgdesc="Samba libsmbclient: SMB/CIFS client shared library built from Samba for OpenHarmony (waf)."
+url="https://www.samba.org/"
+archs=("armeabi-v7a" "arm64-v8a")
+license=("GPL-3.0-or-later" "LGPL-3.0-or-later")
+# Include GnuTLS' pkg-config transitive roots (hogweed.pc etc. live under nettle_3_9_1, …);
+# otherwise Samba reports "Checking for GnuTLS >= 3.6.13 : not found".
+depends=("zlib" "gmp" "nettle_3_9_1" "libtasn1_4_19_0" "gnutls")
+makedepends=("python3" "perl" "flex" "pkg-config")
+
+source="https://download.samba.org/pub/samba/stable/samba-${pkgver}.tar.gz"
+
+downloadpackage=true
+# Same reason as FFmpeg-ff4.0 HPKBUILD: one clean source tree per ARCH for waf configure
+autounpack=false
+# build_hpk treats anything other than cmake/configure as "no preset"; we set PKG_CONFIG_* in prepare()
+buildtools=waf
+
+builddir=samba-${pkgver}
+packagename=samba-${pkgver}.tar.gz
+
+source envset.sh
+
+# Mirrors configuredependpath() from build_hpk.sh for deps that ship .pc under usr/<pkg>/<ARCH>/lib/pkgconfig
+lycium_pkgconfig_concat() {
+  pkgconfigpath=""
+  for depend in "${depends[@]}"
+  do
+    dp="${LYCIUM_ROOT}/usr/${depend}/${ARCH}/lib/pkgconfig"
+    if [ -d "${dp}" ]; then
+      pkgconfigpath="${pkgconfigpath}${dp}:"
+    fi
+  done
+  pkgconfigpath="${pkgconfigpath%:}"
+}
+
+# Restore upstream waf shim files from the Samba tarball (single-file extract).
+libsmbclient_restore_upstream_waf_shims() {
+  tar zxf "${PWD}/${packagename}" \
+    -C "${PWD}/${pkgname}-${ARCH}-build" \
+    "${builddir}/buildtools/wafsamba/samba_waf18.py" \
+    "${builddir}/buildtools/wafsamba/wafsamba.py" || return 1
+}
+
+# CRLF-normalized patch + syntax check — avoids GNU patch truncation / SyntaxError when the
+# patch was checked out with Windows line endings (“Stripping trailing CR from patch”).
+libsmbclient_apply_cross_hostcc_patch() {
+  SAMBADIR="${PWD}/${pkgname}-${ARCH}-build/${builddir}"
+  HPATCH="${PWD}/patches/0001-waf-real-hostcc-for-cross-compile.patch"
+  HPATCH_TMP="${PWD}/${pkgname}-${ARCH}-build/.0001-patch-lf-only.tmp"
+
+  [ -f "${HPATCH}" ] && [ -d "${SAMBADIR}/buildtools/wafsamba" ] || return 0
+
+  sed 's/\r$//' "${HPATCH}" > "${HPATCH_TMP}" || return 1
+  ( cd "${SAMBADIR}" && patch -p1 -i "${HPATCH_TMP}" ) || return 1
+  rm -f "${HPATCH_TMP}"
+
+  if ! python3 -m py_compile "${SAMBADIR}/buildtools/wafsamba/samba_waf18.py" >/dev/null 2>&1; then
+    echo "libsmbclient: patched samba_waf18.py failed python syntax check." >&2
+    return 1
+  fi
+  return 0
+}
+
+libsmbclient_cross_patch_is_healthy() {
+  SAMBADIR="${PWD}/${pkgname}-${ARCH}-build/${builddir}"
+  _wf="${SAMBADIR}/buildtools/wafsamba/samba_waf18.py"
+  [ -f "${_wf}" ] || return 1
+  grep -q 'def samba_substitute_host_compiler_for_link' "${_wf}" 2>/dev/null \
+    || return 1
+  python3 -m py_compile "${_wf}" >/dev/null 2>&1 || return 1
+  return 0
+}
+
+libsmbclient_restore_upstream_replace_h() {
+  tar zxf "${PWD}/${packagename}" \
+    -C "${PWD}/${pkgname}-${ARCH}-build" \
+    "${builddir}/lib/replace/replace.h" || return 1
+}
+
+libsmbclient_host_header_cross_patch_ok() {
+  SAMBADIR="${PWD}/${pkgname}-${ARCH}-build/${builddir}"
+  grep -q '#undef HAVE_STROPTS_H' "${SAMBADIR}/lib/replace/replace.h" 2>/dev/null \
+    && grep -q '#undef HAVE_LINUX_OPENAT2_H' "${SAMBADIR}/lib/replace/replace.h" 2>/dev/null \
+    && grep -q '#undef HAVE_STRLCPY' "${SAMBADIR}/lib/replace/replace.h" 2>/dev/null
+}
+
+# Target sysroot can expose stropts.h / linux/openat2.h that the Ubuntu build host lacks; undef for _SAMBA_HOSTCC_ builds.
+libsmbclient_apply_host_header_cross_patch() {
+  SAMBADIR="${PWD}/${pkgname}-${ARCH}-build/${builddir}"
+  HPATCH="${PWD}/patches/0002-replace-hostcc-undef-sysroot-headers.patch"
+  HPATCH_TMP="${PWD}/${pkgname}-${ARCH}-build/.0002-patch-lf-only.tmp"
+
+  [ -f "${HPATCH}" ] && [ -d "${SAMBADIR}/lib/replace" ] || return 0
+
+  sed 's/\r$//' "${HPATCH}" > "${HPATCH_TMP}" || return 1
+  ( cd "${SAMBADIR}" && patch -p1 -i "${HPATCH_TMP}" ) || return 1
+  rm -f "${HPATCH_TMP}"
+  return 0
+}
+
+libsmbclient_restore_upstream_socket_wscript() {
+  tar zxf "${PWD}/${packagename}" \
+    -C "${PWD}/${pkgname}-${ARCH}-build" \
+    "${builddir}/lib/socket/wscript" || return 1
+}
+
+# lld fails on OHOS sdk ethtool_cmd_speed from linux/ethtool.h; libsmbclient can disable HAVE_ETHTOOL.
+libsmbclient_socket_ethtool_patch_ok() {
+  SAMBADIR="${PWD}/${pkgname}-${ARCH}-build/${builddir}"
+  grep -q 'SAMBA_CROSS_NO_ETHTOOL' "${SAMBADIR}/lib/socket/wscript" 2>/dev/null \
+    && grep -q -- '-DOHOS_NDK' "${SAMBADIR}/lib/socket/wscript" 2>/dev/null
+}
+
+libsmbclient_apply_socket_ethtool_patch() {
+  SAMBADIR="${PWD}/${pkgname}-${ARCH}-build/${builddir}"
+  HPATCH="${PWD}/patches/0003-lib-socket-skip-ethtool-ohos.patch"
+  HPATCH_TMP="${PWD}/${pkgname}-${ARCH}-build/.0003-patch-lf-only.tmp"
+
+  [ -f "${HPATCH}" ] && [ -f "${SAMBADIR}/lib/socket/wscript" ] || return 0
+
+  sed 's/\r$//' "${HPATCH}" > "${HPATCH_TMP}" || return 1
+  ( cd "${SAMBADIR}" && patch -p1 -i "${HPATCH_TMP}" ) || return 1
+  rm -f "${HPATCH_TMP}"
+  return 0
+}
+
+prepare() {
+  apt-get update
+  apt-get install libparse-yapp-perl
+
+  mkdir -p "${pkgname}-${ARCH}-build"
+
+  # Fresh extract into per-ABI build directory (supports multiple arch in one invocation)
+  if [ ! -d "${pkgname}-${ARCH}-build/${builddir}" ]; then
+    tar zxf "${PWD}/${packagename}" -C "${pkgname}-${ARCH}-build"
+  fi
+
+  # Cross-build: bundled compile_et/asn1_compile must link as host binaries; upstream Waf only
+  # macros use_hostcc — patches/0001-waf-real-hostcc-for-cross-compile.patch
+  HPATCH="${PWD}/patches/0001-waf-real-hostcc-for-cross-compile.patch"
+  if [ -f "${HPATCH}" ]; then
+    if ! libsmbclient_cross_patch_is_healthy; then
+      echo "libsmbclient: (re)applying cross hostcc waf patch (restore upstream shims first)…" >&2
+      libsmbclient_restore_upstream_waf_shims || return 1
+      libsmbclient_apply_cross_hostcc_patch || return 1
+    fi
+  fi
+
+  HP2="${PWD}/patches/0002-replace-hostcc-undef-sysroot-headers.patch"
+  if [ -f "${HP2}" ]; then
+    if ! libsmbclient_host_header_cross_patch_ok; then
+      echo "libsmbclient: applying host-sysroot/header sanity patch replace.h (#undef stropts/openat2 for HOSTCC)…" >&2
+      libsmbclient_restore_upstream_replace_h || return 1
+      libsmbclient_apply_host_header_cross_patch || return 1
+    fi
+  fi
+
+  HP3="${PWD}/patches/0003-lib-socket-skip-ethtool-ohos.patch"
+  if [ -f "${HP3}" ]; then
+    if ! libsmbclient_socket_ethtool_patch_ok; then
+      echo "libsmbclient: applying OHOS socket/ethtool skip (avoid undefined ethtool_cmd_speed with lld)…" >&2
+      libsmbclient_restore_upstream_socket_wscript || return 1
+      libsmbclient_apply_socket_ethtool_patch || return 1
+    fi
+  fi
+
+  if [ "${ARCH}" == "armeabi-v7a" ]; then
+    setarm32ENV
+    arch=arm-linux
+  elif [ "${ARCH}" == "arm64-v8a" ]; then
+    setarm64ENV
+    arch=aarch64-linux
+  else
+    echo "${ARCH} not support"
+    return 1
+  fi
+
+  # clang rejects some unused-args as error under -Werror in waf probes
+  export CFLAGS="${CFLAGS:-} -Wno-error=unused-command-line-argument"
+  export CXXFLAGS="${CXXFLAGS:-} -Wno-error=unused-command-line-argument"
+
+  lycium_pkgconfig_concat
+
+  export CPPFLAGS="${CPPFLAGS:-}"
+  export LDFLAGS="${LDFLAGS:-}"
+  for depend in "${depends[@]}"
+  do
+    if [ -d "${LYCIUM_ROOT}/usr/${depend}/${ARCH}/include" ]; then
+      export CPPFLAGS="-I${LYCIUM_ROOT}/usr/${depend}/${ARCH}/include ${CPPFLAGS}"
+    fi
+    if [ -d "${LYCIUM_ROOT}/usr/${depend}/${ARCH}/lib" ]; then
+      export LDFLAGS="-L${LYCIUM_ROOT}/usr/${depend}/${ARCH}/lib ${LDFLAGS}"
+    fi
+  done
+
+  export PKG_CONFIG_LIBDIR="${pkgconfigpath}"
+
+  unset arch
+  return 0
+}
+
+build() {
+  if [ "${ARCH}" == "armeabi-v7a" ]; then
+    setarm32ENV
+    CROSSANS="${PWD}/cross-answers-ohos-armv7.txt"
+  elif [ "${ARCH}" == "arm64-v8a" ]; then
+    setarm64ENV
+    CROSSANS="${PWD}/cross-answers-ohos-aarch64.txt"
+  else
+    echo "${ARCH} not support"
+    return 1
+  fi
+
+  if [ ! -f "${CROSSANS}" ]; then
+    echo "libsmbclient: missing cross-answers: ${CROSSANS}" >&2
+    return 1
+  fi
+
+  # Samba appends ": UNKNOWN" lines to the --cross-answers file on cache misses; stale UNKNOWN
+  # makes every re-configure fail as "incomplete". Also strip CRLF so keys match on Linux.
+  ACTIVE_CROSSANS="${PWD}/${pkgname}-${ARCH}-build/.cross-answers-active.txt"
+  mkdir -p "${PWD}/${pkgname}-${ARCH}-build"
+  grep -Ev ': UNKNOWN[[:space:]]*$' "${CROSSANS}" | tr -d '\r' > "${ACTIVE_CROSSANS}"
+
+  lycium_pkgconfig_concat
+
+  INSTALL_PREFIX="$LYCIUM_ROOT/usr/libsmbclient/${ARCH}"
+
+  # Samba asn1_compile/compile_et run on the build host; OHOS LLVM wrappers must not hide /usr/bin.
+  export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
+
+  # Mirror third_party/samba/src/ohos/build_samba_for_ohos.sh: optionally SAMBA_HOST_CC=…;
+  # also try absolute paths common on minimal runners (see build_samba_for_ohos.sh comments).
+  HOST_CC_RESOLVED=""
+  if [ -n "${SAMBA_HOST_CC:-}" ] && command -v "${SAMBA_HOST_CC}" >/dev/null 2>&1; then
+    HOST_CC_RESOLVED="$(command -v "${SAMBA_HOST_CC}")"
+  fi
+  if [ -z "${HOST_CC_RESOLVED}" ]; then
+    for cand in gcc cc clang /usr/bin/gcc /usr/bin/cc /usr/local/bin/gcc /usr/local/bin/clang; do
+      command -v "${cand}" >/dev/null 2>&1 || continue
+      HOST_CC_RESOLVED="$(command -v "${cand}")"
+      break
+    done
+  fi
+  if [ -z "${HOST_CC_RESOLVED}" ]; then
+    echo "libsmbclient: native host compiler not found (set SAMBA_HOST_CC or install build-essential: gcc/cc)." >&2
+    return 1
+  fi
+  CFG_HOSTCC=( --hostcc="${HOST_CC_RESOLVED}" )
+
+  export PYTHONHASHSEED=1
+  export PKG_CONFIG_LIBDIR="${pkgconfigpath}"
+
+  CFG_CROSS=( --cross-answers="${ACTIVE_CROSSANS}" )
+
+  cd "${PWD}/${pkgname}-${ARCH}-build/${builddir}"
+
+  # Mobile-oriented feature trim (mirror third_party/samba/src/ohos/build_samba_for_ohos.sh; adjust via MR)
+  CFG_SAMBA=(
+    --cross-compile
+    "${CFG_CROSS[@]}"
+    "${CFG_HOSTCC[@]}"
+    --without-ad-dc
+    --without-ldap
+    --without-ads
+    --without-json
+    --without-libarchive
+    --without-acl-support
+    --without-pam
+    --without-ldb-lmdb
+    --disable-iprint
+    --disable-python
+    '--with-shared-modules=!vfs_snapper'
+    --prefix="${INSTALL_PREFIX}"
+  )
+
+  export SAMBA_CROSS_NO_ETHTOOL=1
+  PYTHONHASHSEED=1 python3 ./buildtools/bin/waf configure "${CFG_SAMBA[@]}" \
+    >> "${buildlog}" 2>&1
+  ret=$?
+  if [ $ret -ne 0 ]; then
+    cd "${OLDPWD}"
+    return $ret
+  fi
+
+  PYTHONHASHSEED=1 python3 ./buildtools/bin/waf build -j"${NJOBS:-8}" >> "${buildlog}" 2>&1
+  ret=$?
+  cd "${OLDPWD}"
+  return $ret
+}
+
+package() {
+  export PYTHONHASHSEED=1
+  cd "${PWD}/${pkgname}-${ARCH}-build/${builddir}"
+  PYTHONHASHSEED=1 python3 ./buildtools/bin/waf install >> "${buildlog}" 2>&1
+  ret=$?
+  cd "${OLDPWD}"
+
+  if [ $ret -ne 0 ]; then
+    if [ "${ARCH}" == "armeabi-v7a" ]; then
+      unsetarm32ENV
+    elif [ "${ARCH}" == "arm64-v8a" ]; then
+      unsetarm64ENV
+    fi
+    return $ret
+  fi
+
+  # P1: full install stays under lycium/usr/libsmbclient/<ARCH>/; pack minimal client/ for HAP.
+  INSTALL_PREFIX="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}"
+  bash "${PWD}/scripts/copy_client_bundle.sh" \
+    "${INSTALL_PREFIX}" "${ARCH}" "${LYCIUM_ROOT}" >> "${buildlog}" 2>&1
+  ret=$?
+
+  if [ "${ARCH}" == "armeabi-v7a" ]; then
+    unsetarm32ENV
+  elif [ "${ARCH}" == "arm64-v8a" ]; then
+    unsetarm64ENV
+  fi
+
+  if [ $ret -eq 0 ]; then
+    rm -f "${PWD}/last_error"
+  fi
+
+  return $ret
+}
+
+check() {
+  echo "The test must be on an OpenHarmony device!"
+  return 0
+}
+
+recoverpkgbuildenv() {
+  unset arch
+}
+
+cleanbuild() {
+  rm -rf "${PWD}/${pkgname}-armeabi-v7a-build" "${PWD}/${pkgname}-arm64-v8a-build"
+  rm -f "${PWD}"/*-lycium_build.log "${PWD}/download.log" "${PWD}/last_error"
+}

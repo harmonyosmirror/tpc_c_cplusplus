@@ -1,0 +1,24 @@
+diff --git a/lib/socket/wscript b/lib/socket/wscript
+--- a/lib/socket/wscript
++++ b/lib/socket/wscript
+@@ -1,7 +1,18 @@
+ #!/usr/bin/env python
++
++import os
+ 
+ def configure(conf):
+     conf.CHECK_HEADERS('linux/sockios.h linux/ethtool.h')
+-    if (conf.CONFIG_SET('HAVE_LINUX_SOCKIOS_H') and \
+-                    conf.CONFIG_SET('HAVE_LINUX_ETHTOOL_H')):
++    # OHOS/OpenHarmony: headers exist but ethtool_cmd_speed may not resolve under lld
++    # when building libsmbclient; skip HAVE_ETHTOOL (interface speed IOCTL is optional).
++    ccomb = "{} {}".format(os.environ.get("CFLAGS", ""), os.environ.get("CPPFLAGS", ""))
++    if "-DOHOS_NDK" in ccomb:
++        return
++    if os.environ.get("SAMBA_CROSS_NO_ETHTOOL", "").lower() in ("1", "true", "yes"):
++        return
++    if (
++        conf.CONFIG_SET('HAVE_LINUX_SOCKIOS_H')
++        and conf.CONFIG_SET('HAVE_LINUX_ETHTOOL_H')
++    ):
+         conf.DEFINE('HAVE_ETHTOOL', 1)

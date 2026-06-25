@@ -1,0 +1,153 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: xiafeng@huawei.com
+# Maintainer: xiafeng@huawei.com
+
+source HPKBUILD > /dev/null 2>&1
+logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
+
+checkprepare() {
+    export PATH=${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/bin:${PATH}
+    local libdirs=""
+    libdirs="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/lib"
+
+    for dep in zlib gmp nettle_3_9_1 libtasn1_4_19_0 gnutls; do
+        for libpath in "${LYCIUM_ROOT}/usr/${dep}/${ARCH}/lib" \
+                       "${LYCIUM_ROOT}/usr/${dep}/${ARCH}/lib64"; do
+            [ -d "$libpath" ] && libdirs="${libdirs}:${libpath}"
+        done
+    done
+
+    export LD_LIBRARY_PATH="${libdirs#:}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+}
+
+openharmonycheck() {
+    checkprepare
+
+    local res=0
+    local install_prefix="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}"
+    local test_bin test_name test_res total failed skipped
+
+    rm -f "$logfile"
+
+    {
+        echo "== libsmbclient HPKCHECK ARCH=$ARCH =="
+        echo "install_prefix=$install_prefix"
+
+        total=0
+        failed=0
+        skipped=0
+
+        export LD_LIBRARY_PATH="${install_prefix}/lib:${install_prefix}/lib/private:${LD_LIBRARY_PATH}"
+
+        echo ""
+        echo "--- Running: smbclient version check ---"
+        echo "--- Running: smbclient version check ---" >> /dev/tty
+        total=$((total + 1))
+        test_bin="${install_prefix}/bin/smbclient"
+        if [ -x "$test_bin" ]; then
+            if "$test_bin" --version; then
+                echo "PASS: smbclient version check"
+                echo "PASS: smbclient version check" >> /dev/tty
+            else
+                test_res=$?
+                echo "FAIL: smbclient version check (exit code $test_res)"
+                echo "FAIL: smbclient version check (exit code $test_res)" >> /dev/tty
+                failed=$((failed + 1))
+            fi
+        else
+            echo "SKIP: smbclient not found at $test_bin"
+            echo "SKIP: smbclient not found at $test_bin" >> /dev/tty
+            skipped=$((skipped + 1))
+        fi
+
+        echo ""
+        echo "--- Running: smbclient help check ---"
+        echo "--- Running: smbclient help check ---" >> /dev/tty
+        total=$((total + 1))
+        if [ -x "$test_bin" ]; then
+            if "$test_bin" --help > /dev/null 2>&1; then
+                echo "PASS: smbclient help check"
+                echo "PASS: smbclient help check" >> /dev/tty
+            else
+                test_res=$?
+                echo "FAIL: smbclient help check (exit code $test_res)"
+                echo "FAIL: smbclient help check (exit code $test_res)" >> /dev/tty
+                failed=$((failed + 1))
+            fi
+        else
+            echo "SKIP: smbclient not found"
+            echo "SKIP: smbclient not found" >> /dev/tty
+            skipped=$((skipped + 1))
+        fi
+
+        echo ""
+        echo "--- Running: smbcquotas version check ---"
+        echo "--- Running: smbcquotas version check ---" >> /dev/tty
+        total=$((total + 1))
+        test_bin="${install_prefix}/bin/smbcquotas"
+        if [ -x "$test_bin" ]; then
+            if "$test_bin" --version > /dev/null 2>&1; then
+                echo "PASS: smbcquotas version check"
+                echo "PASS: smbcquotas version check" >> /dev/tty
+            else
+                test_res=$?
+                echo "FAIL: smbcquotas version check (exit code $test_res)"
+                echo "FAIL: smbcquotas version check (exit code $test_res)" >> /dev/tty
+                failed=$((failed + 1))
+            fi
+        else
+            echo "SKIP: smbcquotas not found at $test_bin"
+            echo "SKIP: smbcquotas not found at $test_bin" >> /dev/tty
+            skipped=$((skipped + 1))
+        fi
+
+        echo ""
+        echo "--- Running: smbget version check ---"
+        echo "--- Running: smbget version check ---" >> /dev/tty
+        total=$((total + 1))
+        test_bin="${install_prefix}/bin/smbget"
+        if [ -x "$test_bin" ]; then
+            if "$test_bin" --version > /dev/null 2>&1; then
+                echo "PASS: smbget version check"
+                echo "PASS: smbget version check" >> /dev/tty
+            else
+                test_res=$?
+                echo "FAIL: smbget version check (exit code $test_res)"
+                echo "FAIL: smbget version check (exit code $test_res)" >> /dev/tty
+                failed=$((failed + 1))
+            fi
+        else
+            echo "SKIP: smbget not found at $test_bin"
+            echo "SKIP: smbget not found at $test_bin" >> /dev/tty
+            skipped=$((skipped + 1))
+        fi
+
+        echo ""
+        echo "== Test Summary: $total run, $failed failed, $skipped skipped =="
+        echo "" >> /dev/tty
+        echo "== Test Summary: $total run, $failed failed, $skipped skipped ==" >> /dev/tty
+
+        if [ $failed -gt 0 ]; then
+            res=1
+        fi
+    } > "$logfile" 2>&1
+
+    if [ $res -ne 0 ]; then
+        mkdir -p "${LYCIUM_FAULT_PATH}/${pkgname}"
+        cp -f "$logfile" "${LYCIUM_FAULT_PATH}/${pkgname}/" 2>/dev/null
+    fi
+
+    return $res
+}

@@ -1,0 +1,72 @@
+# Samba waf cross-answers for OHOS armeabi-v7a / arm-linux.
+# Derived from aarch64 table; tweak if device probe differs.
+
+Checking uname sysname type: "Linux"
+Checking uname machine type: "armv7l"
+Checking uname release type: "5.10.0"
+Checking uname version type: "#1"
+
+rpath library support: NO
+-Wl,--version-script support: NO
+
+# CHECK_LARGEFILE/CHECK_COMMAND: cross path still hits SAMBA_CROSS_ARGS → must not be UNKNOWN.
+Checking getconf LFS_CFLAGS: NO
+
+Checking for large file support without additional flags: OK
+
+# buildtools/wafsamba/wscript: only used if header-based endian fails.
+Checking for HAVE_LITTLE_ENDIAN - runtime: OK
+Checking for HAVE_BIG_ENDIAN - runtime: NO
+
+Checking correct behavior of strtoll: OK
+Checking for working strptime: OK
+Checking for C99 vsnprintf: OK
+Checking for HAVE_SHARED_MMAP: OK
+Checking for HAVE_MREMAP: OK
+Checking for HAVE_INCOHERENT_MMAP: NO
+Checking for HAVE_SECURE_MKSTEMP: OK
+
+# libreplace: interface discovery loop (execute=True); none match Linux getifaddrs build.
+Checking for HAVE_IFACE_GETIFADDRS: NO
+Checking for HAVE_IFACE_AIX: NO
+Checking for HAVE_IFACE_IFCONF: NO
+Checking for HAVE_IFACE_IFREQ: NO
+
+Checking for *bsd style statfs with statfs.f_iosize: NO
+
+Checking whether POSIX capabilities are available: NO
+
+Checking for gnutls fips mode support: NO
+
+Checking whether we can use Linux thread-specific credentials: OK
+
+# source3 credentials: USE_LINUX_32BIT_SYSCALLS is true on armv7 OHOS libc; thread cred probe still fails cross-run.
+Checking whether we can use Linux thread-specific credentials with 32-bit system calls: NO
+
+Checking value of NSIG: "65"
+Checking value of _NSIG: "65"
+Checking value of SIGRTMAX: "64"
+Checking value of SIGRTMIN: "32"
+Checking for a 64-bit host to support lmdb: NO
+
+Checking errno of iconv for illegal multibyte sequence: OK
+Checking if can we convert from CP850 to UCS-2LE: OK
+Checking if can we convert from IBM850 to UCS-2LE: OK
+Checking if can we convert from UTF-8 to UCS-2LE: OK
+Checking if can we convert from UTF8 to UCS-2LE: OK
+
+vfs_fileid checking for statfs() and struct statfs.f_fsid: OK
+
+Checking whether setreuid is available: OK
+Checking whether setresuid is available: OK
+Checking whether seteuid is available: OK
+
+Checking whether fcntl locking is available: OK
+Checking whether fcntl lock supports open file description locks: OK
+Checking whether fcntl supports flags to send direct I/O availability signals: OK
+Checking whether fcntl supports setting/getting hints: OK
+Checking for the maximum value of the 'time_t' type: NO
+Checking whether the realpath function allows a NULL argument: OK
+Checking for ftruncate extend: OK
+Checking for readlink breakage: NO
+getcwd takes a NULL argument: OK
