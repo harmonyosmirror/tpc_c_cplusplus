@@ -1,0 +1,133 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: panjinling@huawei.com
+# Maintainer: panjinling@huawei.com
+
+pkgname=gnutls
+pkgver=3.8.4
+pkgrel=0
+pkgdesc="GnuTLS TLS library; reduced deps for OHOS (aligned with third_party/samba build_gnutls_for_ohos.sh)."
+url="https://www.gnutls.org/"
+archs=("armeabi-v7a" "arm64-v8a")
+license=("LGPL-2.1-or-later")
+depends=("gmp" "nettle_3_9_1" "libtasn1_4_19_0" "zlib")
+makedepends=("xz")
+
+source="https://www.gnupg.org/ftp/gcrypt/gnutls/v${pkgver%.*}/gnutls-${pkgver}.tar.xz"
+
+downloadpackage=true
+autounpack=true
+buildtools="configure"
+
+builddir=gnutls-${pkgver}
+packagename=${builddir}.tar.xz
+
+source envset.sh
+
+host=
+
+prepare() {
+  mkdir -p "${builddir}/${ARCH}-build"
+
+  if [ "${ARCH}" == "armeabi-v7a" ]; then
+    setarm32ENV
+    host=arm-linux
+  elif [ "${ARCH}" == "arm64-v8a" ]; then
+    setarm64ENV
+    host=aarch64-linux
+  else
+    echo "${ARCH} not support"
+    return 1
+  fi
+
+  export CFLAGS="${CFLAGS:+$CFLAGS }-Wno-error=unused-command-line-argument"
+  export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }-Wno-error=unused-command-line-argument"
+
+  # Cross-compile: GnuTLS' AC_CHECK_LIB(__gmpz_cmp) defaults to native -lgmp paths;
+  # must inject Lycium-installed prefix for depends (gmp, zlib, hogweed.pc roots, …).
+  for _dep in gmp zlib nettle_3_9_1 libtasn1_4_19_0; do
+    _base="${LYCIUM_ROOT}/usr/${_dep}/${ARCH}"
+    if [ -d "${_base}/include" ]; then
+      export CPPFLAGS="-I${_base}/include ${CPPFLAGS:-}"
+    fi
+    if [ -d "${_base}/lib" ]; then
+      export LDFLAGS="-L${_base}/lib ${LDFLAGS:-}"
+    fi
+  done
+
+  return 0
+}
+
+build() {
+  cd "${builddir}/${ARCH}-build"
+
+  PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
+  ../configure "$@" \
+    --host="${host}" \
+    --with-included-unistring \
+    --without-p11-kit \
+    --without-idn \
+    --without-brotli \
+    --without-zstd \
+    --without-dane \
+    --disable-doc \
+    --disable-tools \
+    --disable-tests \
+    --disable-full-test-suite \
+    --disable-maintainer-mode \
+    --disable-gtk-doc \
+    --disable-nls \
+    --with-default-trust-store-file=no \
+    >> "${buildlog}" 2>&1
+
+  ret=$?
+  if [ $ret -ne 0 ]; then
+    cd "${OLDPWD}"
+    return $ret
+  fi
+
+  $MAKE >> "${buildlog}" 2>&1
+  ret=$?
+  cd "${OLDPWD}"
+  return $ret
+}
+
+package() {
+  cd "${builddir}/${ARCH}-build"
+  $MAKE install >> "${buildlog}" 2>&1
+  ret=$?
+  cd "${OLDPWD}"
+
+  unset host
+
+  if [ "${ARCH}" == "armeabi-v7a" ]; then
+    unsetarm32ENV
+  elif [ "${ARCH}" == "arm64-v8a" ]; then
+    unsetarm64ENV
+  fi
+
+  unset CPPFLAGS
+  unset LDFLAGS
+
+  return $ret
+}
+
+check() {
+  echo "The test must be on an OpenHarmony device!"
+  return 0
+}
+
+cleanbuild() {
+  rm -rf "${PWD}/${builddir}"
+}
