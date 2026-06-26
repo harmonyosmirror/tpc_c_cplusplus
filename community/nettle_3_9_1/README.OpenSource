@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "nettle",
+        "License": "LGPL-3.0-or-later",
+        "License File": "https://www.gnu.org/licenses/lgpl-3.0.html",
+        "Version Number": "3.9.1",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz",
+        "Description": "Nettle 3.9.1 cryptographic library (pkgname nettle_3_9_1); isolated install prefix for GnuTLS 3.8.x / Samba toolchain."
+    }
+]
