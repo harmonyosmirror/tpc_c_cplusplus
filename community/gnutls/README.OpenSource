@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "gnutls",
+        "License": "LGPL-2.1-or-later",
+        "License File": "https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html",
+        "Version Number": "3.8.4",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.4.tar.xz",
+        "Description": "GnuTLS TLS library for OpenHarmony; provides gnutls.pc for Samba libsmbclient toolchain."
+    }
+]
