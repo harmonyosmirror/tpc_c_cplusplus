@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "samba",
+        "License": "GPL-3.0-or-later and LGPL-3.0-or-later",
+        "License File": ["https://www.samba.org/samba/docs/GPL-v3.0.txt", "https://www.samba.org/samba/docs/LGPL-v3.0.txt"],
+        "Version Number": "4.24.2",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://download.samba.org/pub/samba/stable/samba-4.24.2.tar.gz",
+        "Description": "Samba SMB/CIFS implementation (server/tools: GPL-3.0-or-later; libsmbclient shared library: LGPL-3.0-or-later)."
+    }
+]

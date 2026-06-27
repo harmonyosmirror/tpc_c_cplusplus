@@ -1,0 +1,155 @@
+diff --git a/buildtools/wafsamba/samba_waf18.py b/buildtools/wafsamba/samba_waf18.py
+--- a/buildtools/wafsamba/samba_waf18.py
++++ b/buildtools/wafsamba/samba_waf18.py
+@@ -431,3 +431,138 @@ def add_obj_file(self, file):
+     if not 'process_obj_files' in self.meths:
+         self.meths.append('process_obj_files')
+     self.obj_files.append(file)
++# Cross-compile host tools (asn1_compile, compile_et, ...): honour --hostcc for
++# Waf compile/link tasks. Samba passes use_hostcc=True but only adds -D_SAMBA_HOSTCC_.
++
++
++def _samba_build_is_cross(bld):
++    if getattr(Options.options, 'CROSS_COMPILE', False):
++        return True
++    ce = getattr(bld.env, 'CROSS_COMPILE', False)
++    if isinstance(ce, (list, tuple)):
++        return bool(ce and ce[0])
++    return bool(ce)
++
++
++def _samba_host_compiler_list(bld):
++    hc = getattr(bld.env, 'HOSTCC', None)
++    if hc is False or hc is None or hc == '':
++        hc = 'gcc'
++    if isinstance(hc, str):
++        return [hc]
++    return list(hc)
++
++
++def _samba_path_looks_cross_or_ohos(p):
++    if not isinstance(p, str):
++        return False
++    pl = p.replace(chr(92), "/").lower()
++    needles = ('openharmony', 'native/llvm', 'command-line-tools/sdk',
++               '/ohos-', 'oh/ndk', '__ohos_', 'arm-linux-ohos',
++               'aarch64-linux-ohos')
++    return any(n in pl for n in needles)
++
++
++def _samba_flag_host_tool_incompatible(flag):
++    if not isinstance(flag, str):
++        return False
++    fl = flag.replace(chr(92), "/")
++    fll = fl.lower()
++
++    if flag.startswith('-D') and 'OHOS' in flag.upper():
++        return True
++
++    if '/llvm/' in fll or ('clang' in fll and 'gcc-toolchain' in fll):
++        if _samba_path_looks_cross_or_ohos(fl):
++            return True
++
++    if _samba_path_looks_cross_or_ohos(fl):
++        return True
++
++    if fll.startswith('-march=') or fll.startswith('-mcpu=') or fll.startswith('-mtune='):
++        return True
++    if fll.startswith('-mfpu=') or fll.startswith('-mabi='):
++        return True
++    if fll.startswith('-mfloat-abi='):
++        return True
++    if fll.startswith('--target='):
++        return True
++    if fll.startswith('-gcc-toolchain') or fll.startswith('--gcc-toolchain='):
++        return True
++    if fll.startswith('-rtlib=') or fll.startswith('-unwindlib='):
++        return True
++    if fll.startswith('-resource-dir'):
++        return True
++
++    unwanted = ('-fno-integrated-as', '-fuse-ld=lld', '-fno-addrsig')
++    if flag in unwanted:
++        return True
++    if fll.startswith('-fuse-ld=') and ('lld' in fll):
++        return True
++
++    return False
++
++
++def _samba_derive_host_tool_env(bld, env):
++    e = env.derive()
++    cc = _samba_host_compiler_list(bld)
++    e.CC = cc
++    e.LINK_CC = cc
++
++    cc0 = str(cc[0]) if cc else 'gcc'
++    _base_cc = os.path.basename(cc0).lower()
++    if 'clang' in _base_cc:
++        e.CC_NAME = 'clang'
++        e.COMPILER_CC = 'clang'
++    else:
++        # Needed: derive() copied CC_NAME=clang from the cross env while CC is gcc.
++        e.CC_NAME = 'gcc'
++        e.COMPILER_CC = 'gcc'
++
++    for key in ('CFLAGS', 'CXXFLAGS', 'LINKFLAGS', 'LDFLAGS', 'CPPFLAGS',
++                'FRAMEWORKFLAGS', 'CSFLAGS'):
++        if not getattr(e, key, None):
++            continue
++        lst = Utils.to_list(getattr(e, key))
++        setattr(e, key, [x for x in lst if not _samba_flag_host_tool_incompatible(x)])
++
++    for key in ('LIBPATH', 'STLIBPATH'):
++        if not getattr(e, key, None):
++            continue
++        lst = Utils.to_list(getattr(e, key))
++        setattr(e, key, [x for x in lst if not _samba_path_looks_cross_or_ohos(x)])
++
++    if getattr(e, 'CPPPATH', None):
++        lst = Utils.to_list(e.CPPPATH)
++        e.CPPPATH = [x for x in lst if not _samba_path_looks_cross_or_ohos(x)]
++
++    if getattr(e, 'DEFINES', None):
++        lst = Utils.to_list(e.DEFINES)
++        keep = []
++        for x in lst:
++            if isinstance(x, str) and 'OHOS' in x.upper():
++                continue
++            keep.append(x)
++        e.DEFINES = keep
++
++    return e
++
++
++@TaskGen.feature('c', 'cxx', 'd', 'asm', 'fc')
++@TaskGen.before_method('process_source')
++def samba_substitute_host_compiler_for_compile(self):
++    if not getattr(self, 'samba_use_hostcc', False):
++        return
++    if not _samba_build_is_cross(self.bld):
++        return
++    self.env = _samba_derive_host_tool_env(self.bld, self.env)
++
++
++@TaskGen.feature('cprogram', 'cxxprogram', 'dprogram')
++@TaskGen.before_method('apply_link')
++def samba_substitute_host_compiler_for_link(self):
++    if not getattr(self, 'samba_use_hostcc', False):
++        return
++    if not _samba_build_is_cross(self.bld):
++        return
++    self.env = _samba_derive_host_tool_env(self.bld, self.env)
+diff --git a/buildtools/wafsamba/wafsamba.py b/buildtools/wafsamba/wafsamba.py
+--- a/buildtools/wafsamba/wafsamba.py
++++ b/buildtools/wafsamba/wafsamba.py
+@@ -544,7 +544,8 @@
+         install_path   = None,
+         samba_inst_path= install_path,
+         samba_install  = install,
+-        samba_ldflags  = pie_ldflags
++        samba_ldflags  = pie_ldflags,
++        samba_use_hostcc = use_hostcc,
+         )
+ 
+     if manpages is not None and 'XSLTPROC_MANPAGES' in bld.env and bld.env['XSLTPROC_MANPAGES']:

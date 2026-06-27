@@ -1,0 +1,17 @@
+diff --git a/lib/replace/replace.h b/lib/replace/replace.h
+--- a/lib/replace/replace.h
++++ b/lib/replace/replace.h
+@@ -30,6 +30,13 @@
+ 
+ #ifndef NO_CONFIG_H
+ #include "config.h"
++#ifdef _SAMBA_HOSTCC_
++/* OHOS/other sysroots: targets may have symbols/headers Ubuntu 20+glibc lacks */
++#undef HAVE_STROPTS_H
++#undef HAVE_LINUX_OPENAT2_H
++#undef HAVE_STRLCPY
++#undef HAVE_STRLCAT
++#endif
+ #endif
+ 
+ #ifdef HAVE_STANDARDS_H
