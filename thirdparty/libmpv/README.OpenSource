@@ -1,0 +1,12 @@
+[
+    {
+        "Name": "libmpv",
+        "License": "GPL-2.0-or-later and LGPL-2.1-or-later",
+        "License File": ["https://gitcode.com/GitHub_Trending/mp/mpv/blob/master/LICENSE.GPL",
+                         "https://gitcode.com/GitHub_Trending/mp/mpv/blob/master/LICENSE.LGPL"],
+        "Version Number": "v0.41.0",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://gitcode.com/GitHub_Trending/mp/mpv",
+        "Description": "MPV is a free command-line media player."
+    }
+]
