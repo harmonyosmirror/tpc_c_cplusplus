@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "libplacebo",
+        "License": "LGPL-2.1-or-later",
+        "License File": "https://github.com/haasn/libplacebo/blob/v7.360.0/LICENSE",
+        "Version Number": "v7.360.0",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://github.com/haasn/libplacebo",
+        "Description": "Reusable library for GPU-accelerated video/image rendering pipelines."
+    }
+]

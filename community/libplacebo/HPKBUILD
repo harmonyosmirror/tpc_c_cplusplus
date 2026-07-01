@@ -1,0 +1,231 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: panjinling <panjinling@huawei.com>
+# Maintainer: panjinling <panjinling@huawei.com>
+
+pkgname=libplacebo
+pkgver=v7.360.0
+pkgrel=0
+pkgdesc="Reusable library for GPU-accelerated video/image rendering (OpenGL/Vulkan on OHOS)."
+url="https://github.com/haasn/libplacebo"
+archs=("armeabi-v7a" "arm64-v8a")
+license=("LGPL-2.1-or-later")
+depends=("glslang")
+makedepends=("meson" "ninja" "python3")
+
+source="https://codeload.github.com/haasn/libplacebo/tar.gz/refs/tags/${pkgver}"
+
+downloadpackage=true
+autounpack=true
+buildtools="meson"
+
+builddir=libplacebo-${pkgver:1}
+packagename=${builddir}.tar.gz
+
+source envset.sh
+
+prepare() {
+    # 1. fast_float (required header-only dep)
+    local ff_tarball="fast_float-97b54ca9.tar.gz"
+    local ff_url="https://github.com/fastfloat/fast_float/archive/97b54ca9e75f5303507699d27c6b4f4efe4641a1.tar.gz"
+    local ff_inc="${builddir}/3rdparty/fast_float/include/fast_float"
+
+    if [ ! -s "${ff_tarball}" ]; then
+        echo "Downloading ${ff_tarball}..."
+        wget -L "${ff_url}" -O "${ff_tarball}" -o download.log
+        if [ $? -ne 0 ]; then
+            echo "ERROR: failed to download fast_float"
+            return 1
+        fi
+        echo "9b9bc2434b2569bb049e209980b7cbedfb00b90b8579859581db9271385f965e6225dc5dc6359665ef95b0463924f8fe0e5c96c68a364e5d696d1687633971cd  ${ff_tarball}" \
+            | sha512sum -c - || { echo "ERROR: fast_float checksum mismatch"; rm -f "${ff_tarball}"; return 1; }
+    fi
+
+    if [ ! -f "${ff_inc}/fast_float.h" ]; then
+        mkdir -p "${ff_inc}"
+        tar -xzf "${ff_tarball}" \
+            --strip-components=2 \
+            -C "${builddir}/3rdparty/fast_float/include/" \
+            "fast_float-97b54ca9e75f5303507699d27c6b4f4efe4641a1/include/fast_float" \
+            || { echo "ERROR: failed to extract ${ff_tarball}"; return 1; }
+    fi
+
+    # 2. Vulkan-Headers v1.4.337
+    local vh_tarball="Vulkan-Headers-1.4.337.tar.gz"
+    local vh_url="https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.337.tar.gz"
+    local vh_dir="${builddir}/3rdparty/Vulkan-Headers"
+
+    if [ ! -s "${vh_tarball}" ]; then
+        echo "Downloading ${vh_tarball}..."
+        wget -L "${vh_url}" -O "${vh_tarball}" -o download.log
+        if [ $? -ne 0 ]; then
+            echo "ERROR: failed to download Vulkan-Headers"
+            return 1
+        fi
+        echo "2fd35dedd34424fc745981063f9749f67881e47bf5298f6c9ee72cd851bb3dc02b0bfe33dc6d48f9d2e6f3c8b2aee19ac2e16f9414496a35fb31db103d8383c4  ${vh_tarball}" \
+            | sha512sum -c - || { echo "ERROR: Vulkan-Headers checksum mismatch"; rm -f "${vh_tarball}"; return 1; }
+    fi
+
+    if [ ! -f "${vh_dir}/include/vulkan/vulkan_core.h" ]; then
+        mkdir -p "${vh_dir}"
+        tar -xzf "${vh_tarball}" --strip-components=1 -C "${vh_dir}/" \
+            || { echo "ERROR: failed to extract ${vh_tarball}"; return 1; }
+    fi
+
+    # 3. glad v2.0.8
+    local glad_tarball="glad-2.0.8.tar.gz"
+    local glad_url="https://github.com/Dav1dde/glad/archive/refs/tags/v2.0.8.tar.gz"
+    local glad_dir="${builddir}/3rdparty/glad"
+
+    if [ ! -s "${glad_tarball}" ]; then
+        echo "Downloading ${glad_tarball}..."
+        wget -L "${glad_url}" -O "${glad_tarball}" -o download.log
+        if [ $? -ne 0 ]; then
+            echo "ERROR: failed to download glad"
+            return 1
+        fi
+        echo "ec964d0080c9714803f0464492b237039d2bede805d21aa9e487f3bf910447fd6440eeca59f3795dc4d5dd3b3df35101714fa21ea19eb29f6a021864a2310acd  ${glad_tarball}" \
+            | sha512sum -c - || { echo "ERROR: glad checksum mismatch"; rm -f "${glad_tarball}"; return 1; }
+    fi
+
+    if [ ! -f "${glad_dir}/glad/__init__.py" ]; then
+        mkdir -p "${glad_dir}"
+        tar -xzf "${glad_tarball}" --strip-components=1 -C "${glad_dir}/" \
+            || { echo "ERROR: failed to extract ${glad_tarball}"; return 1; }
+    fi
+
+    # 4. jinja 3.1.6
+    local jinja_tarball="jinja-3.1.6.tar.gz"
+    local jinja_url="https://github.com/pallets/jinja/archive/refs/tags/3.1.6.tar.gz"
+    local jinja_dir="${builddir}/3rdparty/jinja"
+
+    if [ ! -s "${jinja_tarball}" ]; then
+        echo "Downloading ${jinja_tarball}..."
+        wget -L "${jinja_url}" -O "${jinja_tarball}" -o download.log
+        if [ $? -ne 0 ]; then
+            echo "ERROR: failed to download jinja"
+            return 1
+        fi
+        echo "a3558f89d9d60676583bfc05e8987e9c486c2335affb71c9733b93040d56a2f97fb036974f1be1bf82c5b0767f482b2e795d58ea35456fcfe7e705f5e6b7a778  ${jinja_tarball}" \
+            | sha512sum -c - || { echo "ERROR: jinja checksum mismatch"; rm -f "${jinja_tarball}"; return 1; }
+    fi
+
+    if [ ! -f "${jinja_dir}/src/jinja2/__init__.py" ]; then
+        mkdir -p "${jinja_dir}"
+        tar -xzf "${jinja_tarball}" --strip-components=1 -C "${jinja_dir}/" \
+            || { echo "ERROR: failed to extract ${jinja_tarball}"; return 1; }
+    fi
+
+    # 5. markupsafe 3.0.3
+    local ms_tarball="markupsafe-3.0.3.tar.gz"
+    local ms_url="https://github.com/pallets/markupsafe/archive/refs/tags/3.0.3.tar.gz"
+    local ms_dir="${builddir}/3rdparty/markupsafe"
+
+    if [ ! -s "${ms_tarball}" ]; then
+        echo "Downloading ${ms_tarball}..."
+        wget -L "${ms_url}" -O "${ms_tarball}" -o download.log
+        if [ $? -ne 0 ]; then
+            echo "ERROR: failed to download markupsafe"
+            return 1
+        fi
+        echo "2259dba158c37d06f87ef208603706f1d79b536124cec599ee634717d6061cccd89ee4bc8c35aa40ce9c728d595f2b802b6e68e9c7219c2f17135ed91854d777  ${ms_tarball}" \
+            | sha512sum -c - || { echo "ERROR: markupsafe checksum mismatch"; rm -f "${ms_tarball}"; return 1; }
+    fi
+
+    if [ ! -f "${ms_dir}/src/markupsafe/__init__.py" ]; then
+        mkdir -p "${ms_dir}"
+        tar -xzf "${ms_tarball}" --strip-components=1 -C "${ms_dir}/" \
+            || { echo "ERROR: failed to extract ${ms_tarball}"; return 1; }
+    fi
+
+    # 6. Copy meson cross file for current ARCH
+    cp "${ARCH}-cross-file.txt" "${builddir}/"
+
+    mkdir -p "${builddir}/${ARCH}-build"
+}
+
+build() {
+    cd ${builddir}
+
+    # Replace placeholders with actual paths
+    ohos_sdk_path=${OHOS_SDK//\//\\\/}
+    sed -i 's/ohos_sdk/'"$ohos_sdk_path"'/g' "$ARCH-cross-file.txt"
+    lycium_root_path=${LYCIUM_ROOT//\//\\\/}
+    sed -i 's/lycium_root/'"$lycium_root_path"'/g' "$ARCH-cross-file.txt"
+
+    # Set pkg-config path for glslang
+    export PKG_CONFIG_PATH="${LYCIUM_ROOT}/usr/glslang/${ARCH}/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+
+    vk_registry="$(pwd)/3rdparty/Vulkan-Headers/registry/vk.xml"
+
+    echo "[$pkgname/$ARCH] meson setup ..." >&2
+    meson setup ${ARCH}-build \
+        --cross-file ${ARCH}-cross-file.txt \
+        --prefix=${LYCIUM_ROOT}/usr/${pkgname}/${ARCH} \
+        --default-library=static \
+        --buildtype=release \
+        --wrap-mode=nodownload \
+        -Dd3d11=disabled \
+        -Ddemos=false \
+        -Dtests=false \
+        -Dbench=false \
+        -Dfuzz=false \
+        -Dopengl=enabled \
+        -Dgl-proc-addr=enabled \
+        -Dvulkan=enabled \
+        -Dvk-proc-addr=enabled \
+        -Dglslang=enabled \
+        -Dshaderc=disabled \
+        -Dvulkan-registry="$vk_registry" \
+        -Dvulkan-sdk="${LYCIUM_ROOT}/usr/glslang/${ARCH}" \
+        -Dlcms=disabled \
+        -Dlibdovi=disabled \
+        -Dunwind=disabled \
+        > "$buildlog" 2>&1
+
+    echo "[$pkgname/$ARCH] ninja ..." >&2
+    ninja -C "${ARCH}-build" >> "$buildlog" 2>&1
+    ret=$?
+    cd $OLDPWD
+    return $ret
+}
+
+package() {
+    cd ${builddir}
+    ninja -C "${ARCH}-build" install >> "$buildlog" 2>&1
+    ret=$?
+    cd $OLDPWD
+
+    # Fix libplacebo.pc: replace glslang .so absolute paths with -l<name>, and
+    # ensure -lglslang is present (meson only records SPIRV path, but glslang 15+
+    # still requires libglslang.so at link time for downstream static consumers).
+    local glslang_libdir="${LYCIUM_ROOT}/usr/glslang/${ARCH}/lib"
+    local pc_file="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/lib/pkgconfig/libplacebo.pc"
+    if [ -f "$pc_file" ]; then
+        sed -i "s|${glslang_libdir}/lib\([^/ ]*\)\.so|-l\1|g" "$pc_file"
+        if ! grep -Eq '(^| )-lglslang( |$)' "$pc_file"; then
+            sed -i "s|^Libs: \(.*\)|Libs: \1 -L${glslang_libdir} -lglslang|" "$pc_file"
+        fi
+    fi
+
+    return $ret
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+}
+
+cleanbuild() {
+    rm -rf "${PWD}/$builddir"
+}
