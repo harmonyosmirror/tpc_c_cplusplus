@@ -1,0 +1,122 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: panjinling@huawei.com
+# Maintainer: panjinling@huawei.com
+
+pkgname=lua_5.1.1
+pkgver=v5.1.1
+pkgrel=0
+pkgdesc="Lua is a powerful, efficient, lightweight, embeddable scripting language."
+url="https://www.lua.org"
+archs=("armeabi-v7a" "arm64-v8a")
+license=("MIT License")
+depends=()
+makedepends=()
+source="https://www.lua.org/ftp/lua-5.1.1.tar.gz"
+
+downloadpackage=true
+autounpack=true
+buildtools="make"
+
+builddir=lua-5.1.1
+packagename=$builddir.tar.gz
+
+source envset.sh
+
+cc=
+ar=
+ld=
+prepare() {
+    mkdir -p $builddir/build-$ARCH
+    if [ ! -d "$builddir/src" ]; then
+        echo "Error: $builddir/src not found, source unpack may have failed"
+        return 1
+    fi
+    cp -rf $builddir/src/* $builddir/build-$ARCH/
+    if [ $ARCH == "armeabi-v7a" ];then
+        setarm32ENV
+        cc=${OHOS_SDK}/native/llvm/bin/arm-linux-ohos-clang
+    elif [ $ARCH == "arm64-v8a" ];then
+        setarm64ENV
+        cc=${OHOS_SDK}/native/llvm/bin/aarch64-linux-ohos-clang
+    else
+        echo "$ARCH not support"
+        return 1
+    fi
+
+    ld=${OHOS_SDK}/native/llvm/bin/ld.lld
+    ar=${OHOS_SDK}/native/llvm/bin/llvm-ar
+}
+
+build() {
+    local EXTRA=""
+    if [ "$ARCH" == "armeabi-v7a" ]; then
+        EXTRA="--target=armv7-unknown-linux-ohos -march=armv7a -flto=thin"
+    else
+        EXTRA="-flto=thin"
+    fi
+
+    $MAKE \
+      CC=${cc} \
+      AR="${ar} rcu" \
+      RANLIB="${OHOS_SDK}/native/llvm/bin/llvm-ranlib" \
+      CFLAGS="-fPIC -O3 ${EXTRA}" \
+      LDFLAGS="${EXTRA}" \
+      MYLIBS="-ldl" \
+      SYSLIBS="-Wl,-E -ldl" \
+      all \
+      -C $builddir/build-$ARCH -B VERBOSE=1 > $buildlog 2>&1
+    return $?
+}
+
+package() {
+    local prefix="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}"
+    local pc_dir="${prefix}/lib/pkgconfig"
+
+    mkdir -p "${prefix}/include" "${prefix}/lib" "${prefix}/bin" "$pc_dir"
+    find ./$builddir/build-$ARCH -name '*.so' -exec cp -af {} "${prefix}/lib/" \;
+    find ./$builddir/build-$ARCH -name 'liblua.a' -exec cp -af {} "${prefix}/lib/" \;
+    find ./$builddir/build-$ARCH -name 'lua' -exec cp -af {} "${prefix}/bin/" \;
+    find ./$builddir/build-$ARCH -name 'luac' -exec cp -af {} "${prefix}/bin/" \;
+    find ./$builddir/build-$ARCH -name '*.h' -exec cp -af {} "${prefix}/include/" \;
+
+    cat >"${pc_dir}/lua-5.1.pc" <<EOF
+prefix=${prefix}
+exec_prefix=\${prefix}
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+Name: Lua
+Description: Lua 5.1
+Version: 5.1.1
+Libs: -L\${libdir} -llua -lm -ldl
+Cflags: -I\${includedir}
+EOF
+    cp -f "${pc_dir}/lua-5.1.pc" "${pc_dir}/lua5.1.pc"
+    cp -f "${pc_dir}/lua-5.1.pc" "${pc_dir}/lua51.pc"
+    cp -f "${pc_dir}/lua-5.1.pc" "${pc_dir}/lua.pc"
+}
+
+recoverpkgbuildenv() {
+    unset cc ar ld
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+}
+
+# 清理环境
+cleanbuild() {
+    rm -rf $builddir/build-$ARCH
+    rm -rf $builddir
+}

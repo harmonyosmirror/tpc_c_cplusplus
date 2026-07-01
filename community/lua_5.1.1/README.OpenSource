@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "lua_5.1.1",
+        "License": "MIT",
+        "License File": "https://www.lua.org/license.html",
+        "Version Number": "v5.1.1",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://www.lua.org/ftp/lua-5.1.1.tar.gz",
+        "Description": "Lua is a powerful, efficient, lightweight, embeddable scripting language."
+    }
+]
