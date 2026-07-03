@@ -6,6 +6,7 @@
                 <filteritem type="filepath" name="community/libplacebo/HPKBUILD" desc="工具线上扫描误报，线下自测无问题"/>
                 <filteritem type="filepath" name="community/libtasn1_4_19_0/HPKBUILD" desc="工具线上扫描误报，线下自测无问题"/>
                 <filteritem type="filepath" name="community/gnutls/HPKBUILD" desc="工具线上扫描误报，线下自测无问题"/>
+                <filteritem type="filepath" name="thirdparty/fluidsynth/HPKBUILD" desc="工具上扫描误报，线下自测无问题"/>
             </filefilter>
             <filefilter name="copyrightPolicyFilter" desc="Filters for compatibility，license header policies">
                 <filteritem type="filename" name="SHA512SUM" desc="SHA512SUM文件，不添加版权头"/>
