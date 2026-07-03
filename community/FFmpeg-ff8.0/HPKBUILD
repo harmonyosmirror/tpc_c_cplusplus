@@ -21,7 +21,7 @@ pkgdesc="FFmpeg is a collection of libraries and tools to process multimedia con
 url="https://github.com/FFmpeg/FFmpeg/"
 archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("LGPL License")
-depends=("rtmpdump_2.6" "openssl_3.4.3")
+depends=("rtmpdump_2.6" "openssl_3.4.3" "dav1d" "libxml2")
 makedepends=()
 source="https://github.com/FFmpeg/${pkgname:0:6}/archive/refs/tags/$pkgver.tar.gz"
 
@@ -36,6 +36,35 @@ buildhost=true
 arch=
 ldflags=
 HOST_CC=
+
+ohos_ffmpeg_hidden_libxml2_pc_tmp=""
+
+# libxml2 cmake 安装的 libxml-2.0.pc 的 Cflags 为 -I${includedir}/libxml2，
+# FFmpeg configure 检查 #include <libxml2/libxml/xmlversion.h> 需要 -I${prefix}/include。
+# 临时拷贝 .pc 修正后置于 PKG_CONFIG_LIBDIR 最前，不改动 libxml2 安装产物。
+ohos_ffmpeg_patch_libxml2_pc() {
+    local orig_pc="${LYCIUM_ROOT}/usr/libxml2/${ARCH}/lib/pkgconfig/libxml-2.0.pc"
+    local tmpdir tmp_pc
+    [ -f "$orig_pc" ] || return 0
+
+    tmpdir="${PWD}/.ohos_ffmpeg_libxml2_pc_tmp"
+    mkdir -p "$tmpdir"
+    tmp_pc="$tmpdir/libxml-2.0.pc"
+    cp "$orig_pc" "$tmp_pc"
+    # FFmpeg 检查 #include <libxml2/libxml/...> 需要 -I${prefix}/include；
+    # xmlversion.h 内部 #include <libxml/...> 还需要 -I${includedir}/libxml2。
+    sed -i 's|^Cflags: -I${includedir}/libxml2|Cflags: -I${prefix}/include -I${includedir}/libxml2|' "$tmp_pc"
+
+    pkgconfigpath="${tmpdir}:${pkgconfigpath}"
+    ohos_ffmpeg_hidden_libxml2_pc_tmp="${tmpdir}"
+}
+
+ohos_ffmpeg_restore_libxml2_pc() {
+    if [ -n "$ohos_ffmpeg_hidden_libxml2_pc_tmp" ] && [ -d "$ohos_ffmpeg_hidden_libxml2_pc_tmp" ]; then
+        rm -rf "$ohos_ffmpeg_hidden_libxml2_pc_tmp"
+    fi
+    ohos_ffmpeg_hidden_libxml2_pc_tmp=""
+}
 
 prepare() {
     if [ "$LYCIUM_BUILD_OS" == "Linux" ]
@@ -105,18 +134,28 @@ build() {
     local LOCAL_CFLAGS="${CFLAGS} -O3 -fstack-protector-strong -fPIC"
     local LOCAL_CXXFLAGS="${CXXFLAGS} -O3 -fstack-protector-strong -fPIC"
     local LOCAL_LDFLAGS="${LDFLAGS} -Wl,-z,relro,-z,now -Wl,--disable-new-dtags -s"
+    local ret=0
 
-    cd "$pkgname-$ARCH-build/$builddir"
+    # libxml-2.0.pc 的 Requires: liblzma，需要 xz 的 pkgconfig 路径
+    pkgconfigpath="$LYCIUM_ROOT/usr/xz/${ARCH}/lib/pkgconfig:${pkgconfigpath}"
 
     if [ "${ARCH}" == "x86_64" ]; then
         pkgconfigpath="$LYCIUM_ROOT/usr/openssl_3.4.3/x86_64/lib64/pkgconfig:${pkgconfigpath}"
     fi
+
+    ohos_ffmpeg_patch_libxml2_pc
+    trap ohos_ffmpeg_restore_libxml2_pc EXIT
+
+    cd "$pkgname-$ARCH-build/$builddir"
 
     CFLAGS="${LOCAL_CFLAGS}" \
     CXXFLAGS="${LOCAL_CXXFLAGS}" \
     LDFLAGS="${LOCAL_LDFLAGS}" \
     PKG_CONFIG_LIBDIR="${pkgconfigpath}" \
     ./configure "$@" \
+        --enable-ohcodec \
+        --enable-libdav1d \
+        --enable-libxml2 \
         --enable-neon \
         --enable-asm \
         --enable-network \
@@ -141,10 +180,15 @@ build() {
         --host-os=linux \
         --sysroot="${OHOS_SDK}/native/sysroot" \
         > "$buildlog" 2>&1
+    ret=$?
+    if [ $ret -eq 0 ]; then
+        $MAKE >> "$buildlog" 2>&1
+        ret=$?
+    fi
 
-    $MAKE >> "$buildlog" 2>&1
-    local ret=$?
     cd "$OLDPWD"
+    ohos_ffmpeg_restore_libxml2_pc
+    trap - EXIT
     return $ret
 }
 
