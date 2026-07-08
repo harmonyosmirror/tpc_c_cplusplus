@@ -19,7 +19,7 @@ pkgver=v5.1.1
 pkgrel=0
 pkgdesc="Lua is a powerful, efficient, lightweight, embeddable scripting language."
 url="https://www.lua.org"
-archs=("armeabi-v7a" "arm64-v8a")
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=("MIT License")
 depends=()
 makedepends=()
@@ -50,6 +50,9 @@ prepare() {
     elif [ $ARCH == "arm64-v8a" ];then
         setarm64ENV
         cc=${OHOS_SDK}/native/llvm/bin/aarch64-linux-ohos-clang
+    elif [ $ARCH == "x86_64" ];then
+        setx86_64ENV
+        cc=${OHOS_SDK}/native/llvm/bin/x86_64-linux-ohos-clang
     else
         echo "$ARCH not support"
         return 1
