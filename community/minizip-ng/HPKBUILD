@@ -14,7 +14,7 @@
 # Contributor: lpzhong <278527840@qq.com>
 # Maintainer: lpzhong <278527840@qq.com>
 pkgname=minizip-ng
-pkgver=4.0.0
+pkgver=4.2.2
 pkgrel=0
 pkgdesc="minizip-ng is a zip manipulation library written in C that is supported on Windows, macOS, and Linux."
 url="https://github.com/zlib-ng/minizip-ng"
@@ -37,7 +37,7 @@ prepare() {
     then
         cd $builddir
         # patch只需要打一次,关闭打patch
-        patch -p1 < $PKGBUILD_ROOT/minizip_oh_pkg.patch
+        # patch -p1 < $PKGBUILD_ROOT/minizip_oh_pkg.patch
         cd $OLDPWD
         patchflag=false
     fi
