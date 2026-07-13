@@ -10,7 +10,7 @@ libplacebo 是 mpv 使用的 GPU 视频/图像渲染库，提供色彩管理、�
 
 ## 已适配功能
 
-- OpenGL 后端静态库交叉编译（armeabi-v7a / arm64-v8a）
+- OpenGL 后端静态库交叉编译（armeabi-v7a / arm64-v8a / x86_64）
 - 关闭 D3D11、demos、tests 等非必要组件
 
 ## 使用约束
