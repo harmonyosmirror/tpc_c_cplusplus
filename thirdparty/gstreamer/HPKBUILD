@@ -105,6 +105,9 @@ build() {
         -Dgst-plugins-bad:tests=enabled \
         -Dgst-plugins-ugly:tests=enabled \
         -Dgst-libav:tests=enabled \
+        -Dnghttp2:default_library=shared \
+        -Dgst-plugins-bad:ohos=enabled \
+        -Dgst-plugins-base:vorbis=enabled \
         > $buildlog 2>&1
 
     echo "meson setup end." | tee -a $buildlog
