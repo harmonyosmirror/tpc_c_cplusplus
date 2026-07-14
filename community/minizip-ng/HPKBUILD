@@ -37,7 +37,7 @@ prepare() {
     then
         cd $builddir
         # patch只需要打一次,关闭打patch
-        # patch -p1 < $PKGBUILD_ROOT/minizip_oh_pkg.patch
+        patch -p1 < $PKGBUILD_ROOT/minizip_oh_pkg.patch
         cd $OLDPWD
         patchflag=false
     fi
