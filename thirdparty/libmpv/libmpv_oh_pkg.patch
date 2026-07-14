@@ -1,0 +1,1928 @@
+diff --git a/audio/out/ao.c b/audio/out/ao.c
+index 4e5e9e3..a3825ee 100644
+--- a/audio/out/ao.c
++++ b/audio/out/ao.c
+@@ -55,6 +55,7 @@ extern const struct ao_driver audio_out_pcm;
+ extern const struct ao_driver audio_out_lavc;
+ extern const struct ao_driver audio_out_sdl;
+ extern const struct ao_driver audio_out_aaudio;
++extern const struct ao_driver audio_out_ohaudio;
+ 
+ static const struct ao_driver * const audio_out_drivers[] = {
+ // native:
+@@ -64,6 +65,9 @@ static const struct ao_driver * const audio_out_drivers[] = {
+ #if HAVE_AAUDIO
+     &audio_out_aaudio,
+ #endif
++#if HAVE_OHAUDIO
++    &audio_out_ohaudio,
++#endif
+ #if HAVE_AUDIOUNIT
+     &audio_out_audiounit,
+ #endif
+diff --git a/audio/out/ao_ohaudio.c b/audio/out/ao_ohaudio.c
+new file mode 100755
+index 0000000..55a3047
+--- /dev/null
++++ b/audio/out/ao_ohaudio.c
+@@ -0,0 +1,333 @@
++/*
++ * OpenHarmony audio output driver.
++ *
++ * Simplified implementation with multi-format support.
++ */
++
++#include <inttypes.h>
++#include <limits.h>
++#include <string.h>
++#include <time.h>
++
++#include "ao.h"
++#include "internal.h"
++
++#include "common/common.h"
++#include "common/msg.h"
++#include "audio/format.h"
++#include "osdep/timer.h"
++
++#include <ohaudio/native_audiorenderer.h>
++#include <ohaudio/native_audiostream_base.h>
++#include <ohaudio/native_audiostreambuilder.h>
++
++#include "options/m_option.h"
++
++struct priv {
++    OH_AudioRenderer *renderer;
++    OH_AudioStreamBuilder *builder;
++
++    int32_t buffer_capacity;
++    int latency_mode;
++
++    int64_t presented;
++    int64_t discarded;
++    int64_t last_timestamp_query_ns;
++};
++
++#define OH_TIMESTAMP_QUERY_INTERVAL_NS MP_TIME_MS_TO_NS(200)
++
++static int get_ohaudio_bytes_per_sample(int format)
++{
++    switch (format) {
++    case AF_FORMAT_U8:
++        return 1;
++    case AF_FORMAT_S16:
++    case AF_FORMAT_S16P:
++        return 2;
++    case AF_FORMAT_S32:
++    case AF_FORMAT_S32P:
++    case AF_FORMAT_FLOAT:
++    case AF_FORMAT_FLOATP:
++        return 4;
++    default:
++        return 4;
++    }
++}
++
++static OH_AudioData_Callback_Result audio_renderer_write_callback(
++    OH_AudioRenderer *renderer, void *userData, void *audioData, int32_t audioDataSize)
++{
++    struct ao *ao = userData;
++    if (!ao || !ao->priv || !audioData || audioDataSize <= 0) {
++        return AUDIO_DATA_CALLBACK_RESULT_INVALID;
++    }
++
++    struct priv *p = ao->priv;
++
++    const int bytes_per_frame = ao->channels.num * get_ohaudio_bytes_per_sample(ao->format);
++    if (bytes_per_frame <= 0 || (audioDataSize % bytes_per_frame)) {
++        memset(audioData, 0, (size_t)audioDataSize);
++        return AUDIO_DATA_CALLBACK_RESULT_VALID;
++    }
++
++    int frames = audioDataSize / bytes_per_frame;
++
++    int64_t written = 0;
++    if (OH_AudioRenderer_GetFramesWritten(renderer, &written) != AUDIOSTREAM_SUCCESS)
++        written = p->presented + p->discarded;
++
++    int64_t presented = p->presented;
++    int64_t now = mp_time_ns();
++    if (now - p->last_timestamp_query_ns >= OH_TIMESTAMP_QUERY_INTERVAL_NS) {
++        int64_t frame_position = presented;
++        int64_t present_time = 0;
++        if (OH_AudioRenderer_GetTimestamp(renderer, CLOCK_MONOTONIC, &frame_position,
++                                          &present_time) == AUDIOSTREAM_SUCCESS) {
++            p->presented = frame_position;
++            p->last_timestamp_query_ns = now;
++        }
++        presented = p->presented;
++    }
++
++    int64_t end_time = mp_time_ns();
++    if (ao->samplerate > 0) {
++        end_time += MP_TIME_S_TO_NS(frames) / ao->samplerate;
++        end_time += MP_TIME_S_TO_NS(written - (presented + p->discarded)) / ao->samplerate;
++    }
++
++    void *planes[1] = { audioData };
++    ao_read_data(ao, planes, frames, end_time, NULL, true, true);
++
++    return AUDIO_DATA_CALLBACK_RESULT_VALID;
++}
++
++static void ohaudio_try_set_callback_frame_size(struct ao *ao, OH_AudioStreamBuilder *builder)
++{
++    struct priv *p = ao->priv;
++    if (p->buffer_capacity <= 0)
++        return;
++
++    int32_t period = p->buffer_capacity / 4;
++    int32_t period_max = MPMAX(ao->samplerate / 20, 1);
++    period = MPCLAMP(period, 1, period_max);
++
++    OH_AudioStream_Result ret =
++        OH_AudioStreamBuilder_SetFrameSizeInCallback(builder, period);
++    if (ret != AUDIOSTREAM_SUCCESS) {
++        MP_WARN(ao, "SetFrameSizeInCallback(%" PRId32 ") failed (%d); using default\n",
++                period, (int)ret);
++    }
++}
++
++static int init(struct ao *ao)
++{
++    struct priv *p = ao->priv;
++
++    p->renderer = NULL;
++    p->builder = NULL;
++    p->presented = 0;
++    p->discarded = 0;
++    p->last_timestamp_query_ns = 0;
++
++    if (af_fmt_is_spdif(ao->format)) {
++        MP_ERR(ao, "SPDIF passthrough is not supported on OHAudio.\n");
++        return -1;
++    }
++
++    OH_AudioStream_SampleFormat oh_format;
++
++    if (af_fmt_is_float(ao->format)) {
++        ao->format = AF_FORMAT_FLOAT;
++        oh_format = AUDIOSTREAM_SAMPLE_F32LE;
++        MP_DBG(ao, "ohaudio: using F32LE format\n");
++    } else if (af_fmt_is_int(ao->format)) {
++        if (af_fmt_to_bytes(ao->format) > 2) {
++            ao->format = AF_FORMAT_S32;
++            oh_format = AUDIOSTREAM_SAMPLE_S32LE;
++            MP_DBG(ao, "ohaudio: using S32LE format\n");
++        } else {
++            ao->format = AF_FORMAT_S16;
++            oh_format = AUDIOSTREAM_SAMPLE_S16LE;
++            MP_DBG(ao, "ohaudio: using S16LE format\n");
++        }
++    } else {
++        ao->format = AF_FORMAT_S32;
++        oh_format = AUDIOSTREAM_SAMPLE_S32LE;
++        MP_DBG(ao, "ohaudio: fallback to S32LE format\n");
++    }
++
++    OH_AudioStream_Result ret;
++
++    ret = OH_AudioStreamBuilder_Create(&p->builder, AUDIOSTREAM_TYPE_RENDERER);
++    if (ret != AUDIOSTREAM_SUCCESS) {
++        MP_ERR(ao, "Failed to create audio stream builder\n");
++        return -1;
++    }
++
++    ret = OH_AudioStreamBuilder_SetSamplingRate(p->builder, ao->samplerate);
++    if (ret != AUDIOSTREAM_SUCCESS) {
++        MP_ERR(ao, "OH_AudioStreamBuilder_SetSamplingRate(%d) failed (%d)\n", ao->samplerate, (int)ret);
++        goto fail;
++    }
++
++    ret = OH_AudioStreamBuilder_SetChannelCount(p->builder, ao->channels.num);
++    if (ret != AUDIOSTREAM_SUCCESS) {
++        MP_ERR(ao, "OH_AudioStreamBuilder_SetChannelCount(%d) failed (%d)\n", ao->channels.num, (int)ret);
++        goto fail;
++    }
++
++    ret = OH_AudioStreamBuilder_SetSampleFormat(p->builder, oh_format);
++    if (ret != AUDIOSTREAM_SUCCESS) {
++        MP_WARN(ao, "Failed to set sample format %d, trying S32LE fallback\n", (int)oh_format);
++        oh_format = AUDIOSTREAM_SAMPLE_S32LE;
++        ao->format = AF_FORMAT_S32;
++        ret = OH_AudioStreamBuilder_SetSampleFormat(p->builder, oh_format);
++        if (ret != AUDIOSTREAM_SUCCESS) {
++            MP_ERR(ao, "OH_AudioStreamBuilder_SetSampleFormat(S32LE) failed (%d)\n", (int)ret);
++            goto fail;
++        }
++    }
++
++    ret = OH_AudioStreamBuilder_SetEncodingType(p->builder, AUDIOSTREAM_ENCODING_TYPE_RAW);
++    if (ret != AUDIOSTREAM_SUCCESS) {
++        MP_ERR(ao, "OH_AudioStreamBuilder_SetEncodingType() failed (%d)\n", (int)ret);
++        goto fail;
++    }
++
++    ret = OH_AudioStreamBuilder_SetLatencyMode(p->builder,
++                                               (OH_AudioStream_LatencyMode)p->latency_mode);
++    if (ret != AUDIOSTREAM_SUCCESS) {
++        MP_ERR(ao, "OH_AudioStreamBuilder_SetLatencyMode(%d) failed (%d)\n", p->latency_mode, (int)ret);
++        goto fail;
++    }
++
++    ret = OH_AudioStreamBuilder_SetRendererInfo(p->builder, AUDIOSTREAM_USAGE_MUSIC);
++    if (ret != AUDIOSTREAM_SUCCESS) {
++        MP_ERR(ao, "OH_AudioStreamBuilder_SetRendererInfo() failed (%d)\n", (int)ret);
++        goto fail;
++    }
++
++    ohaudio_try_set_callback_frame_size(ao, p->builder);
++
++    ret = OH_AudioStreamBuilder_SetRendererWriteDataCallback(p->builder,
++                                                             audio_renderer_write_callback, ao);
++    if (ret != AUDIOSTREAM_SUCCESS) {
++        MP_ERR(ao, "Failed to set OHAudio write callback\n");
++        goto fail;
++    }
++
++    ret = OH_AudioStreamBuilder_GenerateRenderer(p->builder, &p->renderer);
++    if (ret != AUDIOSTREAM_SUCCESS || !p->renderer) {
++        MP_ERR(ao, "Failed to generate OHAudio renderer\n");
++        goto fail;
++    }
++
++    int32_t cb_frames = 0;
++    OH_AudioRenderer_GetFrameSizeInCallback(p->renderer, &cb_frames);
++
++    if (p->buffer_capacity > 0) {
++        ao->device_buffer = p->buffer_capacity;
++    } else if (cb_frames > 0) {
++        ao->device_buffer = MPMAX(cb_frames * 4, cb_frames);
++    } else {
++        ao->device_buffer = MPMAX(ao->samplerate / 10, 1);
++    }
++
++    MP_VERBOSE(ao, "ohaudio: format=%s, device_buffer=%d samples (callback frames=%" PRId32 ")\n",
++               af_fmt_to_str(ao->format), ao->device_buffer, cb_frames);
++
++    OH_AudioStreamBuilder_Destroy(p->builder);
++    p->builder = NULL;
++
++    return 0;
++
++fail:
++    OH_AudioStreamBuilder_Destroy(p->builder);
++    p->builder = NULL;
++    return -1;
++}
++
++static void uninit(struct ao *ao)
++{
++    struct priv *p = ao->priv;
++
++    if (p->renderer) {
++        OH_AudioRenderer_Stop(p->renderer);
++        OH_AudioRenderer_Release(p->renderer);
++        p->renderer = NULL;
++    }
++
++    if (p->builder) {
++        OH_AudioStreamBuilder_Destroy(p->builder);
++        p->builder = NULL;
++    }
++}
++
++static void reset(struct ao *ao)
++{
++    struct priv *p = ao->priv;
++
++    if (p->renderer)
++        OH_AudioRenderer_Stop(p->renderer);
++}
++
++static bool set_pause(struct ao *ao, bool paused)
++{
++    struct priv *p = ao->priv;
++    if (!p->renderer)
++        return true;
++
++    OH_AudioStream_Result ret = paused ? OH_AudioRenderer_Pause(p->renderer) : OH_AudioRenderer_Start(p->renderer);
++    if (ret != AUDIOSTREAM_SUCCESS) {
++        MP_ERR(ao, "OH_AudioRenderer_%s failed (%d)\n", paused ? "Pause" : "Start", (int)ret);
++        ao_request_reload(ao);
++        return false;
++    }
++
++    return true;
++}
++
++static void start(struct ao *ao)
++{
++    struct priv *p = ao->priv;
++
++    if (p->renderer) {
++        int64_t written = 0;
++        if (OH_AudioRenderer_GetFramesWritten(p->renderer, &written) == AUDIOSTREAM_SUCCESS)
++            p->discarded = written - p->presented;
++        p->last_timestamp_query_ns = 0;
++        OH_AudioRenderer_Start(p->renderer);
++    }
++}
++
++#define OPT_BASE_STRUCT struct priv
++
++static const struct m_option ohaudio_opts[] = {
++    {"buffer-capacity",
++        OPT_CHOICE(buffer_capacity, {"auto", 0}),
++        M_RANGE(1, INT32_MAX)},
++    {"performance-mode",
++        OPT_CHOICE(latency_mode,
++            {"none", AUDIOSTREAM_LATENCY_MODE_NORMAL},
++            {"low-latency", AUDIOSTREAM_LATENCY_MODE_FAST},
++            {"power-saving", AUDIOSTREAM_LATENCY_MODE_NORMAL})},
++    {0},
++};
++
++const struct ao_driver audio_out_ohaudio = {
++    .name = "ohaudio",
++    .description = "OpenHarmony audio output",
++    .priv_size = sizeof(struct priv),
++    .priv_defaults = &(const struct priv) {
++        .buffer_capacity = 0,
++        .latency_mode = AUDIOSTREAM_LATENCY_MODE_NORMAL,
++    },
++    .options = ohaudio_opts,
++    .options_prefix = "ohaudio",
++    .init = init,
++    .uninit = uninit,
++    .reset = reset,
++    .set_pause = set_pause,
++    .start = start,
++};
+diff --git a/meson.build b/meson.build
+index fb10be5..ee70f21 100644
+--- a/meson.build
++++ b/meson.build
+@@ -477,6 +477,18 @@ if features['android']
+                      'video/out/vo_mediacodec_embed.c')
+ endif
+ 
++# OpenHarmony: surface decode via FFmpeg ohosavcodec + OHNativeWindow (--wid)
++features += {'ohos-avcodec-embed': get_option('ohos-avcodec-embed')}
++if features['ohos-avcodec-embed']
++    sources += files('video/out/vo_ohos_avcodec_embed.c')
++endif
++
++# OpenHarmony: audio output via OHAudio
++features += {'ohaudio': get_option('ohaudio')}
++if features['ohaudio']
++    sources += files('audio/out/ao_ohaudio.c')
++endif
++
+ uwp_opt = get_option('uwp').require(
+     not get_option('cplayer'),
+     error_message: 'cplayer is not false!',
+@@ -1235,6 +1247,17 @@ if features['egl-android']
+     sources += files('video/out/opengl/context_android.c')
+ endif
+ 
++egl_ohos_opt = get_option('egl-ohos').require(gl_allowed, error_message: 'gl was not enabled')
++egl_ohos_egl = cc.find_library('EGL', required: egl_ohos_opt)
++egl_ohos_nw = cc.find_library('native_window', required: egl_ohos_opt)
++features += {'egl-ohos': egl_ohos_egl.found() and egl_ohos_nw.found()}
++if features['egl-ohos']
++    dependencies += [egl_ohos_egl, egl_ohos_nw]
++    features += {'gl': true}
++    sources += files('video/out/ohos_common.c',
++                     'video/out/opengl/context_ohos.c')
++endif
++
+ egl_drm = get_option('egl-drm').require(
+     features['drm'] and features['egl'] and features['gbm'] and gl_allowed,
+     error_message: 'either drm, egl, or gbm could not be found!',
+@@ -1275,11 +1298,11 @@ if plain_gl.allowed()
+     features += {'gl': true}
+ endif
+ 
+-if features['egl'] or features['egl-android'] or features['egl-angle-win32']
++if features['egl'] or features['egl-android'] or features['egl-angle-win32'] or features['egl-ohos']
+     sources += files('video/out/opengl/egl_helpers.c')
+ endif
+ 
+-if features['gl'] and features['egl']
++if features['gl'] and (features['egl'] or features['egl-android'] or features['egl-ohos'])
+     sources += files('video/filter/vf_gpu_egl.c')
+ endif
+ 
+@@ -1318,6 +1341,10 @@ if features['vulkan'] and features['android']
+     sources += files('video/out/vulkan/context_android.c')
+ endif
+ 
++if features['vulkan'] and features['egl-ohos']
++    sources += files('video/out/vulkan/context_ohos.c')
++endif
++
+ if features['vulkan'] and features['wayland']
+     sources += files('video/out/vulkan/context_wayland.c')
+ endif
+@@ -1384,6 +1411,19 @@ if features['android-media-ndk']
+     sources += files('video/out/hwdec/hwdec_aimagereader.c')
+ endif
+ 
++ohos_native_image_opt = get_option('ohos-native-image').require(
++    features['ohos-avcodec-embed'] and features['egl-ohos'],
++    error_message: 'ohos-native-image requires ohos-avcodec-embed and egl-ohos',
++)
++ohos_native_image = cc.find_library('native_image', required: ohos_native_image_opt)
++ohos_native_image_hdr = cc.has_header('native_image/native_image.h',
++    required: ohos_native_image_opt)
++features += {'ohos-native-image': ohos_native_image.found() and ohos_native_image_hdr}
++if features['ohos-native-image']
++    dependencies += ohos_native_image
++    sources += files('video/out/hwdec/hwdec_ohnativeimage.c')
++endif
++
+ d3d_hwaccel = get_option('d3d-hwaccel').require(
+     win32,
+     error_message: 'the os is not win32!',
+diff --git a/meson.options b/meson.options
+index 52782f7..1904a03 100644
+--- a/meson.options
++++ b/meson.options
+@@ -54,6 +54,7 @@ option('pulse', type: 'feature', value: 'auto', description: 'PulseAudio audio o
+ option('sdl2-audio', type: 'feature', value: 'disabled', description: 'SDL2 audio output')
+ option('sndio', type: 'feature', value: 'auto', description: 'sndio audio output')
+ option('wasapi', type: 'feature', value: 'auto', description: 'WASAPI audio output')
++option('ohaudio', type: 'boolean', value: false, description: 'OpenHarmony audio output')
+ 
+ # video output features
+ option('caca', type: 'feature', value: 'auto', description: 'CACA')
+@@ -64,6 +65,8 @@ option('dmabuf-wayland', type: 'feature', value: 'auto', description: 'dmabuf-wa
+ option('drm', type: 'feature', value: 'auto', description: 'Direct Rendering Manager (DRM)')
+ option('egl', type: 'feature', value: 'auto', description: 'EGL 1.4')
+ option('egl-android', type: 'feature', value: 'auto', description: 'Android EGL support')
++option('egl-ohos', type: 'feature', value: 'disabled',
++       description: 'OpenHarmony EGL (OHNativeWindow / XComponent --wid) for vo=gpu soft video')
+ option('egl-angle', type: 'feature', value: 'auto', description: 'OpenGL ANGLE headers')
+ option('egl-angle-lib', type: 'feature', value: 'auto', description: 'OpenGL Win32 ANGLE library')
+ option('egl-angle-win32', type: 'feature', value: 'auto', description: 'OpenGL Win32 ANGLE backend')
+@@ -92,6 +95,10 @@ option('vulkan', type: 'feature', value: 'auto', description: 'Vulkan context su
+ option('wayland', type: 'feature', value: 'auto', description: 'Wayland')
+ option('x11', type: 'feature', value: 'auto', description: 'X11')
+ option('xv', type: 'feature', value: 'auto', description: 'Xv video output')
++option('ohos-avcodec-embed', type: 'boolean', value: false,
++       description: 'OpenHarmony AVCodec embedded surface output (requires FFmpeg ohosavcodec)')
++option('ohos-native-image', type: 'feature', value: 'auto',
++       description: 'OpenHarmony NativeImage hwdec interop for vo=gpu + ohcodec (like aimagereader)')
+ 
+ # hwaccel features
+ option('android-media-ndk', type: 'feature', value: 'auto', description: 'Android Media APIs')
+diff --git a/options/options.c b/options/options.c
+index 716c3e6..caa702e 100644
+--- a/options/options.c
++++ b/options/options.c
+@@ -245,6 +245,9 @@ static const m_option_t mp_vo_opt_list[] = {
+ #if HAVE_EGL_ANDROID
+     {"android-surface-size", OPT_SIZE_BOX(android_surface_size)},
+ #endif
++#if HAVE_EGL_OHOS
++    {"ohos-surface-size", OPT_SIZE_BOX(ohos_surface_size)},
++#endif
+ #if HAVE_D3D11
+     {"d3d11-composition-size", OPT_SIZE_BOX(d3d11_composition_size)},
+ #endif
+@@ -928,7 +931,7 @@ static const m_option_t mp_opts[] = {
+     {"", OPT_SUBSTRUCT(opengl_opts, opengl_conf)},
+ #endif
+ 
+-#if HAVE_EGL || HAVE_EGL_ANDROID || HAVE_EGL_ANGLE_WIN32
++#if HAVE_EGL || HAVE_EGL_ANDROID || HAVE_EGL_ANGLE_WIN32 || HAVE_EGL_OHOS
+     {"egl", OPT_SUBSTRUCT(egl_opts, egl_conf)},
+ #endif
+ 
+diff --git a/options/options.h b/options/options.h
+index 12dafea..58fe0eb 100644
+--- a/options/options.h
++++ b/options/options.h
+@@ -86,6 +86,8 @@ typedef struct mp_vo_opts {
+ 
+     struct m_geometry android_surface_size;
+ 
++    struct m_geometry ohos_surface_size;
++
+     struct m_geometry d3d11_composition_size;
+ 
+     int swapchain_depth;  // max number of images to render ahead
+diff --git a/player/command.c b/player/command.c
+index 96bc06a..60be42f 100644
+--- a/player/command.c
++++ b/player/command.c
+@@ -8017,7 +8017,8 @@ void mp_option_run_callback(struct MPContext *mpctx, struct mp_option_callback *
+             queue_seek(mpctx, MPSEEK_RELATIVE, 0.0, MPSEEK_EXACT, 0);
+     }
+ 
+-    if (opt_ptr == &opts->vo->android_surface_size || opt_ptr == &opts->vo->d3d11_composition_size) {
++    if (opt_ptr == &opts->vo->android_surface_size || opt_ptr == &opts->vo->d3d11_composition_size
++        || opt_ptr == &opts->vo->ohos_surface_size) {
+         if (mpctx->video_out)
+             vo_control(mpctx->video_out, VOCTRL_EXTERNAL_RESIZE, NULL);
+     }
+diff --git a/player/lua.c b/player/lua.c
+index 2180bd0..721b668 100644
+--- a/player/lua.c
++++ b/player/lua.c
+@@ -491,8 +491,14 @@ static int load_lua(struct mp_script_args *args)
+     r = 0;
+ 
+ error_out:
++#if HAVE_OHOS_AVCODEC_EMBED
++    /* OHOS Clang -Wuninitialized: error_out may be reached before L is declared. */
++    if (ctx->lua_allocf && ctx->state)
++        lua_setallocf(ctx->state, ctx->lua_allocf, ctx->lua_alloc_ud);
++#else
+     if (ctx->lua_allocf)
+         lua_setallocf(L, ctx->lua_allocf, ctx->lua_alloc_ud);
++#endif
+     if (ctx->state)
+         lua_close(ctx->state);
+     talloc_free(ctx);
+diff --git a/player/video.c b/player/video.c
+index 0e1ac29..ad094d5 100644
+--- a/player/video.c
++++ b/player/video.c
+@@ -40,6 +40,9 @@
+ #include "video/hwdec.h"
+ #include "filters/f_decoder_wrapper.h"
+ #include "video/out/vo.h"
++#if HAVE_OHOS_NATIVE_IMAGE
++#include "video/out/hwdec/hwdec_oh.h"
++#endif
+ 
+ #include "core.h"
+ #include "command.h"
+@@ -522,6 +525,9 @@ static int video_output_image(struct MPContext *mpctx, bool *logical_eof)
+                                   mpctx->hrseek_lastframe))
+             {
+                 /* just skip - but save in case it was the last frame */
++#if HAVE_OHOS_NATIVE_IMAGE
++                mp_image_discard_ohcodec(mpctx->saved_frame);
++#endif
+                 mp_image_setrefp(&mpctx->saved_frame, img);
+             } else {
+                 if (hrseek && mpctx->hrseek_backstep) {
+@@ -533,6 +539,9 @@ static int video_output_image(struct MPContext *mpctx, bool *logical_eof)
+                     }
+                     mpctx->hrseek_backstep = false;
+                 }
++#if HAVE_OHOS_NATIVE_IMAGE
++                mp_image_discard_ohcodec(mpctx->saved_frame);
++#endif
+                 mp_image_unrefp(&mpctx->saved_frame);
+                 add_new_frame(mpctx, img);
+                 img = NULL;
+diff --git a/video/decode/vd_lavc.c b/video/decode/vd_lavc.c
+index 399e1d5..6937a95 100644
+--- a/video/decode/vd_lavc.c
++++ b/video/decode/vd_lavc.c
+@@ -29,6 +29,11 @@
+ #include <libavutil/intreadwrite.h>
+ #include <libavutil/pixdesc.h>
+ 
++#include "config.h"
++#if HAVE_OHOS_NATIVE_IMAGE
++#include <libavutil/hwcontext_oh.h>
++#endif
++
+ #include "mpv_talloc.h"
+ #include "common/msg.h"
+ #include "options/m_config.h"
+@@ -242,6 +247,12 @@ typedef struct lavc_ctx {
+ 
+     AVBufferRef *cached_hw_frames_ctx;
+ 
++#if HAVE_OHOS_AVCODEC_EMBED
++    /* ohdec has no output-EOS state: do not call avcodec_receive_frame again after the first EOF,
++     * or it blocks in ff_cond_wait. */
++    bool ohcodec_lavc_eof;
++#endif
++
+     // --- The following fields are protected by dr_lock.
+     mp_mutex dr_lock;
+     bool dr_failed;
+@@ -271,6 +282,8 @@ const struct autoprobe_info hwdec_autoprobe_info[] = {
+     {"vdpau",           HWDEC_FLAG_AUTO},
+     {"drm",             HWDEC_FLAG_AUTO | HWDEC_FLAG_WHITELIST},
+     {"mediacodec",      HWDEC_FLAG_AUTO},
++    {"ohcodec",         HWDEC_FLAG_AUTO},
++    {"ohcodec-copy",    HWDEC_FLAG_AUTO | HWDEC_FLAG_WHITELIST},
+     {"videotoolbox",    HWDEC_FLAG_AUTO | HWDEC_FLAG_WHITELIST},
+     {"d3d11va-copy",    HWDEC_FLAG_AUTO | HWDEC_FLAG_WHITELIST},
+     {"vulkan-copy",     HWDEC_FLAG_AUTO | HWDEC_FLAG_WHITELIST},
+@@ -762,6 +775,32 @@ static void init_avctx(struct mp_filter *vd)
+         avctx->hwaccel_flags |= AV_HWACCEL_FLAG_UNSAFE_OUTPUT;
+ #endif
+ 
++#if HAVE_OHOS_NATIVE_IMAGE
++        /* FFmpeg patch equivalent: output_to_window only when native_window
++         * is set. Without a surface, ohcodec-copy uses NV12 (no get_format). */
++        bool oh_no_surface = false;
++        if (ctx->hwdec_dev && ctx->hwdec.lavc_device == AV_HWDEVICE_TYPE_OHCODEC) {
++            AVHWDeviceContext *d = (AVHWDeviceContext *)ctx->hwdec_dev->data;
++            oh_no_surface = !((AVOHCodecDeviceContext *)d->hwctx)->native_window;
++        }
++
++        if (ctx->hwdec.use_hw_device) {
++            if (ctx->hwdec_dev && !oh_no_surface)
++                avctx->hw_device_ctx = av_buffer_ref(ctx->hwdec_dev);
++            if (oh_no_surface && ctx->hwdec.copying) {
++                /* allowed: decoder runs without hw_device_ctx */
++            } else if (!avctx->hw_device_ctx) {
++                goto error;
++            }
++        }
++
++        if (ctx->hwdec.use_hw_frames) {
++            if (!ctx->hwdec_dev)
++                goto error;
++        }
++
++        if (ctx->hwdec.pix_fmt != AV_PIX_FMT_NONE && !oh_no_surface)
++#else
+         if (ctx->hwdec.use_hw_device) {
+             if (ctx->hwdec_dev)
+                 avctx->hw_device_ctx = av_buffer_ref(ctx->hwdec_dev);
+@@ -774,6 +813,7 @@ static void init_avctx(struct mp_filter *vd)
+         }
+ 
+         if (ctx->hwdec.pix_fmt != AV_PIX_FMT_NONE)
++#endif
+             avctx->get_format = get_format_hwdec;
+ 
+         // Some APIs benefit from this, for others it's additional bloat.
+@@ -882,6 +922,9 @@ static void reset_avctx(struct mp_filter *vd)
+         avcodec_flush_buffers(ctx->avctx);
+     ctx->flushing = false;
+     ctx->hwdec_request_reinit = false;
++#if HAVE_OHOS_AVCODEC_EMBED
++    ctx->ohcodec_lavc_eof = false;
++#endif
+ }
+ 
+ static void flush_all(struct mp_filter *vd)
+@@ -1169,6 +1212,11 @@ static int send_packet(struct mp_filter *vd, struct demux_packet *pkt)
+     vd_ffmpeg_ctx *ctx = vd->priv;
+     AVCodecContext *avctx = ctx->avctx;
+ 
++#if HAVE_OHOS_AVCODEC_EMBED
++    if (pkt)
++        ctx->ohcodec_lavc_eof = false;
++#endif
++
+     if (ctx->num_requeue_packets && ctx->requeue_packets[0] != pkt)
+         return AVERROR(EAGAIN); // cannot consume the packet
+ 
+@@ -1228,14 +1276,37 @@ static int decode_frame(struct mp_filter *vd)
+     if (ctx->num_requeue_packets)
+         send_queued_packet(vd);
+ 
++#if HAVE_OHOS_AVCODEC_EMBED
++    if (ctx->ohcodec_lavc_eof) {
++        /* lavc_process tries receive before send; after ohcodec flush-EOF we
++         * must not call avcodec_receive_frame again (blocks in ohdec), but we
++         * still need to accept new packets after seek/stop. */
++        if (mp_pin_out_request_data(vd->ppins[0]))
++            return AVERROR(EAGAIN);
++        return AVERROR_EOF;
++    }
++#endif
++
+     int ret = avcodec_receive_frame(avctx, ctx->pic);
+     if (ret < 0) {
+         if (ret == AVERROR_EOF) {
++#if HAVE_OHOS_AVCODEC_EMBED
++            bool ohcodec_eof = false;
++            if (ctx->use_hwdec &&
++                ctx->hwdec.lavc_device == AV_HWDEVICE_TYPE_OHCODEC) {
++                ctx->ohcodec_lavc_eof = true;
++                ohcodec_eof = true;
++            }
++#endif
+             // If flushing was initialized earlier and has ended now, make it
+             // start over in case we get new packets at some point in the future.
+             // This must take the delay queue into account, so avctx returns EOF
+             // until the delay queue has been drained.
++#if HAVE_OHOS_AVCODEC_EMBED
++            if (!ctx->num_delay_queue && !ohcodec_eof)
++#else
+             if (!ctx->num_delay_queue)
++#endif
+                 reset_avctx(vd);
+         } else if (ret == AVERROR(EAGAIN)) {
+             // just retry after caller writes a packet
+diff --git a/video/fmt-conversion.c b/video/fmt-conversion.c
+index 39dead4..1ee1d9a 100644
+--- a/video/fmt-conversion.c
++++ b/video/fmt-conversion.c
+@@ -59,6 +59,7 @@ static const struct {
+     {IMGFMT_VDPAU, AV_PIX_FMT_VDPAU},
+     {IMGFMT_VIDEOTOOLBOX,   AV_PIX_FMT_VIDEOTOOLBOX},
+     {IMGFMT_MEDIACODEC, AV_PIX_FMT_MEDIACODEC},
++    {IMGFMT_OHCODEC, AV_PIX_FMT_OHCODEC},
+     {IMGFMT_VAAPI, AV_PIX_FMT_VAAPI},
+     {IMGFMT_DXVA2, AV_PIX_FMT_DXVA2_VLD},
+     {IMGFMT_D3D11, AV_PIX_FMT_D3D11},
+diff --git a/video/img_format.h b/video/img_format.h
+index 59e614a..cdf128a 100644
+--- a/video/img_format.h
++++ b/video/img_format.h
+@@ -271,6 +271,7 @@ enum mp_imgfmt {
+     IMGFMT_DXVA2,           // IDirect3DSurface9 (NV12/P010/P016)
+     IMGFMT_MMAL,            // MMAL_BUFFER_HEADER_T
+     IMGFMT_MEDIACODEC,      // AVMediaCodecBuffer
++    IMGFMT_OHCODEC,         // OHCodecBuffer
+     IMGFMT_CUDA,            // CUDA Buffer
+ 
+     // Not an actual format; base for mpv-specific descriptor table.
+diff --git a/video/out/gpu/context.c b/video/out/gpu/context.c
+index 60c0641..fbf7661 100644
+--- a/video/out/gpu/context.c
++++ b/video/out/gpu/context.c
+@@ -42,12 +42,14 @@ extern const struct ra_ctx_fns ra_ctx_wgl;
+ extern const struct ra_ctx_fns ra_ctx_angle;
+ extern const struct ra_ctx_fns ra_ctx_dxgl;
+ extern const struct ra_ctx_fns ra_ctx_android;
++extern const struct ra_ctx_fns ra_ctx_ohos;
+ 
+ /* Vulkan */
+ extern const struct ra_ctx_fns ra_ctx_vulkan_wayland;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_win;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_xlib;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_android;
++extern const struct ra_ctx_fns ra_ctx_vulkan_ohos;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_display;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_mac;
+ 
+@@ -102,6 +104,9 @@ static const struct ra_ctx_fns *const contexts[] = {
+ #if HAVE_EGL_ANDROID
+     &ra_ctx_android,
+ #endif
++#if HAVE_EGL_OHOS
++    &ra_ctx_ohos,
++#endif
+ #if HAVE_EGL_ANGLE_WIN32
+     &ra_ctx_angle,
+ #endif
+@@ -129,6 +134,9 @@ static const struct ra_ctx_fns *const contexts[] = {
+ #if HAVE_ANDROID
+     &ra_ctx_vulkan_android,
+ #endif
++#if HAVE_EGL_OHOS
++    &ra_ctx_vulkan_ohos,
++#endif
+ #if HAVE_VK_KHR_DISPLAY
+     &ra_ctx_vulkan_display,
+ #endif
+diff --git a/video/out/gpu/hwdec.c b/video/out/gpu/hwdec.c
+index be39c50..0050110 100644
+--- a/video/out/gpu/hwdec.c
++++ b/video/out/gpu/hwdec.c
+@@ -37,6 +37,7 @@ extern const struct ra_hwdec_driver ra_hwdec_cuda;
+ extern const struct ra_hwdec_driver ra_hwdec_drmprime;
+ extern const struct ra_hwdec_driver ra_hwdec_drmprime_overlay;
+ extern const struct ra_hwdec_driver ra_hwdec_aimagereader;
++extern const struct ra_hwdec_driver ra_hwdec_ohnativeimage;
+ extern const struct ra_hwdec_driver ra_hwdec_vulkan;
+ 
+ const struct ra_hwdec_driver *const ra_hwdec_drivers[] = {
+@@ -76,6 +77,9 @@ const struct ra_hwdec_driver *const ra_hwdec_drivers[] = {
+ #if HAVE_ANDROID_MEDIA_NDK
+     &ra_hwdec_aimagereader,
+ #endif
++#if HAVE_OHOS_NATIVE_IMAGE
++    &ra_hwdec_ohnativeimage,
++#endif
+ #if HAVE_VULKAN
+     &ra_hwdec_vulkan,
+ #endif
+diff --git a/video/out/hwdec/hwdec_oh.h b/video/out/hwdec/hwdec_oh.h
+new file mode 100755
+index 0000000..b507480
+--- /dev/null
++++ b/video/out/hwdec/hwdec_oh.h
+@@ -0,0 +1,56 @@
++/*
++ * OpenHarmony ohcodec helpers (shared by hwdec_ohnativeimage and player).
++ *
++ * Opaque layout of AVFrame.buf[0] from libavcodec/ohdec.c.
++ */
++
++#ifndef MP_HWDEC_OH_H
++#define MP_HWDEC_OH_H
++
++#include "config.h"
++
++#include <stdbool.h>
++#include <stdint.h>
++
++#include <libavutil/buffer.h>
++#include <multimedia/player_framework/native_avbuffer.h>
++#include <multimedia/player_framework/native_avcodec_base.h>
++#include <multimedia/player_framework/native_avcodec_videodecoder.h>
++
++#include "video/img_format.h"
++#include "video/mp_image.h"
++
++typedef struct OHCodecBuffer {
++    uint32_t index;
++    OH_AVBuffer *buffer;
++    AVBufferRef *dec_ref;
++} OHCodecBuffer;
++
++static inline OHCodecBuffer *mp_image_ohcodec_buffer(struct mp_image *img)
++{
++    if (!img || img->imgfmt != IMGFMT_OHCODEC || !img->bufs[0])
++        return NULL;
++    return av_buffer_get_opaque(img->bufs[0]);
++}
++
++static inline bool mp_image_ohcodec_usable(struct mp_image *img)
++{
++    OHCodecBuffer *buf = mp_image_ohcodec_buffer(img);
++    return buf && buf->buffer && buf->dec_ref;
++}
++
++/* Return an ohcodec output buffer to the decoder without rendering. */
++static inline void mp_image_discard_ohcodec(struct mp_image *img)
++{
++    OHCodecBuffer *buf = mp_image_ohcodec_buffer(img);
++    if (!buf || !buf->buffer || !buf->dec_ref)
++        return;
++
++    OH_AVCodec *dec = (OH_AVCodec *)buf->dec_ref->data;
++    if (dec) {
++        OH_VideoDecoder_FreeOutputBuffer(dec, buf->index);
++        buf->buffer = NULL;
++    }
++}
++
++#endif
+\ No newline at end of file
+diff --git a/video/out/hwdec/hwdec_ohnativeimage.c b/video/out/hwdec/hwdec_ohnativeimage.c
+new file mode 100755
+index 0000000..7b66254
+--- /dev/null
++++ b/video/out/hwdec/hwdec_ohnativeimage.c
+@@ -0,0 +1,322 @@
++/*
++ * OpenHarmony NativeImage hwdec interop (OHOS counterpart of hwdec_aimagereader).
++ *
++ * Lifecycle mirrors hwdec_aimagereader.c:
++ *   init/uninit: off-screen surface + hw device for the decoder
++ *   mapper_init/uninit: GL external-OES texture wrap + frame listener
++ *   mapper_map: RenderOutputBuffer, wait, AttachContext, UpdateSurfaceImage
++ *   mapper_unmap: DetachContext + clear frame state (AImage_delete / EGLImage destroy)
++ *
++ * OH API note: OH_NativeImage_Create() requires a GL texture at creation time,
++ * so gl_texture lives in priv_owner (Android creates AImageReader without a
++ * texture and allocates the mapper texture separately).
++ */
++
++#include <assert.h>
++#include <EGL/egl.h>
++#include <libavutil/buffer.h>
++#include <libavutil/hwcontext.h>
++#include <libavutil/hwcontext_oh.h>
++#include <multimedia/player_framework/native_avbuffer.h>
++#include <multimedia/player_framework/native_avcodec_base.h>
++#include <multimedia/player_framework/native_avcodec_videodecoder.h>
++#include <native_image/native_image.h>
++
++#include "config.h"
++#include "common/common.h"
++#include "common/msg.h"
++#include "osdep/threads.h"
++#include "osdep/timer.h"
++#include "video/img_format.h"
++#include "video/out/gpu/hwdec.h"
++#include "video/out/hwdec/hwdec_oh.h"
++#include "video/out/opengl/gl_headers.h"
++#include "video/out/opengl/ra_gl.h"
++
++struct priv_owner {
++    struct mp_hwdec_ctx hwctx;
++    OH_NativeImage *native_image;
++    OHNativeWindow *native_window;
++    GLuint gl_texture;
++    mp_mutex lock;
++    mp_cond cond;
++    bool frame_available;
++};
++
++struct priv {
++    struct mp_log *log;
++};
++
++static AVBufferRef *create_ohcodec_device_ref(OHNativeWindow *window)
++{
++    AVBufferRef *device_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_OHCODEC);
++    if (!device_ref)
++        return NULL;
++
++    AVHWDeviceContext *ctx = (void *)device_ref->data;
++    AVOHCodecDeviceContext *hwctx = ctx->hwctx;
++    hwctx->native_window = window;
++
++    if (av_hwdevice_ctx_init(device_ref) < 0)
++        av_buffer_unref(&device_ref);
++
++    return device_ref;
++}
++
++static void destroy_native_image(struct priv_owner *o)
++{
++    if (!o->native_image)
++        return;
++
++    OH_NativeImage_UnsetOnFrameAvailableListener(o->native_image);
++    OH_NativeImage_DetachContext(o->native_image);
++    OH_NativeImage_Destroy(&o->native_image);
++    o->native_window = NULL;
++
++    mp_mutex_destroy(&o->lock);
++    mp_cond_destroy(&o->cond);
++}
++
++static void frame_callback(void *context)
++{
++    struct priv_owner *o = context;
++
++    mp_mutex_lock(&o->lock);
++    o->frame_available = true;
++    mp_cond_signal(&o->cond);
++    mp_mutex_unlock(&o->lock);
++}
++
++static int init(struct ra_hwdec *hw)
++{
++    struct priv_owner *p = hw->priv;
++    GL *gl;
++
++    if (!ra_is_gl(hw->ra_ctx->ra))
++        return -1;
++    if (!eglGetCurrentContext())
++        return -1;
++
++    gl = ra_gl_get(hw->ra_ctx->ra);
++    static const char *es2_exts[] = {"GL_OES_EGL_image_external", 0};
++    static const char *es3_exts[] = {"GL_OES_EGL_image_external_essl3", 0};
++    if (gl_check_extension(gl->extensions, es3_exts[0]))
++        hw->glsl_extensions = es3_exts;
++    else if (gl_check_extension(gl->extensions, es2_exts[0]))
++        hw->glsl_extensions = es2_exts;
++    else
++        return -1;
++
++    gl->GenTextures(1, &p->gl_texture);
++    gl->BindTexture(GL_TEXTURE_EXTERNAL_OES, p->gl_texture);
++    gl->TexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
++    gl->TexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
++    gl->TexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++    gl->TexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++    gl->BindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
++
++    p->native_image = OH_NativeImage_Create(p->gl_texture, GL_TEXTURE_EXTERNAL_OES);
++    if (!p->native_image) {
++        MP_ERR(hw, "OH_NativeImage_Create failed\n");
++        return -1;
++    }
++
++    OH_NativeImage_SetDropBufferMode(p->native_image, true);
++
++    mp_mutex_init(&p->lock);
++    mp_cond_init(&p->cond);
++    p->frame_available = false;
++
++    OH_OnFrameAvailableListener listener = {
++        .context = p,
++        .onFrameAvailable = frame_callback,
++    };
++    if (OH_NativeImage_SetOnFrameAvailableListener(p->native_image, listener) != 0) {
++        MP_ERR(hw, "OH_NativeImage_SetOnFrameAvailableListener failed\n");
++        return -1;
++    }
++
++    p->native_window = OH_NativeImage_AcquireNativeWindow(p->native_image);
++    if (!p->native_window) {
++        MP_ERR(hw, "OH_NativeImage_AcquireNativeWindow failed\n");
++        return -1;
++    }
++
++    p->hwctx = (struct mp_hwdec_ctx) {
++        .driver_name = hw->driver->name,
++        .av_device_ref = create_ohcodec_device_ref(p->native_window),
++        .hw_imgfmt = IMGFMT_OHCODEC,
++    };
++
++    if (!p->hwctx.av_device_ref) {
++        MP_VERBOSE(hw, "Failed to create ohcodec hwdevice_ctx\n");
++        return -1;
++    }
++
++    hwdec_devices_add(hw->devs, &p->hwctx);
++
++    return 0;
++}
++
++static void uninit(struct ra_hwdec *hw)
++{
++    struct priv_owner *p = hw->priv;
++
++    hwdec_devices_remove(hw->devs, &p->hwctx);
++    av_buffer_unref(&p->hwctx.av_device_ref);
++
++    destroy_native_image(p);
++
++    if (p->gl_texture) {
++        GL *gl = ra_gl_get(hw->ra_ctx->ra);
++        if (gl)
++            gl->DeleteTextures(1, &p->gl_texture);
++        p->gl_texture = 0;
++    }
++}
++
++static int mapper_init(struct ra_hwdec_mapper *mapper)
++{
++    struct priv *p = mapper->priv;
++    struct priv_owner *o = mapper->owner->priv;
++
++    p->log = mapper->log;
++
++    mapper->dst_params = mapper->src_params;
++    mapper->dst_params.imgfmt = IMGFMT_RGB0;
++    mapper->dst_params.hw_subfmt = 0;
++
++    struct ra_tex_params params = {
++        .dimensions = 2,
++        .w = mapper->src_params.w,
++        .h = mapper->src_params.h,
++        .d = 1,
++        .format = ra_find_unorm_format(mapper->ra, 1, 4),
++        .render_src = true,
++        .src_linear = true,
++        .external_oes = true,
++    };
++
++    if (params.format->ctype != RA_CTYPE_UNORM)
++        return -1;
++
++    mapper->tex[0] = ra_create_wrapped_tex(mapper->ra, &params, o->gl_texture);
++    if (!mapper->tex[0])
++        return -1;
++
++    return 0;
++}
++
++static void mapper_uninit(struct ra_hwdec_mapper *mapper)
++{
++    struct priv_owner *o = mapper->owner->priv;
++    OH_NativeImage_DetachContext(o->native_image);
++    ra_tex_free(mapper->ra, &mapper->tex[0]);
++}
++
++static void mapper_unmap(struct ra_hwdec_mapper *mapper)
++{
++    struct priv_owner *o = mapper->owner->priv;
++    OH_NativeImage_DetachContext(o->native_image);
++}
++
++static bool oh_bind_surface_image(struct ra_hwdec_mapper *mapper,
++                                  struct priv_owner *o, GL *gl)
++{
++    if (OH_NativeImage_AttachContext(o->native_image, o->gl_texture) != 0) {
++        OH_NativeImage_DetachContext(o->native_image);
++        if (OH_NativeImage_AttachContext(o->native_image, o->gl_texture) != 0) {
++            MP_VERBOSE(mapper, "Skipping ohcodec map: AttachContext failed\n");
++            return false;
++        }
++    }
++
++    if (OH_NativeImage_UpdateSurfaceImage(o->native_image) != 0) {
++        OH_NativeImage_DetachContext(o->native_image);
++        MP_VERBOSE(mapper, "Skipping ohcodec map: UpdateSurfaceImage failed\n");
++        return false;
++    }
++
++    if (gl) {
++        gl->BindTexture(GL_TEXTURE_EXTERNAL_OES, o->gl_texture);
++        gl->BindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
++    }
++    return true;
++}
++
++static int mapper_map(struct ra_hwdec_mapper *mapper)
++{
++    struct priv_owner *o = mapper->owner->priv;
++    GL *gl = ra_gl_get(mapper->ra);
++
++    if (mapper->src->imgfmt != IMGFMT_OHCODEC) {
++        MP_VERBOSE(mapper, "Skipping ohcodec map: unexpected imgfmt %s\n",
++                   mp_imgfmt_to_name(mapper->src->imgfmt));
++        return 0;
++    }
++
++    OHCodecBuffer *buffer = mp_image_ohcodec_buffer(mapper->src);
++    if (!buffer || !buffer->dec_ref) {
++        MP_VERBOSE(mapper, "Skipping stale ohcodec map: no buffer\n");
++        return 0;
++    }
++    if (!mp_image_ohcodec_usable(mapper->src)) {
++        MP_VERBOSE(mapper, "Skipping stale ohcodec map: buffer not usable\n");
++        return 0;
++    }
++
++    OH_AVCodecBufferAttr attr;
++    if (OH_AVBuffer_GetBufferAttr(buffer->buffer, &attr) != AV_ERR_OK) {
++        MP_VERBOSE(mapper, "Skipping stale ohcodec map: GetBufferAttr failed\n");
++        return 0;
++    }
++    if (attr.flags & AVCODEC_BUFFER_FLAGS_DISCARD) {
++        MP_VERBOSE(mapper, "Skipping stale ohcodec map: buffer discarded\n");
++        return 0;
++    }
++
++    OH_AVCodec *dec = (OH_AVCodec *)buffer->dec_ref->data;
++    if (!dec || OH_VideoDecoder_RenderOutputBuffer(dec, buffer->index) != AV_ERR_OK) {
++        MP_VERBOSE(mapper, "Skipping stale ohcodec map: RenderOutputBuffer failed\n");
++        return 0;
++    }
++
++    buffer->buffer = NULL;
++
++    bool frame_available = false;
++    mp_mutex_lock(&o->lock);
++    if (!o->frame_available) {
++        mp_cond_timedwait(&o->cond, &o->lock, MP_TIME_MS_TO_NS(100));
++        if (!o->frame_available)
++            MP_WARN(mapper, "Waiting for frame timed out!\n");
++    }
++    frame_available = o->frame_available;
++    o->frame_available = false;
++    mp_mutex_unlock(&o->lock);
++
++    if (!frame_available) {
++        MP_VERBOSE(mapper, "Skipping stale ohcodec map: no frame available\n");
++        return 0;
++    }
++
++    if (!oh_bind_surface_image(mapper, o, gl))
++        return 0;
++
++    return 0;
++}
++
++const struct ra_hwdec_driver ra_hwdec_ohnativeimage = {
++    .name = "ohnativeimage",
++    .priv_size = sizeof(struct priv_owner),
++    .imgfmts = {IMGFMT_OHCODEC, 0},
++    .device_type = AV_HWDEVICE_TYPE_OHCODEC,
++    .init = init,
++    .uninit = uninit,
++    .mapper = &(const struct ra_hwdec_mapper_driver){
++        .priv_size = sizeof(struct priv),
++        .init = mapper_init,
++        .uninit = mapper_uninit,
++        .map = mapper_map,
++        .unmap = mapper_unmap,
++    },
++};
+diff --git a/video/out/ohos_common.c b/video/out/ohos_common.c
+new file mode 100755
+index 0000000..fe8bc19
+--- /dev/null
++++ b/video/out/ohos_common.c
+@@ -0,0 +1,52 @@
++/*
++ * OpenHarmony: OHNativeWindow helpers for vo=gpu (--wid).
++ */
++
++#include <native_window/external_window.h>
++
++#include "common/msg.h"
++#include "ohos_common.h"
++#include "vo.h"
++
++#ifndef GET_BUFFER_GEOMETRY
++enum {
++    MPV_OHOS_NW_GET_BUFFER_GEOMETRY = 1,
++};
++#define MPV_OHOS_GET_GEOMETRY_OP MPV_OHOS_NW_GET_BUFFER_GEOMETRY
++#else
++#define MPV_OHOS_GET_GEOMETRY_OP GET_BUFFER_GEOMETRY
++#endif
++
++bool vo_ohos_native_window(struct vo *vo, void **out_window)
++{
++    if (!vo || vo->opts->WinID == 0 || vo->opts->WinID == -1)
++        return false;
++    *out_window = (void *)(intptr_t)vo->opts->WinID;
++    return true;
++}
++
++bool vo_ohos_surface_size(struct vo *vo, int *out_w, int *out_h)
++{
++    int w = vo->opts->ohos_surface_size.w;
++    int h = vo->opts->ohos_surface_size.h;
++
++    void *window = NULL;
++    if ((!w || !h) && vo_ohos_native_window(vo, &window)) {
++        OHNativeWindow *nw = window;
++        int32_t gh = 0, gw = 0;
++        if (OH_NativeWindow_NativeWindowHandleOpt(nw, MPV_OHOS_GET_GEOMETRY_OP,
++                                                  &gh, &gw) == 0 && gw > 0 && gh > 0) {
++            w = gw;
++            h = gh;
++        }
++    }
++
++    if (w <= 0 || h <= 0) {
++        MP_ERR(vo, "Failed to get OHOS surface height and width.\n");
++        return false;
++    }
++
++    *out_w = w;
++    *out_h = h;
++    return true;
++}
+diff --git a/video/out/ohos_common.h b/video/out/ohos_common.h
+new file mode 100755
+index 0000000..df5803f
+--- /dev/null
++++ b/video/out/ohos_common.h
+@@ -0,0 +1,12 @@
++/*
++ * OpenHarmony: OHNativeWindow helpers for vo=gpu (--wid).
++ */
++
++#pragma once
++
++#include "common/common.h"
++
++struct vo;
++
++bool vo_ohos_native_window(struct vo *vo, void **out_window);
++bool vo_ohos_surface_size(struct vo *vo, int *w, int *h);
+diff --git a/video/out/opengl/context_ohos.c b/video/out/opengl/context_ohos.c
+new file mode 100755
+index 0000000..47c517a
+--- /dev/null
++++ b/video/out/opengl/context_ohos.c
+@@ -0,0 +1,248 @@
++/*
++ * OpenHarmony / OHOS: EGL + OHNativeWindow (--wid).
++ * Used with vo=gpu / gpu-next for software-decoded video (CPU → GL textures).
++ *
++ * OHNativeWindow* is supplied by XComponent (same as ohos_avcodec_embed).
++ */
++
++#include <EGL/egl.h>
++#include <EGL/eglext.h>
++
++#include <native_window/external_window.h>
++
++/* NativeWindowOperation codes (fallback if header only typedefs enum). */
++#ifndef GET_BUFFER_GEOMETRY
++enum {
++    MPV_OHOS_NW_SET_BUFFER_GEOMETRY = 0,
++    MPV_OHOS_NW_GET_BUFFER_GEOMETRY = 1,
++    MPV_OHOS_NW_SET_FORMAT          = 3,
++};
++#define MPV_OHOS_GET_GEOMETRY_OP   MPV_OHOS_NW_GET_BUFFER_GEOMETRY
++#define MPV_OHOS_SET_GEOMETRY_OP   MPV_OHOS_NW_SET_BUFFER_GEOMETRY
++#define MPV_OHOS_SET_FORMAT_OP     MPV_OHOS_NW_SET_FORMAT
++#else
++#define MPV_OHOS_GET_GEOMETRY_OP   GET_BUFFER_GEOMETRY
++#define MPV_OHOS_SET_GEOMETRY_OP   SET_BUFFER_GEOMETRY
++#define MPV_OHOS_SET_FORMAT_OP     SET_FORMAT
++#endif
++
++#include "common/common.h"
++#include "context.h"
++#include "egl_helpers.h"
++#include "video/out/ohos_common.h"
++
++struct priv {
++    struct GL gl;
++    EGLDisplay egl_display;
++    EGLContext egl_context;
++    EGLSurface egl_surface;
++    OHNativeWindow *native_window;
++};
++
++static void ohos_swap_buffers(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv;
++    eglSwapBuffers(p->egl_display, p->egl_surface);
++}
++
++static void ohos_uninit(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv;
++    ra_gl_ctx_uninit(ctx);
++
++    if (p->egl_surface) {
++        eglMakeCurrent(p->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
++                       EGL_NO_CONTEXT);
++        eglDestroySurface(p->egl_display, p->egl_surface);
++    }
++    if (p->egl_context)
++        eglDestroyContext(p->egl_display, p->egl_context);
++
++    /* OHNativeWindow is owned by XComponent; do not destroy. */
++    p->native_window = NULL;
++}
++
++static bool ohos_query_native_geometry(OHNativeWindow *nw, int *out_w, int *out_h)
++{
++    int32_t h = 0, w = 0;
++    /*
++     * NativeWindowOperation::GET_BUFFER_GEOMETRY:
++     * variadic: int32_t *height, int32_t *width (per OH docs).
++     */
++    int32_t err = OH_NativeWindow_NativeWindowHandleOpt(nw, MPV_OHOS_GET_GEOMETRY_OP,
++                                                        &h, &w);
++    if (err != 0 || w <= 0 || h <= 0)
++        return false;
++    *out_w = w;
++    *out_h = h;
++    return true;
++}
++
++/* True drawable size for the default framebuffer (matches Android ANativeWindow_*). */
++static bool ohos_query_egl_drawable_size(struct priv *p, int *out_w, int *out_h)
++{
++    EGLint w = 0, h = 0;
++    if (!eglQuerySurface(p->egl_display, p->egl_surface, EGL_WIDTH, &w) ||
++        !eglQuerySurface(p->egl_display, p->egl_surface, EGL_HEIGHT, &h))
++        return false;
++    if (w <= 0 || h <= 0)
++        return false;
++    *out_w = w;
++    *out_h = h;
++    return true;
++}
++
++static void ohos_resize_swapchain(struct ra_ctx *ctx, int w, int h)
++{
++    ctx->vo->dwidth = w;
++    ctx->vo->dheight = h;
++    ra_gl_ctx_resize(ctx->swapchain, w, h, 0);
++    MP_DBG(ctx, "ohos: swapchain / VO drawable size %dx%d\n", w, h);
++}
++
++static bool ohos_reconfig(struct ra_ctx *ctx);
++
++/*
++ * Align NativeWindow format (and size when known) to the chosen EGLConfig.
++ * Otherwise OHOS EGL reports EGL_BAD_MATCH / "pixel format" and
++ * eglCreateWindowSurface fails (same role as Android setBuffersGeometry).
++ */
++static void ohos_prepare_native_window(struct ra_ctx *ctx, struct priv *p,
++                                       EGLConfig config)
++{
++    OHNativeWindow *nw = p->native_window;
++
++    int gw = 0, gh = 0;
++    if (ohos_query_native_geometry(nw, &gw, &gh)) {
++        int32_t r = OH_NativeWindow_NativeWindowHandleOpt(
++            nw, MPV_OHOS_SET_GEOMETRY_OP, (int32_t)gw, (int32_t)gh);
++        MP_VERBOSE(ctx, "ohos: SET_BUFFER_GEOMETRY %dx%d -> %d\n", gw, gh, (int)r);
++    }
++
++    EGLint nvid = 0;
++    if (eglGetConfigAttrib(p->egl_display, config, EGL_NATIVE_VISUAL_ID, &nvid) &&
++        nvid != 0) {
++        int32_t r = OH_NativeWindow_NativeWindowHandleOpt(
++            nw, MPV_OHOS_SET_FORMAT_OP, (int32_t)nvid);
++        MP_VERBOSE(ctx, "ohos: SET_FORMAT EGL_NATIVE_VISUAL_ID=%d -> %d\n",
++                   (int)nvid, (int)r);
++    }
++}
++
++static bool ohos_init(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv = talloc_zero(ctx, struct priv);
++
++    if (ctx->vo->opts->WinID == 0 || ctx->vo->opts->WinID == -1) {
++        MP_FATAL(ctx, "ohos EGL requires --wid with a valid OHNativeWindow pointer.\n");
++        goto fail;
++    }
++    p->native_window = (OHNativeWindow *)(intptr_t)ctx->vo->opts->WinID;
++
++    p->egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
++    if (p->egl_display == EGL_NO_DISPLAY || !eglInitialize(p->egl_display, NULL, NULL)) {
++        MP_FATAL(ctx, "EGL failed to initialize.\n");
++        goto fail;
++    }
++
++    EGLConfig config;
++    if (!mpegl_create_context(ctx, p->egl_display, &p->egl_context, &config))
++        goto fail;
++
++    ohos_prepare_native_window(ctx, p, config);
++
++    p->egl_surface = eglCreateWindowSurface(p->egl_display, config,
++        (EGLNativeWindowType)p->native_window, NULL);
++    if (p->egl_surface == EGL_NO_SURFACE) {
++        MP_FATAL(ctx, "Could not create EGL window surface.\n");
++        goto fail;
++    }
++
++    if (!eglMakeCurrent(p->egl_display, p->egl_surface, p->egl_surface,
++                        p->egl_context)) {
++        MP_FATAL(ctx, "Failed to make EGL context current.\n");
++        goto fail;
++    }
++
++    mpegl_load_functions(&p->gl, ctx->log);
++
++    struct ra_ctx_params params = { .swap_buffers = ohos_swap_buffers };
++    if (!ra_gl_ctx_init(ctx, &p->gl, params))
++        goto fail;
++
++    /*
++     * wrapped_fb must match the EGL surface size (not the video picture size).
++     * Run reconfig once here so vo_gpu's first draw_frame isn't stuck with a NULL fb.
++     */
++    if (!ohos_reconfig(ctx)) {
++        int iw = 0, ih = 0;
++        if (!ohos_query_egl_drawable_size(p, &iw, &ih))
++            ohos_query_native_geometry(p->native_window, &iw, &ih);
++        if (iw <= 0 || ih <= 0) {
++            iw = 1280;
++            ih = 720;
++            MP_WARN(ctx, "ohos: could not query drawable size; using fallback %dx%d\n", iw, ih);
++        }
++        ohos_resize_swapchain(ctx, iw, ih);
++    }
++
++    return true;
++fail:
++    ohos_uninit(ctx);
++    return false;
++}
++
++static bool ohos_reconfig(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv;
++    int w = 0, h = 0;
++    int ow = ctx->vo->opts->ohos_surface_size.w;
++    int oh = ctx->vo->opts->ohos_surface_size.h;
++
++    /*
++     * Rotation: embedding sets ohos-surface-size (physical px from
++     * OnSurfaceChanged). Update NativeWindow buffer geometry first so EGL
++     * drawable catches up, then read back the real EGL size for swapchain.
++     */
++    if (ow > 0 && oh > 0) {
++        void *window = NULL;
++        if (vo_ohos_native_window(ctx->vo, &window)) {
++            OHNativeWindow *nw = window;
++            int32_t r = OH_NativeWindow_NativeWindowHandleOpt(
++                nw, MPV_OHOS_SET_GEOMETRY_OP, (int32_t)ow, (int32_t)oh);
++            MP_VERBOSE(ctx, "ohos: reconfig SET_BUFFER_GEOMETRY %dx%d -> %d\n",
++                       ow, oh, (int)r);
++        }
++    }
++
++    if (ohos_query_egl_drawable_size(p, &w, &h)) {
++        MP_DBG(ctx, "ohos: reconfig EGL drawable %dx%d (override %dx%d)\n",
++               w, h, ow, oh);
++    } else if (ow > 0 && oh > 0) {
++        w = ow;
++        h = oh;
++        MP_DBG(ctx, "ohos: reconfig fallback override %dx%d\n", w, h);
++    } else if (ohos_query_native_geometry(p->native_window, &w, &h)) {
++        MP_DBG(ctx, "ohos: reconfig native geometry %dx%d\n", w, h);
++    } else {
++        return false;
++    }
++
++    ohos_resize_swapchain(ctx, w, h);
++    return true;
++}
++
++static int ohos_control(struct ra_ctx *ctx, int *events, int request, void *arg)
++{
++    return VO_NOTIMPL;
++}
++
++const struct ra_ctx_fns ra_ctx_ohos = {
++    .type           = "opengl",
++    .name           = "ohos",
++    .description    = "OpenHarmony EGL (OHNativeWindow)",
++    .reconfig       = ohos_reconfig,
++    .control        = ohos_control,
++    .init           = ohos_init,
++    .uninit         = ohos_uninit,
++};
+diff --git a/video/out/opengl/gl_headers.h b/video/out/opengl/gl_headers.h
+index 5c36718..d9558f7 100644
+--- a/video/out/opengl/gl_headers.h
++++ b/video/out/opengl/gl_headers.h
+@@ -121,6 +121,7 @@ typedef uint64_t GLuint64;
+ #define GL_DEBUG_SEVERITY_HIGH            0x9146
+ #define GL_DEBUG_SEVERITY_MEDIUM          0x9147
+ #define GL_DEBUG_SEVERITY_LOW             0x9148
++#define GL_DEBUG_OUTPUT                   0x92E0
+ #define GL_DEBUG_SEVERITY_NOTIFICATION    0x826B
+ 
+ // --- GL 4.4 or GL_ARB_buffer_storage
+diff --git a/video/out/opengl/utils.c b/video/out/opengl/utils.c
+index 18837a8..d8b8f5f 100644
+--- a/video/out/opengl/utils.c
++++ b/video/out/opengl/utils.c
+@@ -261,6 +261,24 @@ void gl_set_debug_logger(GL *gl, struct mp_log *log)
+ {
+     if (gl->DebugMessageCallback)
+         gl->DebugMessageCallback(log ? gl_debug_cb : NULL, log);
++#if HAVE_EGL_OHOS
++    if (gl->debug_context && (!log || gl->DebugMessageCallback) &&
++        (gl->mpgl_caps & MPGL_CAP_DEBUG) && gl->Enable)
++    {
++        if (log) {
++            gl->Enable(GL_DEBUG_OUTPUT);
++            gl_check_error(gl, log, "glEnable(GL_DEBUG_OUTPUT)");
++            if (gl->get_fn) {
++                void (GLAPIENTRY *fn)(GLenum, GLenum, GLenum, GLsizei, const GLuint *, GLboolean) =
++                    gl->get_fn(gl->fn_ctx, "glDebugMessageControl");
++                if (fn)
++                    fn(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
++            }
++        } else {
++            gl->Disable(GL_DEBUG_OUTPUT);
++        }
++    }
++#endif
+ }
+ 
+ // Given a GL combined extension string in extensions, find out whether ext
+diff --git a/video/out/vo.c b/video/out/vo.c
+index c9cde30..3ffa418 100644
+--- a/video/out/vo.c
++++ b/video/out/vo.c
+@@ -42,6 +42,9 @@
+ #include "common/stats.h"
+ #include "video/hwdec.h"
+ #include "video/mp_image.h"
++#if HAVE_OHOS_NATIVE_IMAGE
++#include "video/out/hwdec/hwdec_oh.h"
++#endif
+ #include "sub/osd.h"
+ #include "osdep/io.h"
+ #include "osdep/threads.h"
+@@ -66,6 +69,7 @@ extern const struct vo_driver video_out_wlshm;
+ extern const struct vo_driver video_out_tct;
+ extern const struct vo_driver video_out_sixel;
+ extern const struct vo_driver video_out_kitty;
++extern const struct vo_driver vo_out_ohos_avcodec_embed;
+ 
+ static const struct vo_driver *const video_out_drivers[] =
+ {
+@@ -88,6 +92,9 @@ static const struct vo_driver *const video_out_drivers[] =
+ #if HAVE_ANDROID
+     &video_out_mediacodec_embed,
+ #endif
++#if HAVE_OHOS_AVCODEC_EMBED
++    &vo_out_ohos_avcodec_embed,
++#endif
+ #if HAVE_SDL2_VIDEO
+     &video_out_sdl,
+ #endif
+@@ -990,6 +997,14 @@ static bool render_frame(struct vo *vo)
+ 
+     if (in->dropped_frame) {
+         in->drop_count += 1;
++#if HAVE_OHOS_NATIVE_IMAGE
++        /* HW+ surface mode: dropped frames must FreeOutputBuffer, not
++         * RenderOutputBuffer on unref (oh_buffer_release default). */
++        for (int n = 0; n < frame->num_frames; n++) {
++            if (frame->frames[n])
++                mp_image_discard_ohcodec(frame->frames[n]);
++        }
++#endif
+         wakeup_core(vo);
+     } else {
+         in->rendering = true;
+diff --git a/video/out/vo_ohos_avcodec_embed.c b/video/out/vo_ohos_avcodec_embed.c
+new file mode 100755
+index 0000000..f5aa05a
+--- /dev/null
++++ b/video/out/vo_ohos_avcodec_embed.c
+@@ -0,0 +1,140 @@
++/*
++ * This file is part of mpv.
++ *
++ * mpv is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * mpv is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with mpv.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include <libavutil/hwcontext.h>
++#include <libavutil/hwcontext_oh.h>
++#include <libavutil/pixfmt.h>
++
++#include "common/common.h"
++#include "vo.h"
++#include "video/fmt-conversion.h"
++#include "video/mp_image.h"
++#include "video/hwdec.h"
++
++struct priv {
++    struct mp_image *next_image;
++    struct mp_hwdec_ctx hwctx;
++};
++
++static AVBufferRef *create_ohcodec_device_ref(struct vo *vo)
++{
++    AVBufferRef *device_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_OHCODEC);
++    if (!device_ref)
++        return NULL;
++
++    AVHWDeviceContext *ctx = (void *)device_ref->data;
++    AVOHCodecDeviceContext *hwctx = ctx->hwctx;
++    mp_assert(vo->opts->WinID != 0 && vo->opts->WinID != -1);
++    hwctx->native_window = (void *)(intptr_t)(vo->opts->WinID);
++
++    if (av_hwdevice_ctx_init(device_ref) < 0) {
++        av_buffer_unref(&device_ref);
++        return NULL;
++    }
++
++    return device_ref;
++}
++
++static int preinit(struct vo *vo)
++{
++    struct priv *p = vo->priv;
++
++    if (vo->opts->WinID == 0 || vo->opts->WinID == -1) {
++        MP_ERR(vo, "ohos_avcodec_embed requires --wid with a valid "
++                   "OHNativeWindow pointer.\n");
++        return -1;
++    }
++
++    vo->hwdec_devs = hwdec_devices_create();
++    p->hwctx = (struct mp_hwdec_ctx){
++        .driver_name = "ohos_avcodec_embed",
++        .av_device_ref = create_ohcodec_device_ref(vo),
++        .hw_imgfmt = pixfmt2imgfmt(AV_PIX_FMT_OHCODEC),
++    };
++
++    if (!p->hwctx.av_device_ref) {
++        MP_VERBOSE(vo, "Failed to create OHOS ohcodec hwdevice context.\n");
++        return -1;
++    }
++
++    hwdec_devices_add(vo->hwdec_devs, &p->hwctx);
++    return 0;
++}
++
++static void flip_page(struct vo *vo)
++{
++    // OpenHarmony ohcodec renders the output buffer to the surface when the
++    // AVBufferRef backing the frame is unref'd (see libavcodec/ohdec.c:
++    // oh_buffer_release). Dropping our last reference here submits the frame
++    // for display. To discard a frame instead of rendering it, the ohcodec
++    // buffer attr would need to be tagged with AVCODEC_BUFFER_FLAGS_DISCARD
++    // before unref; we don't do that since every frame that reaches flip_page
++    // is meant to be shown.
++    struct priv *p = vo->priv;
++    mp_image_unrefp(&p->next_image);
++}
++
++static bool draw_frame(struct vo *vo, struct vo_frame *frame)
++{
++    struct priv *p = vo->priv;
++
++    mp_image_t *mpi = NULL;
++    if (!frame->redraw && !frame->repeat)
++        mpi = mp_image_new_ref(frame->current);
++
++    talloc_free(p->next_image);
++    p->next_image = mpi;
++    return VO_TRUE;
++}
++
++static int query_format(struct vo *vo, int format)
++{
++    return format == pixfmt2imgfmt(AV_PIX_FMT_OHCODEC);
++}
++
++static int control(struct vo *vo, uint32_t request, void *data)
++{
++    return VO_NOTIMPL;
++}
++
++static int reconfig(struct vo *vo, struct mp_image_params *params)
++{
++    return 0;
++}
++
++static void uninit(struct vo *vo)
++{
++    struct priv *p = vo->priv;
++    mp_image_unrefp(&p->next_image);
++
++    hwdec_devices_remove(vo->hwdec_devs, &p->hwctx);
++    av_buffer_unref(&p->hwctx.av_device_ref);
++}
++
++const struct vo_driver vo_out_ohos_avcodec_embed = {
++    .description = "OHOS (Embedded AVCodec Surface)",
++    .name = "ohos_avcodec_embed",
++    .caps = VO_CAP_NORETAIN,
++    .preinit = preinit,
++    .query_format = query_format,
++    .control = control,
++    .draw_frame = draw_frame,
++    .flip_page = flip_page,
++    .reconfig = reconfig,
++    .uninit = uninit,
++    .priv_size = sizeof(struct priv),
++};
+diff --git a/video/out/vulkan/context_ohos.c b/video/out/vulkan/context_ohos.c
+new file mode 100755
+index 0000000..d02090c
+--- /dev/null
++++ b/video/out/vulkan/context_ohos.c
+@@ -0,0 +1,161 @@
++/*
++ * OpenHarmony / OHOS: Vulkan + OHNativeWindow (--wid).
++ * Counterpart of context_android.c (VK_KHR_android_surface) and
++ * opengl/context_ohos.c (EGL).
++ */
++
++#include <vulkan/vulkan.h>
++
++#include <native_window/external_window.h>
++
++#if __has_include(<vulkan/vulkan_ohos.h>)
++#include <vulkan/vulkan_ohos.h>
++#define MPV_HAS_VULKAN_OHOS_H 1
++#endif
++
++#include "common/common.h"
++#include "context.h"
++#include "utils.h"
++#include "video/out/ohos_common.h"
++
++#ifndef GET_BUFFER_GEOMETRY
++enum {
++    MPV_OHOS_NW_SET_BUFFER_GEOMETRY = 0,
++};
++#define MPV_OHOS_SET_GEOMETRY_OP MPV_OHOS_NW_SET_BUFFER_GEOMETRY
++#else
++#define MPV_OHOS_SET_GEOMETRY_OP SET_BUFFER_GEOMETRY
++#endif
++
++#ifndef MPV_HAS_VULKAN_OHOS_H
++#ifndef VK_OHOS_SURFACE_EXTENSION_NAME
++#define VK_OHOS_SURFACE_EXTENSION_NAME "VK_OHOS_surface"
++#endif
++
++#ifndef VK_STRUCTURE_TYPE_SURFACE_CREATE_INFO_OHOS
++#define VK_STRUCTURE_TYPE_SURFACE_CREATE_INFO_OHOS \
++    ((VkStructureType)1000069000)
++#endif
++
++#ifndef VKAPI_CALL
++#define VKAPI_CALL
++#endif
++#ifndef VKAPI_PTR
++#define VKAPI_PTR *
++#endif
++
++typedef VkFlags VkSurfaceCreateFlagsOHOS;
++
++typedef struct VkSurfaceCreateInfoOHOS {
++    VkStructureType             sType;
++    const void                 *pNext;
++    VkSurfaceCreateFlagsOHOS    flags;
++    OHNativeWindow             *window;
++} VkSurfaceCreateInfoOHOS;
++
++typedef VkResult (VKAPI_PTR *PFN_vkCreateSurfaceOHOS)(VkInstance instance,
++    const VkSurfaceCreateInfoOHOS *pCreateInfo,
++    const VkAllocationCallbacks *pAllocator, VkSurfaceKHR *pSurface);
++#endif
++
++struct priv {
++    struct mpvk_ctx vk;
++    OHNativeWindow *native_window;
++};
++
++static PFN_vkCreateSurfaceOHOS get_create_surface_ohos(VkInstance inst)
++{
++    return (PFN_vkCreateSurfaceOHOS)
++        vkGetInstanceProcAddr(inst, "vkCreateSurfaceOHOS");
++}
++
++static void ohos_apply_surface_geometry(struct ra_ctx *ctx, OHNativeWindow *nw,
++                                        int w, int h)
++{
++    if (!nw || w <= 0 || h <= 0)
++        return;
++    int32_t r = OH_NativeWindow_NativeWindowHandleOpt(
++        nw, MPV_OHOS_SET_GEOMETRY_OP, (int32_t)w, (int32_t)h);
++    MP_VERBOSE(ctx, "ohos vk: SET_BUFFER_GEOMETRY %dx%d -> %d\n", w, h, (int)r);
++}
++
++static void ohos_vk_uninit(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv;
++    ra_vk_ctx_uninit(ctx);
++    mpvk_uninit(&p->vk);
++    /* OHNativeWindow is owned by XComponent; do not destroy. */
++    p->native_window = NULL;
++}
++
++static bool ohos_vk_init(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv = talloc_zero(ctx, struct priv);
++    struct mpvk_ctx *vk = &p->vk;
++    int msgl = ctx->opts.probing ? MSGL_V : MSGL_ERR;
++
++    void *window = NULL;
++    if (!vo_ohos_native_window(ctx->vo, &window)) {
++        MP_FATAL(ctx, "ohos Vulkan requires --wid with a valid OHNativeWindow pointer.\n");
++        goto fail;
++    }
++    p->native_window = window;
++
++    if (!mpvk_init(vk, ctx, VK_OHOS_SURFACE_EXTENSION_NAME))
++        goto fail;
++
++    VkInstance inst = vk->vkinst->instance;
++    PFN_vkCreateSurfaceOHOS create_surface = get_create_surface_ohos(inst);
++    if (!create_surface) {
++        MP_MSG(ctx, msgl, "vkCreateSurfaceOHOS not available (VK_OHOS_surface)\n");
++        goto fail;
++    }
++
++    VkSurfaceCreateInfoOHOS info = {
++        .sType = VK_STRUCTURE_TYPE_SURFACE_CREATE_INFO_OHOS,
++        .window = p->native_window,
++    };
++
++    struct ra_ctx_params params = {0};
++
++    VkResult res = create_surface(inst, &info, NULL, &vk->surface);
++    if (res != VK_SUCCESS) {
++        MP_MSG(ctx, msgl, "Failed creating OHOS Vulkan surface (%d)\n", (int)res);
++        goto fail;
++    }
++
++    if (!ra_vk_ctx_init(ctx, vk, params, VK_PRESENT_MODE_FIFO_KHR))
++        goto fail;
++
++    return true;
++fail:
++    ohos_vk_uninit(ctx);
++    return false;
++}
++
++static bool ohos_vk_reconfig(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv;
++    int w, h;
++    if (!vo_ohos_surface_size(ctx->vo, &w, &h))
++        return false;
++
++    ohos_apply_surface_geometry(ctx, p->native_window, w, h);
++    ra_vk_ctx_resize(ctx, w, h);
++    return true;
++}
++
++static int ohos_vk_control(struct ra_ctx *ctx, int *events, int request, void *arg)
++{
++    return VO_NOTIMPL;
++}
++
++const struct ra_ctx_fns ra_ctx_vulkan_ohos = {
++    .type           = "vulkan",
++    .name           = "ohosvk",
++    .description    = "OpenHarmony/Vulkan",
++    .reconfig       = ohos_vk_reconfig,
++    .control        = ohos_vk_control,
++    .init           = ohos_vk_init,
++    .uninit         = ohos_vk_uninit,
++};

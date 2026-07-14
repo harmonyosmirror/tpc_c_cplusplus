@@ -1,0 +1,117 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: panjinling <panjinling@huawei.com>
+# Maintainer: panjinling <panjinling@huawei.com>
+
+source HPKBUILD > /dev/null 2>&1
+logfile=${LYCIUM_THIRDPARTY_ROOT}/${pkgname}/${pkgname}_${ARCH}_${OHOS_SDK_VER}_test.log
+
+checkprepare() {
+    export PATH=${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/bin:${PATH}
+    local libdirs=""
+    libdirs="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/lib"
+
+    for dep in FFmpeg-ff8.0 libplacebo libass lua_5.1.1; do
+        for libpath in "${LYCIUM_ROOT}/usr/${dep}/${ARCH}/lib" \
+                       "${LYCIUM_ROOT}/usr/${dep}/${ARCH}/lib64"; do
+            [ -d "$libpath" ] && libdirs="${libdirs}:${libpath}"
+        done
+    done
+
+    for dep in brotli bzip2 fontconfig freetype2 fribidi harfbuzz json-c \
+               libpng libxml2 libzip openssl xz zlib; do
+        for libpath in "${LYCIUM_ROOT}/usr/${dep}/${ARCH}/lib" \
+                       "${LYCIUM_ROOT}/usr/${dep}/${ARCH}/lib64"; do
+            [ -d "$libpath" ] && libdirs="${libdirs}:${libpath}"
+        done
+    done
+
+    export LD_LIBRARY_PATH="${libdirs#:}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+}
+
+openharmonycheck() {
+    local res=0
+    local build="${builddir}/${ARCH}-build"
+    local test_bin test_name test_res total failed skipped
+
+    rm -f "$logfile"
+    cd "$build" || return 1
+
+    {
+        echo "== libmpv HPKCHECK ARCH=$ARCH =="
+        echo "builddir=$build"
+
+        total=0
+        failed=0
+        skipped=0
+
+        for test_name in chmap json linked-list timer format language codepoint-width \
+                         libmpv-test-options libmpv-encode \
+                         libmpv-test-file-loading libmpv-test-lavfi-complex gl-video; do
+            test_bin="test/${test_name}"
+            if [ -x "$test_bin" ]; then
+                total=$((total + 1))
+                echo ""
+                echo "--- Running: $test_name ---"
+                echo "--- Running: $test_name ---" >> /dev/tty
+                case "$test_name" in
+                libmpv-test-file-loading|libmpv-test-lavfi-complex)
+                    test_file="${PWD}/../etc/mpv-icon-8bit-16x16.png"
+                    if [ ! -f "$test_file" ]; then
+                        echo "FAIL: $test_name (test file not found: $test_file)"
+                        echo "FAIL: $test_name (test file not found: $test_file)" >> /dev/tty
+                        failed=$((failed + 1))
+                        continue
+                    fi
+                    set -- ./"$test_bin" "$test_file"
+                    ;;
+                *)
+                    set -- ./"$test_bin"
+                    ;;
+                esac
+
+                if "$@"; then
+                    echo "PASS: $test_name"
+                    echo "PASS: $test_name" >> /dev/tty
+                else
+                    test_res=$?
+                    echo "FAIL: $test_name (exit code $test_res)"
+                    echo "FAIL: $test_name (exit code $test_res)" >> /dev/tty
+                    failed=$((failed + 1))
+                fi
+            else
+                echo "SKIP: $test_name (not found)"
+                echo "SKIP: $test_name (not found)" >> /dev/tty
+                skipped=$((skipped + 1))
+            fi
+        done
+
+        echo ""
+        echo "== Test Summary: $total run, $failed failed, $skipped skipped =="
+        echo "" >> /dev/tty
+        echo "== Test Summary: $total run, $failed failed, $skipped skipped ==" >> /dev/tty
+
+        if [ $failed -gt 0 ]; then
+            res=1
+        fi
+    } > "$logfile" 2>&1
+
+    if [ $res -ne 0 ]; then
+        mkdir -p "${LYCIUM_FAULT_PATH}/${pkgname}"
+        cp -f "$logfile" "${LYCIUM_FAULT_PATH}/${pkgname}/" 2>/dev/null
+    fi
+
+    cd "$OLDPWD"
+    return $res
+}

@@ -1,0 +1,325 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: panjinling <panjinling@huawei.com>
+# Maintainer: panjinling <panjinling@huawei.com>
+
+pkgname=libmpv
+pkgver=v0.41.0
+pkgrel=0
+pkgdesc="mpv media player — OHOS libmpv.so (shared); DT_NEEDED 仅 FFmpeg 动态库，其余静态链入。"
+url="https://github.com/mpv-player/mpv"
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+license=("GPL-2.0-or-later AND LGPL-2.1-or-later")
+depends=(
+    "FFmpeg-ff8.0"
+    "libplacebo"
+    "libass"
+    "lua_5.1.1"
+    "zlib_1_3_1"
+)
+makedepends=("meson" "ninja" "python3" "pkg-config")
+
+source="https://gitcode.com/GitHub_Trending/mp/mpv"
+
+autounpack=false
+downloadpackage=false
+cloneflag=true
+patchflag=true
+buildtools="meson"
+
+builddir=mpv-${pkgver:1}
+packagename=$builddir
+
+source envset.sh
+
+ohos_mpv_hidden_ffmpeg_static=""
+ohos_mpv_hidden_libxml2_pc_tmp=""
+
+ohos_dep_libdir() {
+    local p="${LYCIUM_ROOT}/usr/$1/${ARCH}"
+    if [ -d "${p}/lib" ]; then
+        echo "${p}/lib"
+    else
+        echo "${p}/lib64"
+    fi
+}
+
+ohos_mpv_scan_lycium() {
+    local p inc lib pc
+    PKG_CONFIG_LIBDIR=""
+    CPPFLAGS="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
+    LDFLAGS=""
+    ohos_mpv_link_libdirs=()
+    for p in "${LYCIUM_ROOT}/usr"/*/"${ARCH}"; do
+        [ -d "$p" ] || continue
+        inc="${p}/include"
+        [ -d "$inc" ] && CPPFLAGS="${CPPFLAGS} -I${inc}"
+        for lib in lib lib64; do
+            [ -d "${p}/${lib}" ] || continue
+            LDFLAGS="${LDFLAGS} -L${p}/${lib}"
+            ohos_mpv_link_libdirs+=("${p}/${lib}")
+        done
+        for pc in lib/pkgconfig lib64/pkgconfig share/pkgconfig; do
+            [ -d "${p}/${pc}" ] && PKG_CONFIG_LIBDIR="${p}/${pc}:${PKG_CONFIG_LIBDIR}"
+        done
+    done
+    PKG_CONFIG_LIBDIR="${PKG_CONFIG_LIBDIR%:}"
+}
+
+# ffmpeg需要动态链接
+ohos_mpv_hide_ffmpeg_static() {
+    local libdir f so_name tmpdir
+    ohos_mpv_hidden_ffmpeg_static=""
+    libdir="$(ohos_dep_libdir "FFmpeg-ff8.0")"
+    tmpdir="${PWD}/.ohos_mpv_ffmpeg_tmp"
+    mkdir -p "$tmpdir"
+
+    for f in "$libdir"/libav*.so "$libdir"/libswresample.so "$libdir"/libswscale.so "$libdir"/libavutil.so; do
+        [ -e "$f" ] || continue
+        so_name="$(basename "$f")"
+        ln -sf "$f" "${tmpdir}/${so_name}"
+    done
+
+    # 将临时目录放到 PKG_CONFIG_LIBDIR 最前面，让链接器优先只找到动态库
+    PKG_CONFIG_LIBDIR="${tmpdir}:${PKG_CONFIG_LIBDIR}"
+    ohos_mpv_hidden_ffmpeg_static="${tmpdir}"
+}
+
+ohos_mpv_restore_ffmpeg_static() {
+    if [ -n "$ohos_mpv_hidden_ffmpeg_static" ] && [ -d "$ohos_mpv_hidden_ffmpeg_static" ]; then
+        rm -rf "$ohos_mpv_hidden_ffmpeg_static"
+    fi
+    ohos_mpv_hidden_ffmpeg_static=""
+}
+
+# libass(static) → fontconfig(static) → libxml-2.0(.pc) 会展开 Requires.private。
+# libxml2只有动态库，安装时自带的 Requires.private 含 zlib，meson 会去找 zlib.pc，但 libmpv 只动态链 libxml2.so，
+# zlib 已在 libxml2.so 内，libmpv 不需要 zlib。去掉 Requires.private 里的 zlib；liblzma 仍走 xz 的 .pc。
+ohos_mpv_patch_libxml2_pc() {
+    local orig_pc="${LYCIUM_ROOT}/usr/libxml2/${ARCH}/lib/pkgconfig/libxml-2.0.pc"
+    local tmpdir tmp_pc
+    [ -f "$orig_pc" ] || return 0
+
+    tmpdir="${PWD}/.ohos_mpv_libxml2_pc_tmp"
+    mkdir -p "$tmpdir"
+    tmp_pc="$tmpdir/libxml-2.0.pc"
+    cp "$orig_pc" "$tmp_pc"
+
+    if grep -q '^Requires.private:' "$tmp_pc" 2>/dev/null; then
+        sed -i 's/^Requires.private:.*/Requires.private: liblzma/' "$tmp_pc"
+    else
+        sed -i '/^Requires:/i Requires.private: liblzma' "$tmp_pc"
+    fi
+    sed -i 's/^Libs.private: -lz -llzma -lpthread/Libs.private: -lz -lpthread/' "$tmp_pc"
+    sed -i 's/^Libs.private: -lz -llzma/Libs.private: -lz/' "$tmp_pc"
+
+    PKG_CONFIG_LIBDIR="${tmpdir}:${PKG_CONFIG_LIBDIR}"
+    ohos_mpv_hidden_libxml2_pc_tmp="${tmpdir}"
+}
+
+ohos_mpv_restore_libxml2_pc() {
+    if [ -n "$ohos_mpv_hidden_libxml2_pc_tmp" ] && [ -d "$ohos_mpv_hidden_libxml2_pc_tmp" ]; then
+        rm -rf "$ohos_mpv_hidden_libxml2_pc_tmp"
+    fi
+    ohos_mpv_hidden_libxml2_pc_tmp=""
+}
+
+ohos_mpv_restore_build_tmp() {
+    ohos_mpv_restore_ffmpeg_static
+    ohos_mpv_restore_libxml2_pc
+}
+
+ohos_mpv_find_lib() {
+    local libdir="$1" name="$2" f
+    for f in "${libdir}/lib${name}.a" "${libdir}/lib${name}.so"; do
+        [ -e "$f" ] && echo "$f" && return 0
+    done
+    for f in "${libdir}/lib${name}.so."*; do
+        [ -e "$f" ] && echo "$f" && return 0
+    done
+    return 1
+}
+
+ohos_mpv_prepare_cross() {
+    local cross="${PWD}/${ARCH}-cross-file.txt"
+    local libdir triple usr_lib llvm_lib
+    local -a args=()
+    local meson_list item lzma_lib
+    local escaped_pc escaped_prefix
+    local prefix="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}"
+
+    ohos_mpv_scan_lycium
+    export PKG_CONFIG_LIBDIR
+    export CPPFLAGS LDFLAGS
+    unset PKG_CONFIG_SYSROOT_DIR || true
+
+    for libdir in "${ohos_mpv_link_libdirs[@]}"; do
+        args+=("-L${libdir}")
+    done
+
+    triple="$(ohos_mpv_arch_triple)"
+    usr_lib="${OHOS_SDK}/native/sysroot/usr/lib/${triple}"
+    llvm_lib="${OHOS_SDK}/native/llvm/lib/${triple}"
+    args+=("-L${usr_lib}" "-L${llvm_lib}")
+    for item in -lc++ -lnative_media_core -lnative_media_codecbase -lnative_media_vdec \
+        -lnative_media_venc -lnative_window -lnative_image -lhilog_ndk.z -lohaudio -lvulkan; do
+        args+=("$item")
+    done
+
+    lzma_lib="$(ohos_mpv_find_lib "${LYCIUM_ROOT}/usr/xz/${ARCH}/lib" lzma)" || true
+    if [ -z "$lzma_lib" ]; then
+        echo "$pkgname: missing liblzma (build libass/libxml2 chain first)" >&2
+        return 1
+    fi
+    args+=("$lzma_lib")
+
+    meson_list="["
+    for item in "${args[@]}"; do
+        item="${item//\'/\\\'}"
+        meson_list="${meson_list}'${item}', "
+    done
+    meson_list="${meson_list%, }]"
+
+    escaped_pc="${PKG_CONFIG_LIBDIR//\\/\\\\}"
+    escaped_pc="${escaped_pc//\'/\\\'}"
+    escaped_prefix="${prefix//\\/\\\\}"
+    escaped_prefix="${escaped_prefix//\'/\\\'}"
+
+    sed -i "s|^c_link_args = .*|c_link_args = ${meson_list}|" "$cross"
+    sed -i "s|^cpp_link_args = .*|cpp_link_args = ${meson_list}|" "$cross"
+    sed -i "s|^pkg_config_libdir = .*|pkg_config_libdir = '${escaped_pc}'|" "$cross"
+    sed -i 's|^prefer_static = .*|prefer_static = true|' "$cross"
+    grep -q '^prefer_static = ' "$cross" 2>/dev/null ||
+        sed -i "/^\[built-in options\]/a prefer_static = true" "$cross"
+    sed -i "s|^default_library = .*|default_library = 'shared'|" "$cross"
+    grep -q '^default_library = ' "$cross" 2>/dev/null ||
+        sed -i "/^\[built-in options\]/a default_library = 'shared'" "$cross"
+    sed -i "s|^prefix = .*|prefix = '${escaped_prefix}'|" "$cross"
+    grep -q '^prefix = ' "$cross" 2>/dev/null ||
+        sed -i "/^\[built-in options\]/a prefix = '${escaped_prefix}'" "$cross"
+}
+
+ohos_mpv_arch_triple() {
+    case "$ARCH" in
+    arm64-v8a) echo "aarch64-unknown-linux-ohos" ;;
+    armeabi-v7a) echo "arm-linux-ohos" ;;
+    x86_64) echo "x86_64-unknown-linux-ohos" ;;
+    *) echo "unsupported" ; return 1 ;;
+    esac
+}
+
+prepare() {
+    if $cloneflag; then
+        git clone --depth 1 --branch "$pkgver" "$source" "$builddir" >> "$publicbuildlog" 2>&1
+        if [ $? -ne 0 ]; then
+            echo "$pkgname: git clone failed (tag $pkgver)" >&2
+            return 1
+        fi
+        cloneflag=false
+    fi
+
+    if $patchflag; then
+        cd "$builddir"
+        patch -p1 < "../libmpv_oh_pkg.patch" >> "$publicbuildlog" 2>&1
+        if [ $? -ne 0 ]; then
+            echo "$pkgname: apply libmpv_oh_pkg.patch failed" >&2
+            cd "$OLDPWD"
+            return 1
+        fi
+        cd "$OLDPWD"
+        patchflag=false
+    fi
+
+    mkdir -p "$builddir/$ARCH-build"
+    cp "$ARCH-cross-file.txt" "$builddir/"
+}
+
+build() {
+    local ret
+
+    ohos_mpv_patch_libxml2_pc
+
+    cd "$builddir"
+    ohos_sdk_path=${OHOS_SDK//\//\\\/}
+    sed -i 's/ohos_sdk/'"$ohos_sdk_path"'/g' "$ARCH-cross-file.txt"
+    ohos_mpv_prepare_cross
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        ohos_mpv_restore_libxml2_pc
+        return $ret
+    fi
+
+    ohos_mpv_hide_ffmpeg_static
+    trap ohos_mpv_restore_build_tmp EXIT
+
+    rm -rf "$ARCH-build"
+    meson setup "$ARCH-build" \
+        --cross-file "$ARCH-cross-file.txt" \
+        -Dlibmpv=true \
+        -Dtests=true \
+        -Db_ndebug=if-release \
+        -Dopensles=disabled \
+        -Dohos-avcodec-embed=true \
+        -Degl-ohos=enabled \
+        -Dohos-native-image=enabled \
+        -Dohaudio=true \
+        -Dlua=enabled \
+        -Dvulkan=enabled \
+        > "$buildlog" 2>&1
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        cd "$OLDPWD"
+        ohos_mpv_restore_build_tmp
+        trap - EXIT
+        return $ret
+    fi
+
+    ninja -C "$ARCH-build" >> "$buildlog" 2>&1
+    ret=$?
+    cd "$OLDPWD"
+    ohos_mpv_restore_build_tmp
+    trap - EXIT
+    return $ret
+}
+
+package() {
+    local ret
+    cd "$builddir" || return 1
+    ninja -C "$ARCH-build" install >> "$buildlog" 2>&1
+    ret=$?
+    cd "$OLDPWD"
+    return $ret
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+    local so="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/lib/libmpv.so.2"
+    local bad
+    [ -f "$so" ] || so="${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/lib/libmpv.so"
+    if [ ! -f "$so" ]; then
+        echo "libmpv.so not found" >&2
+        return 1
+    fi
+    bad=$(readelf -d "$so" 2>/dev/null | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' |
+        grep -E '^(libass|libplacebo|libfreetype|libfribidi|libfontconfig|libharfbuzz|liblzma)\.so' || true)
+    if [ -n "$bad" ]; then
+        echo "$pkgname: unexpected DT_NEEDED (should static-link): $bad" >&2
+        return 1
+    fi
+    return 0
+}
+
+cleanbuild() {
+    rm -rf "${PWD}/$builddir"
+}
