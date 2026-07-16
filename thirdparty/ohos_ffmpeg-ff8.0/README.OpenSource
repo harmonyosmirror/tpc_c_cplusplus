@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "ohos_ffmpeg-ff8.0",
+        "License": "LGPL-2.1",
+        "License File": "https://github.com/FFmpeg/FFmpeg/blob/master/LICENSE.md",
+        "Version Number": "ohos-n8.0",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n8.0.tar.gz",
+        "Description": "FFmpeg is a collection of libraries and tools to process multimedia content such as audio, video, subtitles and related metadata."
+    }
+]

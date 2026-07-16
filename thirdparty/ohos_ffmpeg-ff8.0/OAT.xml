@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <oatconfig>
+        <filefilterlist>
+            <filefilter name="copyrightPolicyFilter" desc="Filters for compatibility，license header policies">
+            </filefilter>
+            <filefilter name="defaultPolicyFilter" desc="Filters for compatibility，license header policies">
+            </filefilter>
+        </filefilterlist>
+    </oatconfig>
+</configuration>
