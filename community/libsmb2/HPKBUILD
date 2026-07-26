@@ -59,7 +59,9 @@ build() {
 package() {
     cd $builddir
     $MAKE VERBOSE=1 -C $ARCH-build install >> $buildlog 2>&1
+    ret=$?
     cd $OLDPWD
+    return $ret
 }
 
 # 进行测试的准备和说明
