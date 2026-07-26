@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "libsmb2",
+        "License": "LGPL-2.1-or-later",
+        "License File": "https://github.com/sahlberg/libsmb2/blob/master/COPYING",
+        "Version Number": "6.2",
+        "Owner": "isaced@163.com",
+        "Upstream URL": "https://github.com/sahlberg/libsmb2",
+        "Description": "libsmb2 is a client implementation of the SMB2/3 protocol for accessing remote filesystems."
+    }
+]
