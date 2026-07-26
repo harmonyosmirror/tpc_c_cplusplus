@@ -37,6 +37,8 @@ packagename=$builddir.tar.gz
 # 为编译设置环境，如设置环境变量，创建编译目录等
 prepare() {
     mkdir -p $builddir/$ARCH-build
+    # 上游 CMakeLists.txt 版本号笔误为 6.1.0，修正为实际 release 版本
+    sed -i "s/VERSION 6.1.0/VERSION ${pkgver}/g" $builddir/CMakeLists.txt
 }
 
 build() {
