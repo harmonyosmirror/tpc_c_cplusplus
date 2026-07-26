@@ -23,7 +23,7 @@ openharmonycheck() {
     ctest >> $logfile 2>&1
     res=$?
     if [ $res -ne 0 ]; then
-        mkdir ${LYCIUM_FAULT_PATH}/${pkgname}
+        mkdir -p ${LYCIUM_FAULT_PATH}/${pkgname}
         cp Testing/Temporary/LastTest.log ${LYCIUM_FAULT_PATH}/${pkgname}/
     fi
     cd $OLDPWD
