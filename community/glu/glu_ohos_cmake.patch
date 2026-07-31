@@ -1,0 +1,57 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+new file mode 100644
+index 0000000..cd0c609
+--- /dev/null
++++ b/CMakeLists.txt
+@@ -0,0 +1,51 @@
++cmake_minimum_required(VERSION 3.16)
++project(glu C)
++
++set(CMAKE_C_STANDARD 11)
++set(CMAKE_POSITION_INDEPENDENT_CODE ON)
++
++include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
++include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include)
++
++if(OHOS_SDK)
++    if(OHOS_ARCH STREQUAL "arm64-v8a")
++        set(_ohos_lib_arch aarch64-linux-ohos)
++    elseif(OHOS_ARCH STREQUAL "armeabi-v7a")
++        set(_ohos_lib_arch arm-linux-ohos)
++    elseif(OHOS_ARCH STREQUAL "x86_64")
++        set(_ohos_lib_arch x86_64-linux-ohos)
++    endif()
++    link_directories(${OHOS_SDK}/native/sysroot/usr/lib/${_ohos_lib_arch})
++endif()
++
++set(TESS_SOURCES
++    src/libtess/dict.c
++    src/libtess/geom.c
++    src/libtess/memalloc.c
++    src/libtess/mesh.c
++    src/libtess/normal.c
++    src/libtess/priorityq.c
++    src/libtess/render.c
++    src/libtess/sweep.c
++    src/libtess/tess.c
++    src/libtess/tessmono.c
++)
++
++set(UTIL_SOURCES
++    src/libutil/error.c
++    src/libutil/glue.c
++    src/libutil/mipmap.c
++    src/libutil/project.c
++    src/libutil/quad.c
++    src/libutil/registry.c
++)
++
++add_library(GLU SHARED ${TESS_SOURCES} ${UTIL_SOURCES})
++
++target_compile_definitions(GLU PRIVATE
++    GL_GLEXT_PROTOTYPES
++    GLX_GLXEXT_PROTOTYPES
++)
++target_compile_options(GLU PRIVATE -include limits.h)
++
++target_link_libraries(GLU GLv4)
