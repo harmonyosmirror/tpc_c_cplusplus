@@ -53,8 +53,10 @@ build() {
 
 package() {
     cd "$builddir"
-    make install >> `pwd`/$ARCH-build/build.log 2>&1
+    make -C $testdir/ftb install >> `pwd`/$ARCH-build/build.log 2>&1
+    ret=$?
     cd $OLDPWD
+    return $ret
 }
 
 check() {
