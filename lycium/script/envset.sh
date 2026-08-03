@@ -11,8 +11,8 @@ setarm32ENV() {
     export OBJCOPY=${OHOS_SDK}/native/llvm/bin/llvm-objcopy
     export NM=${OHOS_SDK}/native/llvm/bin/llvm-nm
     export AR=${OHOS_SDK}/native/llvm/bin/llvm-ar
-    export CFLAGS="-DOHOS_NDK -fPIC -march=armv7a -D__MUSL__=1 -O3"
-    export CXXFLAGS="-DOHOS_NDK -fPIC -march=armv7a -D__MUSL__=1 -O3"
+    export CFLAGS="-DOHOS_NDK -fPIC -march=armv7a -D__MUSL__=1 -O3 -D_FORTIFY_SOURCE=2 -fstack-protector-strong"
+    export CXXFLAGS="-DOHOS_NDK -fPIC -march=armv7a -D__MUSL__=1 -O3 -D_FORTIFY_SOURCE=2 -fstack-protector-strong"
     export LDFLAGS=""
 }
 
@@ -31,8 +31,8 @@ setarm64ENV() {
     export OBJCOPY=${OHOS_SDK}/native/llvm/bin/llvm-objcopy
     export NM=${OHOS_SDK}/native/llvm/bin/llvm-nm
     export AR=${OHOS_SDK}/native/llvm/bin/llvm-ar
-    export CFLAGS="-DOHOS_NDK -fPIC -D__MUSL__=1"
-    export CXXFLAGS="-DOHOS_NDK -fPIC -D__MUSL__=1"
+    export CFLAGS="-DOHOS_NDK -fPIC -D__MUSL__=1 -O3 -D_FORTIFY_SOURCE=2 -fstack-protector-strong"
+    export CXXFLAGS="-DOHOS_NDK -fPIC -D__MUSL__=1 -O3 -D_FORTIFY_SOURCE=2 -fstack-protector-strong"
     export LDFLAGS=""
 }
 
@@ -51,8 +51,8 @@ setx86_64ENV() {
     export OBJCOPY=${OHOS_SDK}/native/llvm/bin/llvm-objcopy
     export NM=${OHOS_SDK}/native/llvm/bin/llvm-nm
     export AR=${OHOS_SDK}/native/llvm/bin/llvm-ar
-    export CFLAGS="-DOHOS_NDK -fPIC -D__MUSL__=1"
-    export CXXFLAGS="-DOHOS_NDK -fPIC -D__MUSL__=1"
+    export CFLAGS="-DOHOS_NDK -fPIC -D__MUSL__=1 -O3 -D_FORTIFY_SOURCE=2 -fstack-protector-strong"
+    export CXXFLAGS="-DOHOS_NDK -fPIC -D__MUSL__=1 -O3 -D_FORTIFY_SOURCE=2 -fstack-protector-strong"
     export LDFLAGS=""
 }
 

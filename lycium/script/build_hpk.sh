@@ -105,10 +105,30 @@ recordbuildlibs() {
     echo $2,$3,$1>> $LYCIUM_ROOT/usr/hpk_build.csv
 }
 
+# 对安装目录下的动态库 .so 执行 strip，剥离符号表
+# 参数1为 cpu type
+stripinstalledlibs() {
+    local install_prefix=$LYCIUM_ROOT/usr/$pkgname/$1
+    if [ ! -d "$install_prefix" ]; then
+        return 0
+    fi
+    local strip_tool=${OHOS_SDK}/native/llvm/bin/llvm-strip
+    if [ ! -x "$strip_tool" ]; then
+        echo "WARN: strip tool not found: $strip_tool"
+        return 0
+    fi
+    find "$install_prefix" -type f \( -name "*.so" -o -name "*.so.*" \) ! -name "*.so.o" 2>/dev/null | while read -r sofile
+    do
+        if file "$sofile" 2>/dev/null | grep -q "ELF"; then
+            "$strip_tool" --strip-all "$sofile" 2>/dev/null
+        fi
+    done
+}
+
 buildargs=
 pkgconfigpath=
 cmakedependpath() { # 参数1为cpu type
-    buildargs="-LH -DCMAKE_BUILD_TYPE=Release -DCMAKE_SKIP_RPATH=ON -DCMAKE_SKIP_INSTALL_RPATH=ON -DCMAKE_TOOLCHAIN_FILE=${OHOS_SDK}/native/build/cmake/ohos.toolchain.cmake -DCMAKE_INSTALL_PREFIX=$LYCIUM_ROOT/usr/$pkgname/$1/ -G \"Unix Makefiles\" -DOHOS_ARCH=$1 "
+    buildargs="-LH -DCMAKE_BUILD_TYPE=Release -DCMAKE_SKIP_RPATH=ON -DCMAKE_SKIP_INSTALL_RPATH=ON -DCMAKE_TOOLCHAIN_FILE=${OHOS_SDK}/native/build/cmake/ohos.toolchain.cmake -DCMAKE_INSTALL_PREFIX=$LYCIUM_ROOT/usr/$pkgname/$1/ -G \"Unix Makefiles\" -DOHOS_ARCH=$1 -DCMAKE_C_FLAGS_RELEASE=\"-O3 -DNDEBUG -D_FORTIFY_SOURCE=2 -fstack-protector-strong\" -DCMAKE_CXX_FLAGS_RELEASE=\"-O3 -DNDEBUG -D_FORTIFY_SOURCE=2 -fstack-protector-strong\" "
     pkgconfigpath=""
     if [ ${#depends[@]} -ne 0 ] 
     then
@@ -222,6 +242,7 @@ builpackage() {
         fi
         sure build $buildargs
         sure package
+        sure stripinstalledlibs $ARCH
         if [ -n "${LYCIUM_BUILD_CHECK}" ]
         then
             if [ ${LYCIUM_BUILD_CHECK} == "true" ]
