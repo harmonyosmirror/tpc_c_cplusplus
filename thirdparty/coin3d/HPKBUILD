@@ -1,0 +1,95 @@
+
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Contributor: zhongluping2@huawei-partners.com
+# Maintainer: zhongluping2@huawei-partners.com
+
+pkgname=coin3d
+pkgver=v4.0.8
+pkgrel=0
+pkgdesc="Coin is a high-level 3D graphics library with OpenGL, used for 3D scene graph rendering."
+url="https://github.com/coin3d/coin/"
+archs=("armeabi-v7a" "arm64-v8a" "x86_64")
+license=("BSD-3-Clause license")
+# glu: GLU tessellation 库，Coin 运行时 dlopen 加载，SoText3 文字渲染必需
+depends=("freetype2_coin3d" "glu")
+makedepends=()
+install=
+source="https://github.com/coin3d/coin.git"
+
+autounpack=false
+downloadpackage=false
+buildtools="cmake"
+cloneflag=true
+builddir=$pkgname
+packagename=$builddir.tar.gz
+source envset.sh
+host=
+
+prepare() {
+
+    if [ $cloneflag == true ]
+    then
+        git config --global url."https://gh-proxy.com/https://github.com/".insteadOf "https://github.com/"
+        git clone --depth 1 --branch $pkgver $source $builddir --recurse-submodules
+        if [ $? -ne 0 ]
+        then
+            echo "git clone failed!"
+            rm -rf $builddir
+            return 1
+        fi
+        cloneflag=false
+        cd $builddir
+        patch -p1 < ../coin3d_oh_pkg.patch
+        if [ $? -ne 0 ]
+        then
+            echo "patch failed!"
+            rm -rf $builddir
+            return 1
+        fi
+        cd $OLDPWD
+    fi
+    mkdir -p $builddir/$ARCH-build
+}
+
+build() {
+    cd $builddir
+    $OHOS_SDK/native/build-tools/cmake/bin/cmake "$@" -DOHOS_ARCH=$ARCH -B$ARCH-build -S./ -L \
+    -DCOIN_BUILD_TESTS=OFF -DHAVE_SOUND=OFF -DCOIN_BUILD_GLX=OFF -DCOIN_USE_CPACK=OFF -DHAVE_EGL=ON \
+    -DFREETYPE_RUNTIME_LINKING=OFF -DFONTCONFIG_RUNTIME_LINKING=OFF >> $buildlog 2>&1
+    $MAKE VERBOSE=1 -C $ARCH-build >> $buildlog 2>&1
+    ret=$?
+    cd $OLDPWD
+    return $ret
+}
+
+package() {
+    cd $builddir/$ARCH-build
+    make install >> $buildlog 2>&1
+    ret=$?
+    cd $OLDPWD
+
+    git config --global --unset url."https://gh-proxy.com/https://github.com/".insteadOf 2>/dev/null || true
+    return $ret
+}
+
+check() {
+    echo "The test must be on an OpenHarmony device!"
+    # 在OpenHarmony开发板中执行用例
+    # make check    
+}
+
+cleanbuild(){
+    rm -rf ${PWD}/$builddir
+}
