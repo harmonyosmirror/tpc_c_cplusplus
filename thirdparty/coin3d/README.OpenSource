@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "coin3d",
+        "License": "BSD-3-Clause",
+        "License File": "https://github.com/coin3d/coin/blob/master/COPYING",
+        "Version Number": "v4.0.8",
+        "Owner": "panjinling@huawei.com",
+        "Upstream URL": "https://github.com/coin3d/coin",
+        "Description": "Coin is a high-level 3D graphics library with OpenGL. It is a scene graph library based on Open Inventor, providing 3D rendering capabilities for OpenHarmony applications."
+    }
+]

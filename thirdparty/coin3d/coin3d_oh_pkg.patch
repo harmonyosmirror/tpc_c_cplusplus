@@ -1,0 +1,393 @@
+--- coin/CMakeLists.txt
++++ coin_ohos/CMakeLists.txt
+@@ -210,38 +210,56 @@
+     list(APPEND COIN_TARGET_INCLUDE_DIRECTORIES ${X11_INCLUDE_DIR})
+     list(APPEND COIN_TARGET_LINK_LIBRARIES ${X11_LIBRARIES})
+   endif()
+-  find_package(OpenGL REQUIRED)
+-  if(OPENGL_FOUND)
++  
++  if(OHOS)
++    set(OPENGL_FOUND TRUE)
+     set(HAVE_OPENGL 1)
+-    set(OPENGL_SYSTEM_LIBRARY_NAME "${OPENGL_gl_LIBRARY}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+-    if(COIN_BUILD_EGL)
+-      if (OpenGL_EGL_FOUND)
+-        set(HAVE_EGL 1)
+-        if (NOT TARGET OpenGL::EGL)
+-          list(APPEND COIN_TARGET_INCLUDE_DIRECTORIES ${OPENGL_EGL_INCLUDE_DIR})
+-          list(APPEND COIN_TARGET_LINK_LIBRARIES_GL ${OPENGL_egl_LIBRARY})
+-        else()
+-          list(APPEND COIN_TARGET_LINK_LIBRARIES_GL OpenGL::EGL)
++    set(HAVE_EGL 1)  # CRITICAL: Enable EGL for OHOS builds
++    set(HAVE_GLX 0)  # CRITICAL: Disable GLX for OHOS builds (OHOS uses EGL only)
++    set(OPENGL_gl_LIBRARY "GLv4") 
++    set(OPENGL_SYSTEM_LIBRARY_NAME "libGLv4.so")
++    
++    # OHOS 的 GPU 原生只支持 OpenGL ES，libGLv4.so 是 OHOS 官方提供的桌面 GL 兼容层
++    # （在 GLES 之上模拟出 glBegin/glVertex/glMatrixMode 等固定管线 API）。
++    # libGLv4 已重导出几乎所有 GL/GLES 共有符号，Coin 直接调的桌面 GL 符号它都覆盖；
++    # 因此只链 libGLv4 + libEGL 即可，不再需要 libGLESv3。
++    list(APPEND COIN_TARGET_LINK_LIBRARIES_GL ${OPENGL_gl_LIBRARY} EGL ace_ndk.z ace_napi.z native_window hilog_ndk.z)
++    # Include OpenHarmony custom headers
++    include_directories(${PROJECT_SOURCE_DIR}/include/ohos)
++  else()
++    find_package(OpenGL REQUIRED)
++    if(OPENGL_FOUND)
++      set(HAVE_OPENGL 1)
++      set(OPENGL_SYSTEM_LIBRARY_NAME "${OPENGL_gl_LIBRARY}${CMAKE_SHARED_LIBRARY_SUFFIX}")
++      if(COIN_BUILD_EGL)
++        if (OpenGL_EGL_FOUND)
++          set(HAVE_EGL 1)
++          if (NOT TARGET OpenGL::EGL)
++            list(APPEND COIN_TARGET_INCLUDE_DIRECTORIES ${OPENGL_EGL_INCLUDE_DIR})
++            list(APPEND COIN_TARGET_LINK_LIBRARIES_GL ${OPENGL_egl_LIBRARY})
++          else()
++            list(APPEND COIN_TARGET_LINK_LIBRARIES_GL OpenGL::EGL)
++          endif()
+         endif()
++      endif ()
++      if(APPLE)
++        set(GLU_IS_PART_OF_GL 1)
+       endif()
+-    endif ()
+-    if(APPLE)
+-      set(GLU_IS_PART_OF_GL 1)
+-    endif()
+-    #include_directories("${OPENGL_INCLUDE_DIR}")
+-    if (NOT TARGET OpenGL::GL)
+-      list(APPEND COIN_TARGET_INCLUDE_DIRECTORIES ${OPENGL_INCLUDE_DIR})
+-      list(APPEND COIN_TARGET_LINK_LIBRARIES_GL ${OPENGL_gl_LIBRARY})
+-    else()
+-      list(APPEND COIN_TARGET_LINK_LIBRARIES_GL OpenGL::GL)
+-    endif()
+-    if(OpenGL_GLU_FOUND AND NOT COIN_BUILD_EGL)
+-      set(HAVE_GLU 1)
+-      if (NOT TARGET OpenGL::GLU)
++      #include_directories("${OPENGL_INCLUDE_DIR}")
++      if (NOT TARGET OpenGL::GL)
+         list(APPEND COIN_TARGET_INCLUDE_DIRECTORIES ${OPENGL_INCLUDE_DIR})
+-        list(APPEND COIN_TARGET_LINK_LIBRARIES_GL ${OPENGL_glu_LIBRARY})
++        list(APPEND COIN_TARGET_LINK_LIBRARIES_GL ${OPENGL_gl_LIBRARY})
+       else()
+-        list(APPEND COIN_TARGET_LINK_LIBRARIES_GL OpenGL::GLU)
++        list(APPEND COIN_TARGET_LINK_LIBRARIES_GL OpenGL::GL)
++      endif()
++      if(OpenGL_GLU_FOUND AND NOT COIN_BUILD_EGL)
++        set(HAVE_GLU 1)
++        if (NOT TARGET OpenGL::GLU)
++          list(APPEND COIN_TARGET_INCLUDE_DIRECTORIES ${OPENGL_INCLUDE_DIR})
++          list(APPEND COIN_TARGET_LINK_LIBRARIES_GL ${OPENGL_glu_LIBRARY})
++        else()
++          list(APPEND COIN_TARGET_LINK_LIBRARIES_GL OpenGL::GLU)
++        endif()
+       endif()
+     endif()
+   endif()
+
+--- coin/src/actions/SoGLRenderAction.cpp
++++ coin_ohos/src/actions/SoGLRenderAction.cpp
+@@ -1783,6 +1783,10 @@
+   this->currentpass = 0;
+   this->renderSingle(node);
+   if (this->action->hasTerminated()) return;
++#ifdef __OHOS__
++  // HarmonyOS doesn't support glAccum, use simplified single-pass rendering
++  this->renderSingle(node);
++#else
+   glAccum(GL_LOAD, fraction);
+ 
+   for (int i = 1; i < this->numpasses; i++) {
+@@ -1802,6 +1806,7 @@
+   }
+   this->currentpass = storedpass;
+   glAccum(GL_RETURN, 1.0f);
++#endif
+ }
+ 
+ //
+
+--- coin/src/elements/GL/SoGLLazyElement.cpp
++++ coin_ohos/src/elements/GL/SoGLLazyElement.cpp
+@@ -331,7 +331,11 @@
+   }
+   else {
+     if (this->glstate.stipplenum <= 0) glEnable(GL_POLYGON_STIPPLE);
++#ifdef __OHOS__
++    // Polygon stipple not supported on HarmonyOS (glPolygonStipple absent in libGLv4)
++#else
+     glPolygonStipple(stipple_patterns[stipplenum]);
++#endif
+   }
+   this->glstate.stipplenum = stipplenum;
+   this->cachebitmask |= TRANSPARENCY_MASK;
+@@ -518,7 +522,11 @@
+ #endif // COIN_DEBUG
+ 
+   if (this->colorindex) {
++#ifdef __OHOS__
++    // Color index mode not supported on HarmonyOS (glIndexi absent in libGLv4)
++#else
+     glIndexi((GLint)this->coinstate.colorindexarray[safeindex]);
++#endif
+   }
+   else {
+     uint32_t col = this->packedpointer[safeindex] | this->transpmask;
+@@ -580,7 +588,11 @@
+           // we always send the first diffuse color for the first
+           // material in an open cache
+           if (this->colorindex) {
++#ifdef __OHOS__
++            // Color index mode not supported on HarmonyOS (glIndexi absent in libGLv4)
++#else
+             glIndexi((GLint)this->coinstate.colorindexarray[0]);
++#endif
+           }
+           else {
+             this->sendPackedDiffuse(this->packedpointer[0]|this->transpmask);
+
+--- coin/src/fonts/freetype.cpp
++++ coin_ohos/src/fonts/freetype.cpp
+@@ -444,6 +444,16 @@
+ 
+       cc_string_clean(&fullpath);
+     }
++#else
++    /* HarmonyOS paths */
++    str = strdup("/system/fonts");
++    assert(str);
++    cc_dynarray_append(cc_flwft_globals.fontfiledirs, str);
++
++    /* Original Unix paths */
++    str = strdup("/usr/share/fonts");
++    assert(str);
++    cc_dynarray_append(cc_flwft_globals.fontfiledirs, str);
+ #endif /* _WIN32 */
+ 
+     /* Try current working directory as well. */
+
+--- coin/src/glue/gl.cpp
++++ coin_ohos/src/glue/gl.cpp
+@@ -2341,6 +2341,17 @@
+        did something wrong while creating it.
+     */
+     glerr = glGetError();
++#ifdef __OHOS__
++    /* Mesa Zink (desktop GL -> Vulkan) may return a sticky GL error that
++       never drains. The original while-loop would spin forever, posting a
++       warning + fflush on every iteration and freezing the main thread
++       (observed THREAD_BLOCK_6S appfreeze). Cap the drain and do it
++       silently on OHOS. */
++    { int n; for (n = 0; n < 32 && glerr != GL_NO_ERROR; n++) {
++      if (glerr == GL_INVALID_OPERATION) break;
++      glerr = glGetError();
++    } }
++#else
+     while (glerr != GL_NO_ERROR) {
+       cc_debugerror_postwarning("cc_glglue_instance",
+                                 "Error when setting up the GL context. This can happen if "
+@@ -2352,6 +2363,7 @@
+          Break out and assert later in that case */
+       if (glerr == GL_INVALID_OPERATION) break;
+     }
++#endif
+ 
+     /* NB: if you are getting a crash here, it's because an attempt at
+      * setting up a cc_glglue instance was made when there is no
+
+--- coin/src/glue/gl_egl.cpp
++++ coin_ohos/src/glue/gl_egl.cpp
+@@ -48,6 +48,11 @@
+ #include <cstring>
+ #include <cassert>
+ 
++#ifdef __OHOS__
++#include <dlfcn.h>  /* for dlsym and RTLD_DEFAULT */
++#include <hilog/log.h>
++#endif
++
+ #include <Inventor/C/tidbits.h>
+ #include <Inventor/C/glue/gl.h>
+ #include <Inventor/C/errors/debugerror.h>
+@@ -162,6 +167,33 @@
+ static EGLDisplay
+ eglglue_get_display(void)
+ {
++#ifdef __OHOS__
++  /* HarmonyOS: First try to get the current EGL display from existing context.
++     This is critical when app layer (XComponent) has already initialized EGL. */
++  if (eglglue_display == EGL_NO_DISPLAY) {
++    EGLContext currentContext = eglGetCurrentContext();
++    if (currentContext != EGL_NO_CONTEXT) {
++      eglglue_display = eglGetCurrentDisplay();
++      OH_LOG_Print(LOG_APP, LOG_INFO, 0xFF00, "eglglue_get_display", 
++                   "Using existing EGL display from current context: display=%p, context=%p",
++                   eglglue_display, currentContext);
++    }
++  }
++  
++  /* If no current context, try default display */
++  if (eglglue_display == EGL_NO_DISPLAY) {
++    eglglue_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
++    OH_LOG_Print(LOG_APP, LOG_INFO, 0xFF00, "eglglue_get_display", 
++                 "Got default EGL display: %p", eglglue_display);
++  }
++  
++  if (eglglue_display == EGL_NO_DISPLAY) {
++    cc_debugerror_post("eglglue_get_display", "Display not found on HarmonyOS.");
++    return EGL_NO_DISPLAY;
++  }
++  
++  return eglglue_display;
++#else /* !__OHOS */
+   PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT;
+ 
+   if (eglglue_display != EGL_NO_DISPLAY) {
+@@ -192,6 +224,7 @@
+   }
+ 
+ found:
++#endif /* __OHOS */
+   if (coin_glglue_debug()) {
+     cc_debugerror_postinfo("eglglue_get_display",
+                             "got EGLDisplay==%p",
+@@ -215,6 +248,33 @@
+ 
+   w->glx.glXGetCurrentDisplay = (COIN_PFNGLXGETCURRENTDISPLAYPROC)eglglue_getprocaddress(w, "eglglue_get_display");
+ 
++#ifdef __OHOS__
++  /* HarmonyOS: App layer (XComponent) has already initialized EGL.
++     Do NOT call eglInitialize() again - just query the existing state. */
++  EGLDisplay display = eglglue_get_display();
++  if (display == EGL_NO_DISPLAY) {
++    cc_debugerror_post("eglglue_init", "EGL display not available on HarmonyOS.");
++    return;
++  }
++  
++  /* HarmonyOS EGL is typically version 1.5 */
++  w->glx.version.major = 1;
++  w->glx.version.minor = 5;
++
++  OH_LOG_Print(LOG_APP, LOG_INFO, 0xFF00, "eglglue_init", 
++               "HarmonyOS: Using existing EGL context (display=%p)", display);
++  
++  /* Verify EGL_OPENGL_API is bound (app layer should have done this) */
++  EGLenum api = eglQueryAPI();
++  if (api != EGL_OPENGL_API) {
++    if (eglBindAPI(EGL_OPENGL_API) == EGL_FALSE) {
++      cc_debugerror_post("eglglue_init",
++                         "eglBindAPI(EGL_OPENGL_API) failed on HarmonyOS: %s",
++                         eglErrorString(eglGetError()));
++      return;
++    }
++  }
++#else /* !__OHOS__ */
+   if (eglInitialize(eglglue_get_display(), &w->glx.version.major, &w->glx.version.minor) == EGL_FALSE) {
+     cc_debugerror_post("eglglue_init",
+                        "Couldn't initialize EGL. %s",
+@@ -228,6 +288,7 @@
+                        eglErrorString(eglGetError()));
+     return;
+   }
++#endif /* __OHOS__ */
+ 
+   if (coin_glglue_debug()) {
+     cc_debugerror_postinfo("eglglue_init",
+@@ -499,7 +560,34 @@
+ void *
+ eglglue_getprocaddress(const cc_glglue * glue_in, const char * fname)
+ {
+-  return (void *)eglGetProcAddress(fname);
++  void * ptr = (void *)eglGetProcAddress(fname);
++  
++#ifdef __OHOS__
++  /* Debug: log the function being looked up */
++  OH_LOG_Print(LOG_APP, LOG_INFO, 0xFF00, "eglglue_getprocaddress",
++               "Looking up %{public}s via eglGetProcAddress, result=%{public}p", 
++               fname, ptr);
++  
++  /* For HarmonyOS (OpenGL ES 3.0+): Core functions like glActiveTexture
++     may not be available via eglGetProcAddress (they're core, not extensions).
++     
++     eglGetProcAddress on ES platforms only returns extension functions, not core functions.
++     For OpenGL ES 3.0+, glActiveTexture is a core function.
++     
++     Use RTLD_DEFAULT to search all loaded libraries in the process.
++     The GLES library is already loaded when EGL context is created.
++  */
++  if (ptr == NULL) {
++    /* RTLD_DEFAULT = (void *)-1 on most Unix systems, searches all loaded libs */
++    ptr = dlsym(RTLD_DEFAULT, fname);
++    
++    OH_LOG_Print(LOG_APP, LOG_INFO, 0xFF00, "eglglue_getprocaddress",
++                 "Trying dlsym(RTLD_DEFAULT) for %{public}s, result=%{public}p", 
++                 fname, ptr);
++  }
++#endif
++  
++  return ptr;
+ }
+ 
+ void
+
+--- coin/src/rendering/SoRenderManager.cpp
++++ coin_ohos/src/rendering/SoRenderManager.cpp
+@@ -635,6 +635,7 @@
+     action->setCurPass(0, numpasses);
+     this->render(action, TRUE, clearwindow, clearzbuffer);
+ 
++#ifndef __OHOS__
+     // check if we have an accumulation buffer, and render additional passes
+     GLint accumbits;
+     glGetIntegerv(GL_ACCUM_RED_BITS, &accumbits);
+@@ -649,6 +650,9 @@
+       }
+       glAccum(GL_RETURN, 1.0f);
+     }
++#else
++    // HarmonyOS has no accumulation buffer; glAccum is unavailable in libGLv4.
++#endif
+     action->setCurPass(0, 1);
+     action->setNumPasses(numpasses);
+   }
+@@ -787,7 +791,11 @@
+         glClearColor(bgcol[0], bgcol[1], bgcol[2], bgcol[3]);
+       }
+       else {
++#ifdef __OHOS__
++        // Color index mode not supported on HarmonyOS (glClearIndex absent in libGLv4)
++#else
+         glClearIndex((GLfloat) PRIVATE(this)->backgroundindex);
++#endif
+       }
+     }
+     // Registering a callback is needed since the correct GL viewport
+
+--- coin/src/shapenodes/SoCube.cpp
++++ coin_ohos/src/shapenodes/SoCube.cpp
+@@ -78,6 +78,7 @@
+ #include <Inventor/details/SoCubeDetail.h>
+ #include <Inventor/elements/SoDrawStyleElement.h>
+ #include <Inventor/elements/SoGLMultiTextureEnabledElement.h>
++#include <Inventor/elements/SoLazyElement.h>
+ #include <Inventor/elements/SoMaterialBindingElement.h>
+ #include <Inventor/elements/SoMultiTextureCoordinateElement.h>
+ #include <Inventor/misc/SoState.h>
+@@ -140,6 +141,17 @@
+   if (!this->shouldGLRender(action)) return;
+   SoState * state = action->getState();
+ 
++#ifdef __OHOS__
++  GLboolean texture2dEnabled = glIsEnabled(GL_TEXTURE_2D);
++  GLboolean lightingEnabled = glIsEnabled(GL_LIGHTING);
++  GLboolean light0Enabled = glIsEnabled(GL_LIGHT0);
++  GLint boundTexture = 0;
++  glGetIntegerv(GL_TEXTURE_BINDING_2D, &boundTexture);
++  GLint activeTexture = 0;
++  glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
++
++#endif
++
+   SoMaterialBindingElement::Binding binding =
+     SoMaterialBindingElement::get(state);
+ 
