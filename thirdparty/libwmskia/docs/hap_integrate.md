@@ -23,7 +23,20 @@
   cd lycium
   ./build.sh libwmskia
   ```
-  
+
+  **注意**：
+   - libwmskia 底层依赖 Skia，其构建脚本（`HPKBUILD`）中通过 GN 参数控制字体相关功能的启用与库来源：
+   - **功能开关**：`skia_use_freetype` 和 `skia_use_harfbuzz` 控制是否启用 FreeType 字体引擎和 HarfBuzz 文本整形功能，**默认均为开启（`true`）**，因此脚本中未显式设置。
+   - **库来源控制**：`skia_use_system_freetype2=false` 和 `skia_use_system_harfbuzz=false` 表示使用 Skia 源码内置的库，而非系统库。
+   - **Fontconfig**：`skia_use_fontconfig=false` 显式禁用了 Fontconfig 支持（如需启用可改为 `true`，但需提前编译 Fontconfig 依赖）。
+
+  - 如需调整上述参数，请直接编辑 `thirdparty/libwmskia/HPKBUILD` 中的 `common_args`，所有修改均通过 GN 参数传递，**无需修改源码**。
+
+  - 若将 `skia_use_system_*` 改为 `true` 以使用系统库，则需**提前编译对应的依赖库**（Freetype、HarfBuzz 等），并在执行 `./build.sh` 时**按依赖顺序列出库名**：
+    ```bash
+    ./build.sh freetype2 harfbuzz libwmskia
+    ```
+
 - 三方库头文件及生成的库，在lycium目录下会生成usr目录，该目录下存在已编译完成的32位和64位三方库
   
   ```
