@@ -18,7 +18,9 @@ pkgname=bzip2_1_0_8
 pkgver=1.0.8
 pkgrel=
 pkgdesc="bzip2 is a freely available, patent free (see below), high-quality data compressor."
-url=https://sourceware.org/git/bzip2
+# 官方源受网络影响存在下载失败的情况,改用 GitHub 镜像
+#url=https://sourceware.org/git/bzip2
+url=https://github.com/libarchive/bzip2
 archs=("armeabi-v7a" "arm64-v8a" "x86_64")
 license=(bzip2-1.0.6)
 depends=()
@@ -42,7 +44,7 @@ ranlib=
 prepare() {
     if ${clonesrcflag}
     then
-        git clone ${url}.git ${builddir} > ${publicbuildlog} 2>&1 || return -1
+        git clone --depth 1 --branch bzip2-${pkgver} ${url}.git ${builddir} > ${publicbuildlog} 2>&1 || return -1
         cd ${builddir}
         git reset --hard ${commitid} >> ${publicbuildlog} 2>&1 || return -1
         cd ${OLDPWD}
@@ -108,5 +110,5 @@ check() {
 
 # 清理环境
 cleanbuild(){
-    rm -rf ${PWD}/$builddir $builddir-armeabi-v7a-build  $builddir-arm64-v8a-build #${PWD}/$packagename
+    rm -rf ${PWD}/$builddir $builddir-armeabi-v7a-build  $builddir-arm64-v8a-build $builddir-x86_64-build #${PWD}/$packagename
 }
