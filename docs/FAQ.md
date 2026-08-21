@@ -75,3 +75,7 @@
 - #### Q9：如何验证OpenSSL在OpenHamrony上使用问题是和SSL证书有关？
 
   请参照文档[OpenHarmony 应用中openssl使用指导](./openssl_use_in_openharnmony.md#ssl证书疑问解答)
+
+- #### Q10: 运行时报错 `Cannot read property 'XXX' of undefined` 
+  
+  请参照文档[Native SO 模块加载 Crash 问题](./Cannot_read_property_of_undefined.md)
