@@ -4,14 +4,14 @@ pkgname=sqliteodbc
 pkgver=0.9998
 pkgrel=0
 pkgdesc="SQLite Database Engine provides a lightweight C library to access database files"
-url="http://www.ch-werner.de/sqliteodbc"
+url="https://www.ch-werner.de/sqliteodbc"
 archs=("armeabi-v7a" "arm64-v8a")
 license=("BSD")
 depends=("sqlite" "unixODBC" "libxml2")
 makedepends=("wget")
 
 # 请保持网络通畅
-source="http://www.ch-werner.de/$pkgname/$pkgname-$pkgver.tar.gz"
+source="https://www.ch-werner.de/$pkgname/$pkgname-$pkgver.tar.gz"
 
 autounpack=true
 downloadpackage=true
@@ -27,6 +27,7 @@ host=
 prepare() {
     if [ $downloadconfigflag == true ];then
         # 获取最新的config.sub和config.guess以支持aarch64架构编译
+        # 下面链接如果无法下载，可以使用同目录下的 config.sub 和 config.guess
         wget -O $builddir/config.sub "git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD" > $builddir/build.log 2>&1
         ret=$?
         if [ $ret -ne 0 ]
